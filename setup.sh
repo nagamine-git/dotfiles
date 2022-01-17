@@ -1,17 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# 連想配列の宣言
-declare -A FILES;
-# ファイル名:パス名
-FILES=(
-  ["dot.init.vim"]="$HOME/.config/nvim/init.vim"
-  ["dot.tmux.conf"]="$HOME/.tmux.conf"
-  ["config.fish"]="$HOME/.config/fish/config.fish"
-)
-# 連想配列のループ
-for FILE in ${!FILES[@]};
-do
-    echo ${FILES[$FILE]}
-    ln -nfsv ./$FILE ${FILES[$FILE]}
-done
-exit 0
+# 未定義な変数があったら途中で終了する
+set -u
+
+# 今のディレクトリ
+# dotfilesディレクトリに移動する
+BASEDIR=$(dirname $0)
+cd $BASEDIR
+
+cp -f config.fish ~/.config/fish/config.fish
+cp -f dot.init.vim ~/.config/nvim/init.vim
+cp -f dot.tmux.conf ~/.tmux.conf
