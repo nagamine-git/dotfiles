@@ -176,3 +176,4 @@ set -g fish_user_paths "/usr/local/opt/imagemagick@6/bin" $fish_user_paths
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc' ]; . '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc'; end
 set PATH /usr/local/opt/libpq/bin $PATH
+
