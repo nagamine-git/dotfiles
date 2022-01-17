@@ -1,13 +1,22 @@
 set number             "行番号を表示
+set expandtab          "タブ入力を空白に変換
+set hlsearch           "検索した文字をハイライトする
+set ignorecase         "大文字小文字を区別しない
+set incsearch          "検索時にインクリメンタルサーチを有効にする
+set smartcase          "小文字で検索した場合は、大文字小文字の違いは無視、大文字を含む文字列で検索した場合は無視しない
+set laststatus=2       "最終行の行番号を表示
+syntax on              "言語指定
 set autoindent         "改行時に自動でインデントする
+set showcmd            ":!コマンドを表示
+set background=dark    "背景色を暗くする
+set wildmenu           "ワイルドカードを使用できるようにする
+set ruler              "行番号を表示
+set cursorline         "カーソル行をハイライト
+set number             "行番号を表示
 set tabstop=2          "タブを何文字の空白に変換するか
 set shiftwidth=2       "自動インデント時に入力する空白の数
-set expandtab          "タブ入力を空白に変換
 set splitright         "画面を縦分割する際に右に開く
 set clipboard=unnamed  "yank した文字列をクリップボードにコピー
-set hls                "検索した文字をハイライトする
-set ignorecase         "大文字小文字を区別しない
-set nocompatible       "vim の互換機能を使用しない
 set autoread           "ファイルを開いたときに自動で読み込む 
 
 call plug#begin()
