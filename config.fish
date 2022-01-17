@@ -9,19 +9,16 @@ status is-interactive; and pyenv init - | source
 # set ls colors
 export LSCOLORS=gxfxcxdxbxegedabagacad
 
-set -g theme_color_scheme monokai 
-
 # set Language
 set -x LANG ja_JP.UTF-8
 
 # Aliases
 # [ ls ]
 alias ls='ls -F --color=auto'
-
 #[ vim ]
-alias v='vim'
+alias v='nvim'
 #[ vim ]
-alias vi='vim'
+alias vi='nvim'
 #[ nvim ]
 alias vim='nvim'
 #[ yarn ]
