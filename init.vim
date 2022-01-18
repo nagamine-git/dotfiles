@@ -49,11 +49,15 @@ call plug#begin()
   Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
   Plug 'neoclide/coc.nvim', {'branch': 'release'} "補完機能
   Plug 'dense-analysis/ale' "非同期静的解析
+  Plug 'edkolev/tmuxline.vim'
 call plug#end()
 
 " カラースキーム
 colorscheme molokai
+let g:airline_theme = 'molokai'
+set termguicolors
 let g:rehash256 = 1
+let g:airline_powerline_fonts = 1
 
 let g:ctrlp_clear_cache_on_exit = 0 " ctrlpで終了時にャッシュを残す
 let g:ctrlp_use_caching = 1 " ctrlpで終了時にャッシュを残す
