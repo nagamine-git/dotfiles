@@ -46,9 +46,10 @@ call plug#begin()
   Plug 'nathanaelkane/vim-indent-guides' "インデントガイド
   Plug 'vim-scripts/AnsiEsc.vim' "色付け
   Plug 'rking/ag.vim' "ag
-  Plug 'dyng/ctrlsf.vim' "ctrl+s でファイルを開く
+  Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
 call plug#end()
 
+" カラースキーム
 colorscheme molokai
 let g:rehash256 = 1
 
