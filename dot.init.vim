@@ -18,6 +18,7 @@ set shiftwidth=2       "自動インデント時に入力する空白の数
 set splitright         "画面を縦分割する際に右に開く
 set clipboard=unnamed  "yank した文字列をクリップボードにコピー
 set autoread           "ファイルを開いたときに自動で読み込む 
+set mouse=a            "マウスを使用できるようにする
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
