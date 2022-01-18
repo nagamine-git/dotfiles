@@ -3,11 +3,10 @@
 # 未定義な変数があったら途中で終了する
 set -u
 
-# 今のディレクトリ
 # dotfilesディレクトリに移動する
-BASEDIR=$(dirname $0)
+BASEDIR=$(pwd)
 cd $BASEDIR
 
-ln -sf config.fish ~/.config/fish/config.fish
-ln -sf dot.init.vim ~/.config/nvim/init.vim
-ln -sf dot.tmux.conf ~/.tmux.conf
+ln -snfv $BASEDIR/config.fish ${HOME}/.config/fish/config.fish
+ln -snfv $BASEDIR/init.vim ${HOME}/.config/nvim/init.vim
+ln -snfv $BASEDIR/dot.tmux.conf ${HOME}/.tmux.conf
