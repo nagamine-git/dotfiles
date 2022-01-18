@@ -24,6 +24,7 @@ call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
   Plug 'airblade/vim-gitgutter' "git の vim 拡張
   Plug 'scrooloose/nerdtree' "ツリー表示
+  Plug 'Xuyuanp/nerdtree-git-plugin' "git のツリー表示
   Plug 'ryanoasis/vim-devicons' "ファイルのアイコン表示
   Plug 'junegunn/fzf', { 'do': { -> fzf#install() } } "fzf を使用する
   Plug 'junegunn/fzf.vim' "fzf を使用する
