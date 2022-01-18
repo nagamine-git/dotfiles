@@ -49,7 +49,8 @@ call plug#begin()
   Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
   Plug 'neoclide/coc.nvim', {'branch': 'release'} "補完機能
   Plug 'dense-analysis/ale' "非同期静的解析
-  Plug 'edkolev/tmuxline.vim'
+  Plug 'edkolev/tmuxline.vim' "tmuxline
+  Plug 'brooth/far.vim' "置換を楽に
 call plug#end()
 
 " カラースキーム
