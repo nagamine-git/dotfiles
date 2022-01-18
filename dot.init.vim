@@ -17,8 +17,8 @@ set tabstop=2          "タブを何文字の空白に変換するか
 set shiftwidth=2       "自動インデント時に入力する空白の数
 set splitright         "画面を縦分割する際に右に開く
 set clipboard=unnamed  "yank した文字列をクリップボードにコピー
-set autoread           "ファイルを開いたときに自動で読み込む 
-set mouse=a            "マウスを使用できるようにする
+set autoread           "ファイルを開いたときに自動で読み込む
+set mouse=a            "マウス使用許可
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
@@ -42,6 +42,9 @@ call plug#begin()
   Plug 'mxw/vim-jsx' "JSX
   Plug 'leafgarland/typescript-vim' "TypeScript
   Plug 'peitalin/vim-jsx-typescript' "TypeScript
+  Plug 'bronson/vim-trailing-whitespace'
+  Plug 'nathanaelkane/vim-indent-guides'
+  Plug 'vim-scripts/AnsiEsc.vim'
 call plug#end()
 
 colorscheme molokai
@@ -55,3 +58,5 @@ let g:ctrlp_cmd = 'CtrlP' "検索
 
 let g:jsx_ext_required = 1 " jsx
 let g:gitgutter_highlight_lines = 1 "git のハイライト
+
+let g:indent_guides_enable_on_vim_startup = 1
