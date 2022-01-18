@@ -45,6 +45,8 @@ call plug#begin()
   Plug 'bronson/vim-trailing-whitespace' "行末の空白をハイライト
   Plug 'nathanaelkane/vim-indent-guides' "インデントガイド
   Plug 'vim-scripts/AnsiEsc.vim' "色付け
+  Plug 'rking/ag.vim' "ag
+  Plug 'dyng/ctrlsf.vim' "ctrl+s でファイルを開く
 call plug#end()
 
 colorscheme molokai
