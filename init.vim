@@ -52,6 +52,11 @@ call plug#begin()
   Plug 'dense-analysis/ale' "非同期静的解析
   Plug 'edkolev/tmuxline.vim' "tmuxline
   Plug 'brooth/far.vim' "置換を楽に
+  Plug 'prabirshrestha/async.vim' "非同期処理
+  Plug 'prabirshrestha/vim-lsp' "LSP
+  Plug 'prabirshrestha/asyncomplete.vim' "補完
+  Plug 'prabirshrestha/asyncomplete-lsp.vim' "補完
+  Plug 'mattn/vim-lsp-settings'
 call plug#end()
 
 " カラースキーム
