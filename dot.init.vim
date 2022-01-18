@@ -47,6 +47,7 @@ call plug#begin()
   Plug 'vim-scripts/AnsiEsc.vim' "色付け
   Plug 'rking/ag.vim' "ag
   Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
+  Plug 'neoclide/coc.nvim', {'branch': 'release'} "補完機能
 call plug#end()
 
 " カラースキーム
