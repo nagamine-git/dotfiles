@@ -35,16 +35,16 @@ call plug#begin()
   Plug 'sheerun/vim-polyglot' "シンタックスハイライト
   Plug 'pangloss/vim-javascript' "JavaScript
   Plug 'leafgarland/typescript-vim' "TypeScript
-  Plug 'fatih/molokai' "Molokai
+  Plug 'tomasr/molokai' "Molokai
   Plug 'tpope/vim-rails' "Rails
   Plug 'tpope/vim-surround' "括弧補完
   Plug 'ctrlpvim/ctrlp.vim' "検索
   Plug 'mxw/vim-jsx' "JSX
   Plug 'leafgarland/typescript-vim' "TypeScript
   Plug 'peitalin/vim-jsx-typescript' "TypeScript
-  Plug 'bronson/vim-trailing-whitespace'
-  Plug 'nathanaelkane/vim-indent-guides'
-  Plug 'vim-scripts/AnsiEsc.vim'
+  Plug 'bronson/vim-trailing-whitespace' "行末の空白をハイライト
+  Plug 'nathanaelkane/vim-indent-guides' "インデントガイド
+  Plug 'vim-scripts/AnsiEsc.vim' "色付け
 call plug#end()
 
 colorscheme molokai
