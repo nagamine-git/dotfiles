@@ -8,6 +8,6 @@ set -u
 BASEDIR=$(dirname $0)
 cd $BASEDIR
 
-cp -f config.fish ~/.config/fish/config.fish
-cp -f dot.init.vim ~/.config/nvim/init.vim
-cp -f dot.tmux.conf ~/.tmux.conf
+ln -sf config.fish ~/.config/fish/config.fish
+ln -sf dot.init.vim ~/.config/nvim/init.vim
+ln -sf dot.tmux.conf ~/.tmux.conf
