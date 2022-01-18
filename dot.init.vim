@@ -48,6 +48,7 @@ call plug#begin()
   Plug 'rking/ag.vim' "ag
   Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
   Plug 'neoclide/coc.nvim', {'branch': 'release'} "補完機能
+  Plug 'dense-analysis/ale' "非同期静的解析
 call plug#end()
 
 " カラースキーム
