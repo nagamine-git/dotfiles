@@ -60,3 +60,4 @@ let g:jsx_ext_required = 1 " jsx
 let g:gitgutter_highlight_lines = 1 "git のハイライト
 
 let g:indent_guides_enable_on_vim_startup = 1
+
