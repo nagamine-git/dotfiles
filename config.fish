@@ -23,8 +23,6 @@ alias vi='nvim'
 alias vim='nvim'
 #[ yarn ]
 alias y='yarn'
-# [ memo ]
-alias memo='code /Users/nagamine/Library/Mobile\ Documents/com\~apple\~CloudDocs/Memo' 
 #[ system ]
 alias ds='sudo pmset -a disablesleep 1 && echo "スリープは無効になってます"'
 alias as='sudo pmset -a disablesleep 0 && echo "通常の状態です"'
