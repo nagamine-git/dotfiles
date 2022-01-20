@@ -1,11 +1,3 @@
-# set Anyenv
-status --is-interactive; and source (anyenv init -|psub)
-status --is-interactive; and source (nodenv init -|psub)
-status --is-interactive; and source (pyenv init -|psub)
-
-status is-login; and pyenv init --path | source
-status is-interactive; and pyenv init - | source
-
 # set ls colors
 export LSCOLORS=gxfxcxdxbxegedabagacad
 
@@ -172,3 +164,5 @@ set -g fish_user_paths "/usr/local/opt/imagemagick@6/bin" $fish_user_paths
 if [ -f '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc' ]; . '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc'; end
 set PATH /usr/local/opt/libpq/bin $PATH
 
+
+source /usr/local/opt/asdf/asdf.fish
