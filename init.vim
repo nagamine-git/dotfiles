@@ -22,6 +22,7 @@ set mouse=a            "マウス使用許可
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
+  Plug 'APZelos/blamer.nvim' "blamer の vim 拡張
   Plug 'airblade/vim-gitgutter' "git の vim 拡張
   Plug 'scrooloose/nerdtree' "ツリー表示
   Plug 'Xuyuanp/nerdtree-git-plugin' "git のツリー表示
@@ -69,6 +70,7 @@ let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standar
 
 let g:jsx_ext_required = 1 " jsx
 let g:gitgutter_highlight_lines = 1 "git のハイライト
+let g:blamer_enabled = 1
 
 let g:indent_guides_enable_on_vim_startup = 1
 
