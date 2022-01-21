@@ -19,6 +19,9 @@ set splitright         "画面を縦分割する際に右に開く
 set clipboard=unnamed  "yank した文字列をクリップボードにコピー
 set autoread           "ファイルを開いたときに自動で読み込む
 set mouse=a            "マウス使用許可
+set list              "リストを表示
+set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:% "タブを表示する
+set encoding=utf-8    "文字コードをUTF-8にする
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
