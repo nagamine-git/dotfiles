@@ -5,7 +5,7 @@ export LSCOLORS=gxfxcxdxbxegedabagacad
 set -x LANG ja_JP.UTF-8
 
 # Aliases
-# [ ls ]
+# [ ls]
 alias ls='ls -F --color=auto'
 #[ vim ]
 alias v='nvim'
@@ -165,4 +165,4 @@ if [ -f '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc' ]; . '/Users/na
 set PATH /usr/local/opt/libpq/bin $PATH
 
 
-source /usr/local/opt/asdf/asdf.fish
+source /usr/local/opt/asdf/asdf.fish 

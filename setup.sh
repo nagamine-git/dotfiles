@@ -7,8 +7,7 @@ set -u
 BASEDIR=$(pwd)
 cd $BASEDIR
 
-ln -snfv $BASEDIR/config.fish ${HOME}/.config/fish/config.fish
-ln -snfv $BASEDIR/init.vim ${HOME}/.config/nvim/init.vim
+ln -snfv $BASEDIR/config ${HOME}/.config
 ln -snfv $BASEDIR/dot.tmux.conf ${HOME}/.tmux.conf
 ln -snfv $BASEDIR/dot.tmuxline.conf ${HOME}/.tmuxline.conf
 
