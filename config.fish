@@ -25,7 +25,7 @@ alias dce='docker-compose exec'
 #[ ghq ]
 alias gg='cd (ghq root)/(ghq list | peco)'
 alias ggh='hub browse (ghq list | peco | cut -d "/" -f 2,3)'
-alias ggc='code (ghq root)/(ghq list | peco)'
+alias ggt='cd (ghq root)/(ghq list | peco) && tmux'
 #[ git ]
 alias g='git'
 #compdef g=git
