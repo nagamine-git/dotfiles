@@ -1,4 +1,5 @@
 config/nvim/plugged/*
 config/karabiner/automatic_backups/*
 config/gh/
+config/coc/suggest.txt
 
