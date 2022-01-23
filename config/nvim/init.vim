@@ -76,4 +76,4 @@ let g:gitgutter_highlight_lines = 1 "git のハイライト
 let g:blamer_enabled = 1
 
 let g:indent_guides_enable_on_vim_startup = 1
-
+let NERDTreeShowHidden = 1 "隠しファイルもtreeに表示
