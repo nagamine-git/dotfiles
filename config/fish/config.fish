@@ -158,11 +158,6 @@ end
 # these alias commit and uncomit wip branches
 alias gwip='git add -A; git ls-files --deleted -z | xargs -0 git rm; git commit -m "wip"'
 alias gunwip='git log -n 1 | grep -q -c wip; and git reset HEAD~1'
-set -g fish_user_paths "/usr/local/opt/imagemagick@6/bin" $fish_user_paths
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc' ]; . '/Users/nagamine/Desktop/google-cloud-sdk/path.fish.inc'; end
-set PATH /usr/local/opt/libpq/bin $PATH
+source /usr/local/opt/asdf/asdf.fish
 
-
-source /usr/local/opt/asdf/asdf.fish 
