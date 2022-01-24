@@ -118,6 +118,7 @@ alias gsts='git stash show --text'
 alias gsta='git stash'
 alias gstp='git stash pop'
 alias gstd='git stash drop'
+
 function current_branch
   set ref (git symbolic-ref HEAD 2> /dev/null); or \
   set ref (git rev-parse --short HEAD 2> /dev/null); or return
@@ -161,3 +162,10 @@ alias gunwip='git log -n 1 | grep -q -c wip; and git reset HEAD~1'
 
 source /usr/local/opt/asdf/asdf.fish
 
+# terminal-notifier
+alias notification-banner-clear='terminal-notifier -remove ALL'
+
+function notify
+  notification-banner-clear > /dev/null
+  terminal-notifier -title "☑️ Process has ended!" -message "Please check the output" -sound Glass
+end
