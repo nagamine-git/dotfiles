@@ -8,6 +8,7 @@ tap "homebrew/services"
 tap "jesseduffield/lazydocker"
 tap "koekeishiya/formulae"
 brew "asdf"
+brew "aws-elasticbeanstalk"
 brew "bash"
 brew "node@14"
 brew "code-server"
@@ -22,7 +23,6 @@ brew "lazydocker"
 brew "libpq"
 brew "luv"
 brew "mas"
-brew "minikube", link: false
 brew "mysql"
 brew "neovim"
 brew "peco"
@@ -31,6 +31,7 @@ brew "pstree"
 brew "python@3.9"
 brew "socat"
 brew "spotify-tui"
+brew "terminal-notifier", link: false
 brew "tflint"
 brew "the_silver_searcher"
 brew "tmux"
@@ -49,7 +50,6 @@ mas "1Password 7", id: 1333542190
 mas "Amphetamine", id: 937984704
 mas "Endel", id: 1484348796
 mas "Focus Timer", id: 880565132
-mas "GoodNotes", id: 1444383602
 mas "Kindle", id: 405399194
 mas "LINE", id: 539883307
 mas "Magnet", id: 441258766
