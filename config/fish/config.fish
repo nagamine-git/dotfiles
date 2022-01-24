@@ -130,13 +130,13 @@ function current_repository
   echo (git remote -v | cut -d':' -f 2)
 end
 # these aliases take advantage of the previous function
-alias ggpull='git pull origin (current_branch)'
+alias ggpull='git pull origin $current_branch'
 #compdef ggpull=git
-alias ggpur='git pull --rebase origin (current_branch)'
+alias ggpur='git pull --rebase origin $current_branch'
 #compdef ggpur=git
-alias ggpush='git push origin (current_branch)'
+alias ggpush='git push origin $current_branch'
 #compdef ggpush=git
-alias ggpnp='git pull origin (current_branch); and git push origin (current_branch)'
+alias ggpnp='git pull origin $current_branch; and git push origin $current_branch'
 #compdef ggpnp=git
 # Pretty log messages
 function _git_log_prettily
