@@ -3,4 +3,5 @@ config/karabiner/automatic_backups/*
 config/gh/
 config/coc/suggest.txt
 config/github-copilot/hosts.json
+config/yarn
 
