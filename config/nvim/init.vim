@@ -34,7 +34,7 @@ call plug#begin()
   Plug 'tpope/vim-commentary' "複数行コメントアウト
   Plug 'vim-airline/vim-airline' "vim-airline を使用する
   Plug 'vim-airline/vim-airline-themes' "vim-airline を使用する
-  Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}  "シンタックスハイライト
+  Plug 'nvim-treesitter/nvim-treesitter'  "シンタックスハイライト
   Plug 'sheerun/vim-polyglot' "シンタックスハイライト
   Plug 'pangloss/vim-javascript' "JavaScript
   Plug 'leafgarland/typescript-vim' "TypeScript
