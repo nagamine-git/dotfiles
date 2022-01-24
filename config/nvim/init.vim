@@ -55,6 +55,7 @@ call plug#begin()
   Plug 'edkolev/tmuxline.vim' "tmuxline
   Plug 'brooth/far.vim' "置換を楽に
   Plug 'prabirshrestha/async.vim' "非同期処理
+  Plug 'glidenote/memolist.vim'
 call plug#end()
 
 " カラースキーム
