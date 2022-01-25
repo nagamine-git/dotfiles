@@ -95,6 +95,8 @@ alias gcp='git cherry-pick'
 #compdef _git gcp=git-cherry-pick
 alias glo='git log --oneline'
 # compdef _git glog=git-log
+alias glod="git log --no-merges --oneline --reverse"
+# compdef _git glod=git-log
 alias glg='git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset"'
 #compdef _git glo=git-log
 alias glga='git log --graph --all --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset"'
