@@ -65,12 +65,26 @@ set termguicolors
 let g:rehash256 = 1
 let g:airline_powerline_fonts = 1
 
-let g:ctrlp_clear_cache_on_exit = 0 " ctrlpで終了時にャッシュを残す
-let g:ctrlp_use_caching = 1 " ctrlpで終了時にャッシュを残す
+let g:ctrlp_use_caching = 0 " ctrlpでキャッシュを使わない
 
-let g:ctrlp_map = '<c-p>' "検索
-let g:ctrlp_cmd = 'CtrlP' "検索
+let g:ctrlp_map = '<c-p>' "ファイル検索
+let g:ctrlp_cmd = 'CtrlP' "ファイル検索
 let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
+
+" CtrlSFの設定
+nmap     <C-F>f <Plug>CtrlSFPrompt
+vmap     <C-F>f <Plug>CtrlSFVwordPath
+vmap     <C-F>F <Plug>CtrlSFVwordExec
+nmap     <C-F>n <Plug>CtrlSFCwordPath
+nmap     <C-F>p <Plug>CtrlSFPwordPath
+nnoremap <C-F>o :CtrlSFOpen<CR>
+nnoremap <C-F>t :CtrlSFToggle<CR>
+inoremap <C-F>t <Esc>:CtrlSFToggle<CR>
+let g:ctrlsf_search_mode = 'async'
+let g:ctrlsf_auto_focus = {
+    \ "at": "start"
+    \ }
+let g:ctrlsf_default_view_mode = 'compact'
 
 let g:jsx_ext_required = 1 " jsx
 let g:gitgutter_highlight_lines = 1 "git のハイライト
