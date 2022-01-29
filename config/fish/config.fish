@@ -22,7 +22,6 @@ alias dce='docker-compose exec'
 #[ ghq ]
 alias gg='cd (ghq root)/(ghq list | peco)'
 alias ggh='hub browse (ghq list | peco | cut -d "/" -f 2,3)'
-alias ggt='cd (ghq root)/(ghq list | peco) && tmux'
 #[ git ]
 alias g='git'
 #compdef g=git
@@ -167,4 +166,30 @@ alias notification-banner-clear='terminal-notifier -remove ALL'
 function notify
   notification-banner-clear > /dev/null
   terminal-notifier -title "☑️ Process has ended!" -message "Please check the output" -sound Glass
+end
+
+function ggt -d "search and tmux"
+  # 引数が設定されていれば、それをpecoにわたす
+  if test (count $argv) -gt 0
+    set prjflag --query "$argv"
+  end
+  set PRJ_PATH (ghq root)/(ghq list | peco $prjflag)
+  # プロジェクトが選択されなければ終了
+  if test -z $PRJ_PATH
+    return
+  end
+  # プロジェクト名は 所有者/リポジトリ名 の形式。その名前に`.`を含む場合は`_`に置換
+  set PRJ_NAME (echo (basename (dirname $PRJ_PATH))/(basename $PRJ_PATH) | sed -e 's/\./_/g')
+  # プロジェクトのtmuxセッションが存在しなければ作成
+  if not tmux has-session -t $PRJ_NAME
+    tmux new-session -c $PRJ_PATH -s $PRJ_NAME -d
+    tmux setenv -t $PRJ_NAME TMUX_SESSION_PATH $PRJ_PATH
+  end
+  # tmuxセッション外であればattach
+  if test -z $TMUX
+    tmux attach -t $PRJ_NAME
+  # tmuxセッション内であればswitch
+  else
+    tmux switch-client -t $PRJ_NAME
+  end
 end
