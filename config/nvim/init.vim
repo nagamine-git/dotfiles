@@ -57,6 +57,8 @@ call plug#begin()
   Plug 'brooth/far.vim' "置換を楽に
   Plug 'prabirshrestha/async.vim' "非同期処理
   Plug 'glidenote/memolist.vim'
+  Plug 'Quramy/tsuquyomi', { 'do': 'npm -g install typescript' }
+  Plug 'Shougo/vimproc.vim', { 'do': 'make' }
 call plug#end()
 
 " カラースキーム
