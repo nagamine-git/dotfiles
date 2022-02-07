@@ -22,6 +22,7 @@ set mouse=a            "マウス使用許可
 set list              "リストを表示
 set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:% "タブを表示する
 set encoding=utf-8    "文字コードをUTF-8にする
+set diffopt=iwhite
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
