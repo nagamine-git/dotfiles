@@ -4,6 +4,9 @@ export LSCOLORS=gxfxcxdxbxegedabagacad
 # set Language
 set -x LANG ja_JP.UTF-8
 
+# set default editor
+set -x EDITOR nvim
+
 # Aliases
 # [ ls]
 alias ls='ls -F --color=auto'
