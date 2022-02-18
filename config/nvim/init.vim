@@ -40,6 +40,7 @@ call plug#begin()
   Plug 'pangloss/vim-javascript' "JavaScript
   Plug 'leafgarland/typescript-vim' "TypeScript
   Plug 'tomasr/molokai' "Molokai
+  Plug 'cormacrelf/vim-colors-github'
   Plug 'tpope/vim-rails' "Rails
   Plug 'tpope/vim-surround' "括弧補完
   Plug 'ctrlpvim/ctrlp.vim' "検索
@@ -62,11 +63,19 @@ call plug#begin()
 call plug#end()
 
 " カラースキーム
-colorscheme molokai
-let g:airline_theme = 'molokai'
 set termguicolors
 let g:rehash256 = 1
 let g:airline_powerline_fonts = 1
+if &diff
+  colorscheme github
+  let g:airline_theme = "github"
+  let g:lightline = { 'colorscheme': 'github' }
+  let g:gitgutter_highlight_lines = 0 "git のハイライト
+else
+  let g:airline_theme = 'molokai'
+  colorscheme molokai
+  let g:gitgutter_highlight_lines = 1 "git のハイライト
+endif
 
 let g:ctrlp_use_caching = 0 " ctrlpでキャッシュを使わない
 
@@ -90,8 +99,8 @@ let g:ctrlsf_auto_focus = {
 let g:ctrlsf_default_view_mode = 'compact'
 
 let g:jsx_ext_required = 1 " jsx
-let g:gitgutter_highlight_lines = 1 "git のハイライト
 let g:blamer_enabled = 1
 
 let g:indent_guides_enable_on_vim_startup = 1
 let NERDTreeShowHidden = 1 "隠しファイルもtreeに表示
+let g:ctrlp_custom_ignore = 'node_modules\|DS_Store\|git'

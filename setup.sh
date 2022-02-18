@@ -10,4 +10,5 @@ cd $BASEDIR
 ln -snfv $BASEDIR/config ${HOME}/.config
 ln -snfv $BASEDIR/dot.tmux.conf ${HOME}/.tmux.conf
 ln -snfv $BASEDIR/dot.tmuxline.conf ${HOME}/.tmuxline.conf
+ln -snfv $BASEDIR/dot.gitconfig ${HOME}/.gitconfig
 
