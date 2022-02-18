@@ -60,6 +60,8 @@ call plug#begin()
   Plug 'glidenote/memolist.vim'
   Plug 'Quramy/tsuquyomi', { 'do': 'npm -g install typescript' }
   Plug 'Shougo/vimproc.vim', { 'do': 'make' }
+  Plug 'nvim-lua/plenary.nvim'
+  Plug 'sindrets/diffview.nvim'
 call plug#end()
 
 " カラースキーム
