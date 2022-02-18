@@ -62,6 +62,7 @@ call plug#begin()
   Plug 'Shougo/vimproc.vim', { 'do': 'make' }
   Plug 'nvim-lua/plenary.nvim'
   Plug 'sindrets/diffview.nvim'
+  Plug 'kayadani41/nvim-web-devicons'
 call plug#end()
 
 " カラースキーム
