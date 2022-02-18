@@ -14,6 +14,7 @@ brew "node@14"
 brew "code-server"
 brew "fish"
 brew "fzf"
+brew "git-delta"
 brew "gh"
 brew "ghq"
 brew "go"
@@ -49,20 +50,13 @@ cask "font-hackgen-nerd"
 mas "1Password 7", id: 1333542190
 mas "Amphetamine", id: 937984704
 mas "Endel", id: 1484348796
-mas "Focus Timer", id: 880565132
 mas "Kindle", id: 405399194
 mas "LINE", id: 539883307
 mas "Magnet", id: 441258766
 mas "Messenger", id: 1480068668
-mas "Microsoft Remote Desktop", id: 1295203466
-mas "Notability", id: 360593530
 mas "Pitch", id: 1551335606
 mas "Reeder", id: 1529448980
 mas "Slack", id: 803453959
-mas "Streaks", id: 963034692
 mas "Todoist", id: 585829637
-mas "TweetDeck", id: 485812721
-mas "WaterMinder", id: 1415257369
 mas "Xcode", id: 497799835
-mas "XMind", id: 1327661892
 mas "ZIPANG", id: 882655968
