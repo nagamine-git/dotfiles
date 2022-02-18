@@ -16,6 +16,7 @@ alias v='nvim'
 alias vi='nvim'
 #[ nvim ]
 alias vim='nvim'
+alias vimdiff='nvim -d'
 #[ yarn ]
 alias y='yarn'
 #[docker]
