@@ -23,6 +23,8 @@ set list              "リストを表示
 set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:% "タブを表示する
 set encoding=utf-8    "文字コードをUTF-8にする
 set diffopt=iwhite
+set autoread
+au CursorHold * checktime
 
 call plug#begin()
   Plug 'tpope/vim-fugitive' "git の vim 拡張
