@@ -65,7 +65,17 @@ call plug#begin()
   Plug 'nvim-lua/plenary.nvim'
   Plug 'sindrets/diffview.nvim'
   Plug 'kyazdani42/nvim-web-devicons'
+  Plug 'nvim-lua/plenary.nvim'
+  Plug 'folke/todo-comments.nvim'
 call plug#end()
+
+lua << EOF
+  require("todo-comments").setup {
+    -- your configuration comes here
+    -- or leave it empty to use the default settings
+    -- refer to the configuration section below
+  }
+EOF
 
 " カラースキーム
 set termguicolors
