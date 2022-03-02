@@ -1,6 +1,7 @@
 [user]
-# 	email = nagamine@efg-technologies.com
-# 	name = nagamine-git
+    useConfigOnly = true
+#   email = nagamine@efg-technologies.com
+#   name = nagamine-git
 
 [core]
     pager = delta
