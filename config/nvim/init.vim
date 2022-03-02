@@ -81,16 +81,9 @@ EOF
 set termguicolors
 let g:rehash256 = 1
 let g:airline_powerline_fonts = 1
-if &diff
-  colorscheme github
-  let g:airline_theme = "github"
-  let g:lightline = { 'colorscheme': 'github' }
-  let g:gitgutter_highlight_lines = 0 "git のハイライト
-else
-  let g:airline_theme = 'molokai'
-  colorscheme molokai
-  let g:gitgutter_highlight_lines = 1 "git のハイライト
-endif
+let g:airline_theme = 'molokai'
+colorscheme molokai
+let g:gitgutter_highlight_lines = 1 "git のハイライト
 
 let g:ctrlp_use_caching = 0 " ctrlpでキャッシュを使わない
 

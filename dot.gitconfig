@@ -1,3 +1,7 @@
+[user]
+# 	email = nagamine@efg-technologies.com
+# 	name = nagamine-git
+
 [core]
     pager = delta
 
@@ -11,9 +15,17 @@
 
 [merge]
     conflictstyle = diff3
+    tool = vimdiff3
 
 [diff]
     colorMoved = default
-[user]
-	name = nagamine-git
-	email = nagamine@efg-technologies.com
+    tool = vimdiff3
+
+[difftool "vimdiff3"]
+    path = nvim
+
+[mergetool "vimdiff3"]
+    path = nvim
+
+[mergetool]
+    keepBackup = false
