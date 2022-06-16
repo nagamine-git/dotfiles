@@ -1,3 +1,4 @@
+tap "eugenmayer/dockersync"
 tap "heroku/brew"
 tap "homebrew/bundle"
 tap "homebrew/cask"
@@ -11,9 +12,9 @@ brew "bash"
 brew "code-server"
 brew "fish"
 brew "fzf"
-brew "git-delta"
 brew "gh"
 brew "ghq"
+brew "git-delta"
 brew "hub"
 brew "jq"
 brew "lazydocker"
@@ -23,6 +24,7 @@ brew "mas"
 brew "neovim"
 brew "peco"
 brew "python@3.9"
+brew "ripgrep"
 brew "terminal-notifier", link: false
 brew "the_silver_searcher"
 brew "tmux"
@@ -30,21 +32,19 @@ brew "tnftp"
 brew "unison"
 brew "vim"
 brew "watch"
-brew "eugenmayer/dockersync/unox"
-brew "ripgrep"
+cask "camo-studio"
+cask "dash"
 cask "font-hackgen"
 cask "font-hackgen-nerd"
-cask "karabiner-elements"
 cask "google-japanese-ime"
-cask "camo-studio"
-cask "caprine"
-cask "dash"
 cask "iterm2"
+cask "karabiner-elements"
 cask "zoom"
 mas "1Password 7", id: 1333542190
 mas "Amphetamine", id: 937984704
 mas "LINE", id: 539883307
 mas "Magnet", id: 441258766
+mas "Messenger", id: 1480068668
 mas "Pitch", id: 1551335606
 mas "Slack", id: 803453959
 mas "Todoist", id: 585829637
