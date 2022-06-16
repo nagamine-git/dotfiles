@@ -39,6 +39,7 @@ cask "font-hackgen-nerd"
 cask "google-japanese-ime"
 cask "iterm2"
 cask "karabiner-elements"
+cask "spotify"
 cask "zoom"
 mas "1Password 7", id: 1333542190
 mas "Amphetamine", id: 937984704

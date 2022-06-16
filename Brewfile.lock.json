@@ -1092,6 +1092,12 @@
           "full_name": "karabiner-elements"
         }
       },
+      "spotify": {
+        "version": "1.1.87.612,f8d110e2,18",
+        "options": {
+          "full_name": "spotify"
+        }
+      },
       "zoom": {
         "version": "5.10.7.7748",
         "options": {
