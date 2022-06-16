@@ -41,7 +41,6 @@ cask "caprine"
 cask "dash"
 cask "iterm2"
 cask "zoom"
-cask "brave-browser"
 mas "1Password 7", id: 1333542190
 mas "Amphetamine", id: 937984704
 mas "LINE", id: 539883307
