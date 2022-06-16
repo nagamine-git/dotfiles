@@ -1,3 +1,7 @@
+if status is-interactive
+    eval (/opt/homebrew/bin/brew shellenv)
+end
+
 # set ls colors
 export LSCOLORS=gxfxcxdxbxegedabagacad
 
@@ -165,7 +169,8 @@ end
 alias gwip='git add -A; git ls-files --deleted -z | xargs -0 git rm; git commit -m "wip"'
 alias gunwip='git log -n 1 | grep -q -c wip; and git reset HEAD~1'
 
-source /usr/local/opt/asdf/asdf.fish
+# source (brew --prefix asdf)/asdf.fish
+source /opt/homebrew/opt/asdf/asdf.fish
 
 # terminal-notifier
 alias notification-banner-clear='terminal-notifier -remove ALL'
