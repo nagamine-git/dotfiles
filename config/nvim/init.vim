@@ -110,5 +110,8 @@ let g:jsx_ext_required = 1 " jsx
 let g:blamer_enabled = 1
 
 let g:indent_guides_enable_on_vim_startup = 1
-let NERDTreeShowHidden = 1 "隠しファイルもtreeに表示
 let g:ctrlp_custom_ignore = 'node_modules\|DS_Store\|git'
+
+" NERDTreeの設定
+autocmd BufWritePost * NERDTreeFocus | execute 'normal R' | wincmd p
+let NERDTreeShowHidden = 1 "隠しファイルもtreeに表示
