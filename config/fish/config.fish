@@ -21,7 +21,7 @@ alias vi='nvim'
 #[ nvim ]
 alias vim='nvim'
 alias vimdiff='nvim -d'
-alias memo='nvim ~/memo'
+alias memo='nvim ~/memo.md'
 #[ yarn ]
 alias y='yarn'
 #[docker]
