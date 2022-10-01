@@ -463,6 +463,11 @@ font:
   # or triple click.
   #double_click: { threshold: 300 }
   #triple_click: { threshold: 300 }
+url:
+  launcher:
+    # This depends on your OS, on Mac it’s `open`
+    program: open
+  modifiers: Command
 
   # If this is `true`, the cursor is temporarily hidden when typing.
   #hide_when_typing: false

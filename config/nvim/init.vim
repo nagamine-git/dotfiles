@@ -67,6 +67,8 @@ call plug#begin()
   Plug 'kyazdani42/nvim-web-devicons'
   Plug 'nvim-lua/plenary.nvim'
   Plug 'folke/todo-comments.nvim'
+  Plug 'tyru/open-browser.vim'
+  Plug 'github/copilot.vim'
 call plug#end()
 
 lua << EOF
