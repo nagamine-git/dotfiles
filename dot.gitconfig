@@ -32,3 +32,5 @@
 
 [mergetool]
     keepBackup = false
+[push]
+	autoSetupRemote = true
