@@ -30,6 +30,7 @@ alias dc docker-compose
 alias dce='docker-compose exec'
 #[ ghq ]
 alias gg='cd (ghq root)/(ghq list | peco)'
+alias ggc='code . (cd (ghq root)/(ghq list | peco))'
 alias ggh='hub browse (ghq list | peco | cut -d "/" -f 2,3)'
 #[ git ]
 alias g='git'
