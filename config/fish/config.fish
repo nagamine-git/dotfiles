@@ -26,8 +26,8 @@ alias memo='nvim ~/memo.md'
 alias y='yarn'
 #[docker]
 alias d docker
-alias dc docker-compose
-alias dce='docker-compose exec'
+alias dc 'docker compose'
+alias dce='docker compose exec'
 #[ ghq ]
 alias gg='cd (ghq root)/(ghq list | peco)'
 alias ggc='code . (cd (ghq root)/(ghq list | peco))'
