@@ -12,6 +12,9 @@ set -x LANG ja_JP.UTF-8
 set -x EDITOR nvim
 
 # Aliases
+# [ net ]
+alias zping='while not ping -c 3 google.com; sleep 1; end; echo "Network is up!"'
+alias zmtr='while not sudo mtr -c 10 google.com; sleep 1; end; echo "Network is up!"'
 # [ ls]
 alias ls='ls -F --color=auto'
 #[ vim ]
@@ -54,9 +57,6 @@ alias gp='git push'
 alias gpo='git push origin'
 #compdef _git gpo=git-push-origin
 alias gd='git diff'
-function gdv
-  git diff -w $argv | view -
-end
 #compdef _git gdv=git-diff
 alias gc='git commit -v'
 #compdef _git gc=git-commit
@@ -139,6 +139,9 @@ function current_repository
   set ref (git rev-parse --short HEAD 2> /dev/null); or return
   echo (git remote -v | cut -d':' -f 2)
 end
+function history
+    builtin history --show-time='%Y/%m/%d %H:%M:%S ' | sort
+end
 # these aliases take advantage of the previous function
 alias ggpull='git pull origin $current_branch'
 #compdef ggpull=git
@@ -170,8 +173,8 @@ end
 alias gwip='git add -A; git ls-files --deleted -z | xargs -0 git rm; git commit -m "wip"'
 alias gunwip='git log -n 1 | grep -q -c wip; and git reset HEAD~1'
 
-# source (brew --prefix asdf)/asdf.fish
-source /opt/homebrew/opt/asdf/asdf.fish
+set -gx ASDF_DIR /opt/homebrew/Cellar/asdf/0.12.0/libexec
+source /opt/homebrew/opt/asdf/libexec/asdf.fish
 
 # terminal-notifier
 alias notification-banner-clear='terminal-notifier -remove ALL'
@@ -206,3 +209,12 @@ function ggt -d "search and tmux"
     tmux switch-client -t $PRJ_NAME
   end
 end
+
+# Rust setup for Fish shell
+# Check if Rust path is already in $PATH
+if not contains "/Users/nagamine/.asdf/installs/rust/1.72.0/bin" $PATH
+    # Prepend the path if not found
+    set -gx PATH "/Users/nagamine/.asdf/installs/rust/1.72.0/bin" $PATH
+end
+
+
