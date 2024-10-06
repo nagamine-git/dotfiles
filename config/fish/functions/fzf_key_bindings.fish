@@ -1,1 +1,0 @@
-/Users/nagamine/.fzf/shell/key-bindings.fish

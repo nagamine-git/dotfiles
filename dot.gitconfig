@@ -1,7 +1,7 @@
 [user]
     useConfigOnly = true
-	email = nagamine@efg-technologies.com
-	name = nagamine-git
+    email = tsuyoshi.nagamine@efg-technologies.com
+    name = nagamine-git
 #   email = nagamine@efg-technologies.com
 #   name = nagamine-git
 
@@ -33,4 +33,4 @@
 [mergetool]
     keepBackup = false
 [push]
-	autoSetupRemote = true
+    autoSetupRemote = true
