@@ -76,6 +76,9 @@ Plug 'lukas-reineke/indent-blankline.nvim'
 " カラーコードのハイライト
 Plug 'norcalli/nvim-colorizer.lua'
 
+" 全文検索
+Plug 'dyng/ctrlsf.vim'
+
 call plug#end()
 
 " Vim Script
