@@ -1,9 +1,8 @@
+config/
+!config/alacritty
+!config/btop
+!config/nvim
 config/nvim/plugged/*
+!config/karabiner
 config/karabiner/automatic_backups/*
-config/gh/
-config/coc/suggest.txt
-config/github-copilot/hosts.json
-config/yarn
-config/raycast/*
-config/AWSVPNClient/*
 tags

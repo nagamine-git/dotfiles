@@ -1,2 +1,7 @@
+import = [
+    "~/.config/alacritty/themes/themes/monokai.toml"
+]
+
 [font]
-normal = { family = "HackGen35 Console NF" }
+normal = { family = "Hack Nerd Font" }
+size = 13

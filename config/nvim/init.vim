@@ -1,118 +1,228 @@
-set number             "行番号を表示
-set expandtab          "タブ入力を空白に変換
-set hlsearch           "検索した文字をハイライトする
-set ignorecase         "大文字小文字を区別しない
-set incsearch          "検索時にインクリメンタルサーチを有効にする
-set smartcase          "小文字で検索した場合は、大文字小文字の違いは無視、大文字を含む文字列で検索した場合は無視しない
-set laststatus=2       "最終行の行番号を表示
-syntax on              "言語指定
-set autoindent         "改行時に自動でインデントする
-set showcmd            ":!コマンドを表示
-set background=dark    "背景色を暗くする
-set wildmenu           "ワイルドカードを使用できるようにする
-set ruler              "行番号を表示
-set cursorline         "カーソル行をハイライト
-set number             "行番号を表示
-set tabstop=2          "タブを何文字の空白に変換するか
-set shiftwidth=2       "自動インデント時に入力する空白の数
-set splitright         "画面を縦分割する際に右に開く
-set clipboard=unnamed  "yank した文字列をクリップボードにコピー
-set autoread           "ファイルを開いたときに自動で読み込む
-set mouse=a            "マウス使用許可
-set list              "リストを表示
-set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:% "タブを表示する
-set encoding=utf-8    "文字コードをUTF-8にする
+" 基本設定
+set number
+set relativenumber
+set expandtab
+set shiftwidth=2
+set tabstop=2
+set autoindent
+set smartindent
+set cursorline
+set termguicolors
+set background=dark
+set mouse=a
+set splitright
+set clipboard=unnamedplus
+set encoding=utf-8
+set list
+set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%
 set diffopt=iwhite
 set autoread
-au CursorHold * checktime
+autocmd CursorHold * checktime
 
-call plug#begin()
-  Plug 'tpope/vim-fugitive' "git の vim 拡張
-  Plug 'APZelos/blamer.nvim' "blamer の vim 拡張
-  Plug 'airblade/vim-gitgutter' "git の vim 拡張
-  Plug 'scrooloose/nerdtree' "ツリー表示
-  Plug 'Xuyuanp/nerdtree-git-plugin' "git のツリー表示
-  Plug 'ryanoasis/vim-devicons' "ファイルのアイコン表示
-  Plug 'tpope/vim-repeat' "リピート
-  Plug 'tpope/vim-commentary' "複数行コメントアウト
-  Plug 'vim-airline/vim-airline' "vim-airline を使用する
-  Plug 'vim-airline/vim-airline-themes' "vim-airline を使用する
-  Plug 'sheerun/vim-polyglot' "シンタックスハイライト
-  Plug 'pangloss/vim-javascript' "JavaScript
-  Plug 'leafgarland/typescript-vim' "TypeScript
-  Plug 'tomasr/molokai' "Molokai
-  Plug 'cormacrelf/vim-colors-github'
-  Plug 'tpope/vim-rails' "Rails
-  Plug 'tpope/vim-surround' "括弧補完
-  Plug 'ctrlpvim/ctrlp.vim' "検索
-  Plug 'mxw/vim-jsx' "JSX
-  Plug 'leafgarland/typescript-vim' "TypeScript
-  Plug 'peitalin/vim-jsx-typescript' "TypeScript
-  Plug 'bronson/vim-trailing-whitespace' "行末の空白をハイライト
-  Plug 'nathanaelkane/vim-indent-guides' "インデントガイド
-  Plug 'vim-scripts/AnsiEsc.vim' "色付け
-  Plug 'rking/ag.vim' "ag
-  Plug 'dyng/ctrlsf.vim' "非同期ファイル検索
-  Plug 'neoclide/coc.nvim', {'branch': 'release'} "補完機能
-  Plug 'dense-analysis/ale' "非同期静的解析
-  Plug 'edkolev/tmuxline.vim' "tmuxline
-  Plug 'brooth/far.vim' "置換を楽に
-  Plug 'prabirshrestha/async.vim' "非同期処理
-  Plug 'glidenote/memolist.vim'
-  Plug 'Quramy/tsuquyomi', { 'do': 'npm -g install typescript' }
-  Plug 'Shougo/vimproc.vim', { 'do': 'make' }
-  Plug 'nvim-lua/plenary.nvim'
-  Plug 'sindrets/diffview.nvim'
-  Plug 'kyazdani42/nvim-web-devicons'
-  Plug 'nvim-lua/plenary.nvim'
-  Plug 'folke/todo-comments.nvim'
-  Plug 'tyru/open-browser.vim'
-  Plug 'github/copilot.vim'
-call plug#end()
+" 検索設定
+set ignorecase
+set smartcase
+set incsearch
+set hlsearch
 
-lua << EOF
-  require("todo-comments").setup {
-    -- your configuration comes here
-    -- or leave it empty to use the default settings
-    -- refer to the configuration section below
-  }
-EOF
+" 表示設定
+set laststatus=2
+set showcmd
+set wildmenu
+set ruler
+
+" プラグイン管理
+call plug#begin('~/.config/nvim/plugged')
 
 " カラースキーム
-set termguicolors
-let g:rehash256 = 1
-let g:airline_powerline_fonts = 1
-let g:airline_theme = 'molokai'
-colorscheme molokai
-let g:gitgutter_highlight_lines = 1 "git のハイライト
+Plug 'loctvl842/monokai-pro.nvim'
 
-let g:ctrlp_use_caching = 0 " ctrlpでキャッシュを使わない
+" ファイルエクスプローラー
+Plug 'nvim-tree/nvim-tree.lua'
+Plug 'nvim-tree/nvim-web-devicons'
 
-let g:ctrlp_map = '<c-p>' "ファイル検索
-let g:ctrlp_cmd = 'CtrlP' "ファイル検索
-let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
+" ステータスライン
+Plug 'nvim-lualine/lualine.nvim'
 
-" CtrlSFの設定
-nmap     <C-F>f <Plug>CtrlSFPrompt
-vmap     <C-F>f <Plug>CtrlSFVwordPath
-vmap     <C-F>F <Plug>CtrlSFVwordExec
-nmap     <C-F>n <Plug>CtrlSFCwordPath
-nmap     <C-F>p <Plug>CtrlSFPwordPath
-nnoremap <C-F>o :CtrlSFOpen<CR>
-nnoremap <C-F>t :CtrlSFToggle<CR>
-inoremap <C-F>t <Esc>:CtrlSFToggle<CR>
-let g:ctrlsf_search_mode = 'async'
-let g:ctrlsf_auto_focus = {
-    \ "at": "start"
-    \ }
-let g:ctrlsf_default_view_mode = 'compact'
+" Git統合
+Plug 'tpope/vim-fugitive'
+Plug 'lewis6991/gitsigns.nvim'
 
-let g:jsx_ext_required = 1 " jsx
-let g:blamer_enabled = 1
+" ファジーファインダー
+Plug 'nvim-telescope/telescope.nvim'
+Plug 'nvim-lua/plenary.nvim'
 
-let g:indent_guides_enable_on_vim_startup = 1
-let g:ctrlp_custom_ignore = 'node_modules\|DS_Store\|git'
+" LSPと自動補完
+Plug 'neovim/nvim-lspconfig'
+Plug 'hrsh7th/nvim-cmp'
+Plug 'hrsh7th/cmp-nvim-lsp'
+Plug 'hrsh7th/cmp-buffer'
+Plug 'hrsh7th/cmp-path'
+Plug 'L3MON4D3/LuaSnip'
+Plug 'saadparwaiz1/cmp_luasnip'
 
-" NERDTreeの設定
-autocmd BufWritePost * NERDTreeFocus | execute 'normal R' | wincmd p
-let NERDTreeShowHidden = 1 "隠しファイルもtreeに表示
+" シンタックスハイライト
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+
+" コメントアウト
+Plug 'tpope/vim-commentary'
+
+" 括弧補完
+Plug 'tpope/vim-surround'
+
+" インデントガイド
+Plug 'lukas-reineke/indent-blankline.nvim'
+
+" カラーコードのハイライト
+Plug 'norcalli/nvim-colorizer.lua'
+
+call plug#end()
+
+" Vim Script
+colorscheme monokai-pro
+
+" lualine設定
+lua << EOF
+require('lualine').setup {
+  options = {
+    theme = 'codedark',
+    icons_enabled = true,
+    section_separators = '',
+    component_separators = '',
+  },
+}
+EOF
+
+" nvim-tree設定
+lua << EOF
+require('nvim-tree').setup {
+  view = {
+    width = 30,
+    side = 'left',
+  },
+  renderer = {
+    icons = {
+      show = {
+        git = true,
+        folder = true,
+        file = true,
+        folder_arrow = true,
+      },
+      glyphs = {
+        default = '',
+        symlink = '',
+        folder = {
+          arrow_open = '',
+          arrow_closed = '',
+          default = '',
+          open = '',
+          empty = '',
+          empty_open = '',
+          symlink = '',
+          symlink_open = '',
+        },
+        git = {
+          unstaged = "✗",
+          staged = "✓",
+          unmerged = "",
+          renamed = "➜",
+          untracked = "★",
+          deleted = "",
+          ignored = "◌"
+        },
+      },
+    },
+  },
+  filters = {
+    dotfiles = false,
+    custom = { '.DS_Store' },
+  },
+}
+EOF
+nnoremap <C-n> :NvimTreeToggle<CR>
+
+" gitsigns設定
+lua << EOF
+require('gitsigns').setup()
+EOF
+
+" Telescope設定
+nnoremap <C-p> :Telescope find_files<CR>
+nnoremap <C-f> :Telescope live_grep<CR>
+
+" LSP設定
+lua << EOF
+local nvim_lsp = require('lspconfig')
+
+-- TypeScript用サーバー名を更新
+nvim_lsp.ts_ls.setup{}     -- JavaScript/TypeScript
+nvim_lsp.pyright.setup{}   -- Python
+
+-- 自動補完の設定
+local cmp = require'cmp'
+cmp.setup({
+  snippet = {
+    expand = function(args)
+      require'luasnip'.lsp_expand(args.body)
+    end,
+  },
+  mapping = cmp.mapping.preset.insert({
+    ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+    ['<C-f>'] = cmp.mapping.scroll_docs(4),
+    ['<C-Space>'] = cmp.mapping.complete(),
+    ['<C-e>'] = cmp.mapping.abort(),
+    ['<CR>'] = cmp.mapping.confirm({ select = true }),
+  }),
+  sources = cmp.config.sources({
+    { name = 'nvim_lsp' },
+    { name = 'luasnip' },
+  }, {
+    { name = 'buffer' },
+  })
+})
+EOF
+
+" Treesitter設定
+lua << EOF
+require('nvim-treesitter.configs').setup {
+  ensure_installed = { "c", "cpp", "python", "javascript", "typescript", "lua" },
+  highlight = {
+    enable = true,
+    additional_vim_regex_highlighting = false,
+  },
+}
+EOF
+
+" indent-blankline設定（バージョン3対応）
+lua << EOF
+require("ibl").setup {
+  indent = { char = "│" },
+  exclude = {
+    filetypes = {"help", "terminal"},
+    buftypes = {"terminal"},
+  },
+}
+EOF
+
+" カラーコードのハイライト設定
+lua << EOF
+require'colorizer'.setup()
+EOF
+
+" その他の設定
+set diffopt+=iwhite
+syntax on
+
+" キーバインド設定
+nmap <C-/> gcc
+vmap <C-/> gc
+
+" カラー設定
+highlight Comment ctermfg=LightBlue guifg=LightBlue
+
+" 行末の空白をハイライト
+highlight ExtraWhitespace ctermbg=red guibg=red
+autocmd BufWinEnter * match ExtraWhitespace /\s\+$/
+autocmd InsertEnter * match ExtraWhitespace /\s\+\%#\@<!$/
+autocmd InsertLeave * match ExtraWhitespace /\s\+$/
+autocmd BufWinLeave * call clearmatches()
