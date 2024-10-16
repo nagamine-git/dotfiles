@@ -19,12 +19,14 @@ brew "jpeg-xl"
 brew "aom"
 brew "asdf"
 brew "bash"
+brew "bat"
 brew "bazelisk"
 brew "berkeley-db"
 brew "bmon"
 brew "osx-cpu-temp"
 brew "python@3.12"
 brew "bpytop"
+brew "broot"
 brew "btop"
 brew "glib"
 brew "cairo"
@@ -34,11 +36,12 @@ brew "cointop"
 brew "curl"
 brew "dvdbackup"
 brew "dvdrtools"
-brew "fastfetch"
 brew "libevent"
 brew "p11-kit"
 brew "unbound"
 brew "gnutls"
+brew "eza"
+brew "fastfetch"
 brew "harfbuzz"
 brew "openjpeg"
 brew "leptonica"
@@ -59,7 +62,6 @@ brew "glances"
 brew "guile"
 brew "hadolint"
 brew "hashcat"
-brew "htop"
 brew "hub"
 brew "libheif"
 brew "libraw"
@@ -96,6 +98,7 @@ brew "terminal-notifier"
 brew "terraformer"
 brew "tflint"
 brew "the_silver_searcher"
+brew "tldr"
 brew "tmux"
 brew "tnftp"
 brew "tree"
@@ -104,6 +107,7 @@ brew "vim"
 brew "watch"
 brew "wget"
 brew "wireshark"
+brew "zoxide"
 brew "zsh-autosuggestions"
 brew "zsh-history-substring-search"
 brew "zsh-syntax-highlighting"
@@ -116,7 +120,6 @@ cask "airparrot"
 cask "alacritty"
 cask "android-platform-tools"
 cask "authy"
-cask "clipy"
 cask "dash"
 cask "devtoys"
 cask "fig"
@@ -124,39 +127,38 @@ cask "font-hack-nerd-font"
 cask "font-hackgen"
 cask "font-hackgen-nerd"
 cask "font-open-dyslexic"
-cask "google-japanese-ime"
-cask "iterm2"
 cask "karabiner-elements"
 cask "raycast"
 cask "spotify"
-cask "warp"
 cask "xquartz"
 cask "zoom"
 mas "1Password for Safari", id: 1569813296
 mas "Book Tracker", id: 1496543317
+mas "CapCut", id: 1500855883
 mas "Developer", id: 640199958
 mas "Focus Timer", id: 880565132
 mas "GarageBand", id: 682658836
-mas "Goodnotes", id: 1444383602
-mas "Grammarly for Safari", id: 1462114288
 mas "HiCoffee", id: 1507361706
 mas "HiWater", id: 1561732866
 mas "HomeAtmo", id: 1359795390
 mas "iMovie", id: 408981434
 mas "Kindle", id: 302584613
 mas "LINE", id: 539883307
+mas "Locale Switcher", id: 1501719622
 mas "Messenger", id: 1480068668
+mas "Notion Web Clipper", id: 1559269364
 mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
-mas "Pitch", id: 1551335606
-mas "reMarkable", id: 1276493162
-mas "Save to Raindrop.io", id: 1549370672
+mas "Reeder", id: 1529448980
+mas "Session", id: 1521432881
 mas "Slack", id: 803453959
 mas "Streaks", id: 963034692
+mas "Telegram", id: 747648890
+mas "TestFlight", id: 899247664
 mas "The Unarchiver", id: 425424353
 mas "Toggl Track", id: 1291898086
-mas "Twitter", id: 1482454543
 mas "Xcode", id: 497799835
+mas "‎WhatsApp", id: 310633997
 vscode "dart-code.dart-code"
 vscode "dart-code.flutter"
 vscode "dbaeumer.vscode-eslint"
