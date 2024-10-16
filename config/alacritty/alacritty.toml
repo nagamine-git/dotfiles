@@ -5,3 +5,14 @@ import = [
 [font]
 normal = { family = "Hack Nerd Font" }
 size = 13
+
+[font.glyph_offset]
+x = 0
+y = 0
+
+[font.offset]
+x = 0
+y = 0
+
+[window]
+dynamic_title = true
