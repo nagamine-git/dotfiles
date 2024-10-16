@@ -184,3 +184,19 @@ source "/opt/homebrew/opt/asdf/libexec/asdf.sh"
 export PATH="$PATH:/Users/nagamine/.bin:$HOME/.gem/bin:/Users/nagamine/development/flutter/bin"
 source /Users/nagamine/.config/broot/launcher/bash/br
 eval "$(zoxide init zsh)"
+
+# ghq/fzf/eza 組み合わせ
+function ghq-fzf_change_directory() {
+    # 選択したリポジトリへ移動 かつ
+    # 右にリポジトリのディレクトリ詳細を表示
+  local src=$(ghq list | fzf --preview "eza -l -g -a --icons $(ghq root)/{} | tail -n+4 | awk '{print \$6\"/\"\$8\" \"\$9 \" \" \$10}'")
+  if [ -n "$src" ]; then
+    BUFFER="cd $(ghq root)/$src"
+    zle accept-line
+  fi
+  zle -R -c
+}
+
+zle -N ghq-fzf_change_directory
+bindkey '^f' ghq-fzf_change_directory
+
