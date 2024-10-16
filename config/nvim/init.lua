@@ -37,10 +37,9 @@ vim.opt.hlsearch = true
 -- クリップボード設定
 vim.opt.clipboard = 'unnamedplus'
 
--- lazy.nvimの設定
+-- Lazy.nvimの設定
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.loop.fs_stat(lazypath) then
-  -- 上でgit cloneした場合、この部分は不要です
   vim.fn.system({
     'git',
     'clone',
@@ -92,6 +91,37 @@ require('lazy').setup({
 
   -- カラーコードのハイライト
   { 'norcalli/nvim-colorizer.lua' },
+
+  -- アイコン表示
+  { 'onsails/lspkind-nvim' },
+
+  -- Copilotの設定
+  {
+    "zbirenbaum/copilot.lua",
+    event = "VeryLazy",
+    config = function()
+      require("copilot").setup({
+        suggestion = { enabled = true },
+        panel = { enabled = true },
+        filetypes = {
+          lua = true,
+          python = true,
+          javascript = true,
+          typescript = true,
+          ['*'] = true,
+        },
+      })
+    end,
+  },
+
+  -- Copilot-cmpの設定
+  {
+    "zbirenbaum/copilot-cmp",
+    dependencies = { "zbirenbaum/copilot.lua" },
+    config = function()
+      require("copilot_cmp").setup()
+    end,
+  }
 })
 
 -- カラースキーム設定
@@ -151,17 +181,25 @@ require('nvim-tree').setup({
   filters = {
     dotfiles = false,
   },
+  update_focused_file = {
+    enable = true,
+    update_cwd = true,
+    ignore_list = {},
+  },
 })
 
 -- nvim-treeのキーマッピング
-vim.api.nvim_set_keymap('n', '<C-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
+
+-- diffviewのキーマッピング
+vim.keymap.set('n', '<C-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
 
 -- gitsigns設定
 require('gitsigns').setup()
 
 -- Telescope設定
-vim.api.nvim_set_keymap('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
 
 -- LSP設定
 local nvim_lsp = require('lspconfig')
@@ -172,6 +210,14 @@ nvim_lsp.pyright.setup({})
 -- 自動補完の設定
 local cmp = require('cmp')
 local luasnip = require('luasnip')
+local lspkind = require('lspkind')
+
+-- has_words_before関数を定義
+local has_words_before = function()
+  local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+  return col ~= 0 and
+    vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
+end
 
 cmp.setup({
   snippet = {
@@ -185,13 +231,30 @@ cmp.setup({
     ['<C-Space>'] = cmp.mapping.complete(),
     ['<C-e>']   = cmp.mapping.abort(),
     ['<CR>']    = cmp.mapping.confirm({ select = true }),
+    ["<Tab>"] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_next_item()
+      elseif has_words_before() then
+        cmp.complete()
+      else
+        fallback()
+      end
+    end, { "i", "s" }),
   }),
   sources = cmp.config.sources({
-    { name = 'nvim_lsp' },
-    { name = 'luasnip' },
-  }, {
-    { name = 'buffer' },
+    { name = 'copilot',  max_item_count = 3 }, -- 優先度を上げる
+    { name = 'nvim_lsp', max_item_count = 15, keyword_length = 2 },
+    { name = 'luasnip',  max_item_count = 15, keyword_length = 2 },
+    { name = 'buffer',   max_item_count = 15, keyword_length = 2 },
   }),
+  formatting = {
+    format = lspkind.cmp_format({
+      mode = "symbol",
+      maxwidth = 50,
+      ellipsis_char = "...",
+      symbol_map = { Copilot = "" },
+    }),
+  },
 })
 
 -- Treesitter設定
@@ -216,5 +279,5 @@ require('ibl').setup({
 require('colorizer').setup()
 
 -- コメントアウトのキーマッピング
-vim.api.nvim_set_keymap('n', '<C-/>', 'gcc', { noremap = false, silent = true })
-vim.api.nvim_set_keymap('v', '<C-/>', 'gc', { noremap = false, silent = true })
+vim.keymap.set('n', '<C-/>', 'gcc', { noremap = false, silent = true })
+vim.keymap.set('v', '<C-/>', 'gc', { noremap = false, silent = true })
