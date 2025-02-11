@@ -208,6 +208,8 @@ bindkey "${terminfo[kcud1]}" history-substring-search-down
 
 # .envファイルの読み込み
 if [ -f ~/.env ]; then
-    export $(grep -v '^#' ~/.env | xargs)
+    set -a
+    source ~/.env
+    set +a
 fi
 
