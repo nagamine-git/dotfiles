@@ -200,3 +200,14 @@ function ghq-fzf_change_directory() {
 zle -N ghq-fzf_change_directory
 bindkey '^f' ghq-fzf_change_directory
 
+# Zsh History Substring Search
+source $(brew --prefix)/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+autoload -U history-substring-search
+bindkey "${terminfo[kcuu1]}" history-substring-search-up
+bindkey "${terminfo[kcud1]}" history-substring-search-down
+
+# .envファイルの読み込み
+if [ -f ~/.env ]; then
+    export $(grep -v '^#' ~/.env | xargs)
+fi
+
