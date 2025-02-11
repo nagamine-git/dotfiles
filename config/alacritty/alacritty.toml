@@ -4,7 +4,7 @@ import = [
 
 [font]
 normal = { family = "Hack Nerd Font" }
-size = 13
+size = 17
 
 [font.glyph_offset]
 x = 0
@@ -16,3 +16,5 @@ y = 0
 
 [window]
 dynamic_title = true
+dynamic_padding = true
+decorations_theme_variant = "Dark"
