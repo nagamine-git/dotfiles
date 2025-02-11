@@ -1,7 +1,6 @@
 -- 基本設定
 vim.opt.encoding = 'utf-8'
 vim.opt.number = true
-vim.opt.relativenumber = true
 vim.opt.cursorline = true
 vim.opt.mouse = 'a'
 vim.opt.termguicolors = true
@@ -94,6 +93,9 @@ require('lazy').setup({
 
   -- アイコン表示
   { 'onsails/lspkind-nvim' },
+  
+  -- マルチカーソル
+  { 'mg979/vim-visual-multi' },
 
   -- Copilotの設定
   {
