@@ -6,3 +6,5 @@ config/nvim/plugged/*
 !config/karabiner
 config/karabiner/automatic_backups/*
 tags
+.aider*
+.env
