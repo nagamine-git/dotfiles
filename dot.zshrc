@@ -1,5 +1,12 @@
 # パスの設定（oh-my-zshのインストール先を指定）
 export ZSH="$HOME/.oh-my-zsh"
+export LANG=ja_JP.UTF-8
+
+# ASDFの設定
+export ASDF_DIR="$HOME/.asdf"
+export ASDF_DATA_DIR="$HOME/.asdf"
+export ASDF_CONFIG_FILE="$HOME/.asdfrc"
+export ASDF_DEFAULT_TOOL_VERSIONS_FILENAME=".tool-versions"
 
 # テーマの設定（独自のプロンプトを使用するため、テーマは無効化）
 ZSH_THEME=""
@@ -17,7 +24,7 @@ source $ZSH/oh-my-zsh.sh
 # オプションの設定
 setopt autocd              # ディレクトリ名を入力するだけで移動
 setopt interactivecomments # 対話モードでのコメントを許可
-setopt magicequalsubst     # ‘anything=expression’形式の引数でファイル名展開を有効にする
+setopt magicequalsubst     # 'anything=expression'形式の引数でファイル名展開を有効にする
 setopt nonomatch           # パターンに一致するものがない場合のエラーメッセージを非表示
 setopt notify              # バックグラウンドジョブのステータスを即時に報告
 setopt numericglobsort     # 数値的に意味がある場合、ファイル名を数値順にソート
@@ -79,10 +86,12 @@ setopt share_history          # ヒストリーデータを共有
 alias history="history 0"
 
 # エイリアスの設定
-alias ls='eza'
-alias ll='ls -l'
-alias la='ls -A'
-alias l='ls -CF'
+
+# ezaコマンドのエイリアス設定
+alias ls="eza --icons"
+alias ll="eza -l --icons"
+alias la="eza -la --icons"
+alias lt="eza --tree --icons"
 alias vim='nvim'
 
 # `time`コマンドのフォーマット設定
@@ -101,21 +110,20 @@ PROMPT_ALTERNATIVE=twoline
 NEWLINE_BEFORE_PROMPT=yes
 
 configure_prompt() {
-    prompt_symbol=
+    prompt_symbol=
     case "$PROMPT_ALTERNATIVE" in
         twoline)
-            PROMPT=$'%F{%(#.blue.green)}┌──${debian_chroot:+($debian_chroot)─}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))─}(%B%F{%(#.red.blue)}%n'$prompt_symbol$'%m%b%F{%(#.blue.green)})-[%B%F{reset}%(6~.%-1~/…/%4~.%5~)%b%F{%(#.blue.green)}]\n└─%B%(#.%F{red}#.%F{blue}$)%b%F{reset} '
+            PROMPT=$'%F{%(#.red.green)}┌──[%B%F{%(#.red.blue)}%n${prompt_symbol}%m%b%F{%(#.red.green)}]─[%B%F{reset}%(6~.%-1~/…/%4~.%5~)%b%F{%(#.red.green)}]\n└─%B%(#.%F{red}#.%F{green}$)%b%F{reset} '
             ;;
         oneline)
-            PROMPT=$'${debian_chroot:+($debian_chroot)}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))}%B%F{%(#.red.blue)}%n@%m%b%F{reset}:%B%F{%(#.blue.green)}%~%b%F{reset}%(#.#.$) '
+            PROMPT=$'%F{green}%n${prompt_symbol}%m%f:%F{blue}%~%f%(#.#.$) '
             RPROMPT=
             ;;
         backtrack)
-            PROMPT=$'${debian_chroot:+($debian_chroot)}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))}%B%F{red}%n@%m%b%F{reset}:%B%F{blue}%~%b%F{reset}%(#.#.$) '
+            PROMPT=$'%F{red}%n${prompt_symbol}%m%f:%F{blue}%~%f%(#.#.$) '
             RPROMPT=
             ;;
     esac
-    unset prompt_symbol
 }
 
 configure_prompt
@@ -125,7 +133,6 @@ ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern)
 ZSH_HIGHLIGHT_STYLES[default]=none
 ZSH_HIGHLIGHT_STYLES[unknown-token]=underline
 ZSH_HIGHLIGHT_STYLES[reserved-word]=fg=cyan,bold
-# （以下、必要に応じてスタイル設定を追加してください）
 
 # プロンプトの切り替え関数とキーバインド
 toggle_oneline_prompt(){
@@ -153,7 +160,7 @@ esac
 precmd() {
     print -Pnr -- "$TERM_TITLE"
 
-    if [ "$NEWLINE_BEFORE_PROMPT" = yes ]; then
+    if [ "$NEWLINE_BEFORE_PROMPT" = yes ] && [ -z "$ZSH_AUTOSUGGEST_BUFFER" ]; then
         if [ -z "$_NEW_LINE_BEFORE_PROMPT" ]; then
             _NEW_LINE_BEFORE_PROMPT=1
         else
@@ -163,7 +170,7 @@ precmd() {
 }
 
 # zsh-autosuggestionsのハイライトスタイル
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#999'
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#666'
 
 # command-not-foundの有効化
 if [ -f /etc/zsh_command_not_found ]; then
@@ -173,43 +180,51 @@ fi
 # fpathの設定
 fpath+=${ZDOTDIR:-~}/.zsh_functions
 
-# ASDFの設定
-export ASDF_DIR="/opt/homebrew/Cellar/asdf/0.14.1/libexec"
-source "/opt/homebrew/opt/asdf/libexec/asdf.sh"
-
-# Rustのパス設定
-[[ ! "$PATH" == *"/Users/nagamine/.asdf/installs/rust/1.72.0/bin"* ]] && export PATH="/Users/nagamine/.asdf/installs/rust/1.72.0/bin:$PATH"
-
-# パスの追加
-export PATH="$PATH:/Users/nagamine/.bin:$HOME/.gem/bin:/Users/nagamine/development/flutter/bin"
-source /Users/nagamine/.config/broot/launcher/bash/br
-eval "$(zoxide init zsh)"
-
 # ghq/fzf/eza 組み合わせ
 function ghq-fzf_change_directory() {
-    # 選択したリポジトリへ移動 かつ
-    # 右にリポジトリのディレクトリ詳細を表示
-  local src=$(ghq list | fzf --preview "eza -l -g -a --icons $(ghq root)/{} | tail -n+4 | awk '{print \$6\"/\"\$8\" \"\$9 \" \" \$10}'")
-  if [ -n "$src" ]; then
-    BUFFER="cd $(ghq root)/$src"
-    zle accept-line
-  fi
-  zle -R -c
+    local src=$(ghq list | fzf --preview "eza -l -g -a --icons $(ghq root)/{} | tail -n+4 | awk '{print \$6\"/\"\$8\" \"\$9 \" \" \$10}'")
+    if [ -n "$src" ]; then
+        BUFFER="cd $(ghq root)/$src"
+        zle accept-line
+    fi
+    zle -R -c
 }
 
 zle -N ghq-fzf_change_directory
 bindkey '^f' ghq-fzf_change_directory
 
-# Zsh History Substring Search
-source $(brew --prefix)/share/zsh-history-substring-search/zsh-history-substring-search.zsh
-autoload -U history-substring-search
-bindkey "${terminfo[kcuu1]}" history-substring-search-up
-bindkey "${terminfo[kcud1]}" history-substring-search-down
-
-# .envファイルの読み込み
-if [ -f ~/.env ]; then
-    set -a
-    source ~/.env
-    set +a
+# Homebrewの設定
+if [[ -d /opt/homebrew/bin ]]; then
+    # Apple Silicon Mac
+    export HOMEBREW_PREFIX="/opt/homebrew"
+elif [[ -d /usr/local/bin/brew ]]; then
+    # Intel Mac
+    export HOMEBREW_PREFIX="/usr/local"
+elif [[ -d /home/linuxbrew/.linuxbrew/bin ]]; then
+    # Linux
+    export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
 fi
 
+if [[ -n "$HOMEBREW_PREFIX" && -f "$HOMEBREW_PREFIX/bin/brew" ]]; then
+    export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
+    export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX/Homebrew"
+    export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+    export MANPATH="$HOMEBREW_PREFIX/share/man:${MANPATH:-}"
+    export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
+    
+    # Homebrewの補完を有効化
+    if type brew &>/dev/null; then
+        FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:$FPATH"
+    fi
+fi
+
+# 重複している設定を整理
+# ASDFの設定（一度だけ読み込む）
+if [[ -f "$HOME/.asdf/asdf.sh" ]]; then
+    . "$HOME/.asdf/asdf.sh"
+    . "$HOME/.asdf/completions/asdf.bash"
+fi
+
+# Goの設定
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin

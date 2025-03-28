@@ -33,3 +33,8 @@
 
 [push]
     autoSetupRemote = true  # 新しいブランチをリモートに自動的にプッシュ設定
+    
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+[ghq]
+	root = /home/tsuyoshi/ghq

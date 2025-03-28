@@ -2,9 +2,11 @@ config/*
 !config/alacritty
 !config/btop
 !config/nvim
+!config/fusuma
 config/nvim/plugged/*
-!config/karabiner
-config/karabiner/automatic_backups/*
 tags
 .aider*
 .env
+*.swp
+*~
+.DS_Store

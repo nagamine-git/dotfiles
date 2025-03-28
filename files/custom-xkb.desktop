@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Custom XKB Layout
+Comment=Apply custom keyboard layout for Vim navigation
+Exec=/usr/local/bin/apply-custom-xkb
+Terminal=false
+Hidden=false
+X-GNOME-Autostart-enabled=true
+X-XFCE-Autostart-enabled=true 
