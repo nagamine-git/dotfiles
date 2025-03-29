@@ -32,7 +32,6 @@ sudo apt install -y \
     ripgrep \
     fzf \
     bat \
-    neovim \
     python3-pip \
     python3-venv \
     build-essential \
@@ -44,6 +43,14 @@ sudo apt install -y \
     wget \
     apt-transport-https \
     software-properties-common
+
+# Neovim 0.8.0以上を直接ダウンロード&インストール
+curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+sudo rm -rf /opt/nvim
+sudo mkdir -p /opt/nvim
+sudo tar -C /opt/nvim -xzf nvim-linux-x86_64.tar.gz --strip-components=1
+sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+rm nvim-linux-x86_64.tar.gz
 
 # 日本語ロケールの設定（VSCode用）
 echo "日本語ロケールを設定中..."

@@ -228,3 +228,8 @@ fi
 # Goの設定
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
+
+snap_bin_path="/snap/bin"
+if [ -n "${PATH##*${snap_bin_path}}" -a -n "${PATH##*${snap_bin_path}:*}" ]; then
+    export PATH=$PATH:${snap_bin_path}
+fi
