@@ -45,6 +45,17 @@ sudo apt install -y \
     apt-transport-https \
     software-properties-common
 
+# 日本語ロケールの設定（VSCode用）
+echo "日本語ロケールを設定中..."
+if ! locale -a | grep -q ja_JP.UTF-8; then
+  sudo apt-get install -y locales
+  sudo sed -i 's/^# *\(ja_JP.UTF-8\)/\1/' /etc/locale.gen
+  sudo locale-gen
+  echo "日本語ロケールの設定が完了しました"
+else
+  echo "日本語ロケールは既に設定されています"
+fi
+
 # Nerd Fontsバージョンの FiraCode のインストール
 sudo mkdir -p /usr/share/fonts/FiraCode
 wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip

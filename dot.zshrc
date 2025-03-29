@@ -1,6 +1,7 @@
 # パスの設定（oh-my-zshのインストール先を指定）
 export ZSH="$HOME/.oh-my-zsh"
 export LANG=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
 
 # ASDFの設定
 export ASDF_DIR="$HOME/.asdf"
@@ -38,7 +39,6 @@ PROMPT_EOL_MARK=""
 
 # 環境変数の設定
 export LSCOLORS="ExGxFxdxCxDxDxhbHbHbHbHbHbHbHbHbH"
-export LANG=ja_JP.UTF-8
 export EDITOR=nvim
 
 # キーバインドの設定
