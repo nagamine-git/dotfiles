@@ -233,3 +233,7 @@ snap_bin_path="/snap/bin"
 if [ -n "${PATH##*${snap_bin_path}}" -a -n "${PATH##*${snap_bin_path}:*}" ]; then
     export PATH=$PATH:${snap_bin_path}
 fi
+
+# Cursor for AppImage
+CURSOR_APPIMAGE_PATH="/opt/cursor.AppImage"
+alias cursor="${CURSOR_APPIMAGE_PATH} . > /dev/null 2>&1 &"
