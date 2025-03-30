@@ -63,11 +63,18 @@ else
   echo "日本語ロケールは既に設定されています"
 fi
 
-# Nerd Fontsバージョンの FiraCode のインストール
-sudo mkdir -p /usr/share/fonts/FiraCode
-wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip
-sudo unzip FiraCode.zip -d /usr/share/fonts/FiraCode
-rm FiraCode.zip
+# Noto Sans CJK JP と HackGen Nerd Font のインストール
+echo "フォントをインストール中..."
+# Noto Sans CJK JP のインストール
+sudo apt install -y fonts-noto-cjk
+
+# HackGen Nerd Font のインストール（最新版を取得）
+sudo mkdir -p /usr/share/fonts/HackGen
+VERSION=$(curl -sL https://api.github.com/repos/yuru7/HackGen/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "HackGen の最新バージョン: ${VERSION} をダウンロードします"
+wget https://github.com/yuru7/HackGen/releases/download/${VERSION}/HackGen_NF_${VERSION}.zip
+sudo unzip HackGen_NF_${VERSION}.zip -d /usr/share/fonts/HackGen
+rm HackGen_NF_${VERSION}.zip
 sudo fc-cache -f -v
 
 # Dockerのインストール
