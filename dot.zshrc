@@ -17,6 +17,7 @@ plugins=(
     git
     zsh-autosuggestions
     zsh-syntax-highlighting
+    zsh-history-substring-search
 )
 
 # oh-my-zshの読み込み
@@ -71,6 +72,22 @@ zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p
 zstyle ':completion:*' use-compctl false
 zstyle ':completion:*' verbose true
 zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+
+# 部分一致の履歴検索の設定
+# プラグインの読み込み順序を確認
+if [ -f ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh ]; then
+  source ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+fi
+
+# 前方一致モードをオフにする
+HISTORY_SUBSTRING_SEARCH_PREFIXED=""
+
+# キーバインドの再設定
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+# 代替キーバインド（端末によって異なる場合）
+bindkey "$terminfo[kcuu1]" history-substring-search-up
+bindkey "$terminfo[kcud1]" history-substring-search-down
 
 # ヒストリーの設定
 HISTFILE=~/.zsh_history
@@ -236,4 +253,11 @@ fi
 
 # Cursor for AppImage
 CURSOR_APPIMAGE_PATH="/opt/cursor.AppImage"
-alias cursor="${CURSOR_APPIMAGE_PATH} . > /dev/null 2>&1 &"
+cursor() {
+  # setsid で新しいセッションで起動し、標準入出力も閉じる
+  # これによりターミナルとの関連を断ち切る
+  setsid "${CURSOR_APPIMAGE_PATH}" "$PWD" < /dev/null > /dev/null 2>&1 &
+
+  # 念のため少し待つ (不要かもしれないが一応)
+  # sleep 0.1
+}
