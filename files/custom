@@ -9,10 +9,10 @@ xkb_symbols "vim" {
     key <RALT> { type[Group1] = "ONE_LEVEL", symbols[Group1] = [ ISO_Level3_Shift ] };
     modifier_map Mod5 { ISO_Level3_Shift };
     
-    key <AC06> { [ h, H, Left, Left ] };
-    key <AC07> { [ n, N, Down, Down ] };
-    key <AC08> { [ e, E, Up, Up ] };
-    key <AC09> { [ i, I, Right, Right ] };
+    key <AC06> { [ h, H, Left, NoSymbol ] };
+    key <AC07> { [ n, N, Down, NoSymbol ] };
+    key <AC08> { [ e, E, Up, NoSymbol ] };
+    key <AC09> { [ i, I, Right, NoSymbol ] };
     
     include "level3(ralt_switch)"
 }; 

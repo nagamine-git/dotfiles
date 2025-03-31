@@ -261,3 +261,17 @@ cursor() {
   # 念のため少し待つ (不要かもしれないが一応)
   # sleep 0.1
 }
+
+# クリップボード関連のエイリアス設定
+if which pbcopy >/dev/null 2>&1 ; then 
+    # Mac  
+    alias -g C='| pbcopy'
+elif which xsel >/dev/null 2>&1 ; then 
+    # Linux
+    alias pbcopy='xsel --clipboard --input'
+    alias pbpaste='xsel --clipboard --output'
+    alias -g C='| pbcopy'
+elif which putclip >/dev/null 2>&1 ; then 
+    # Cygwin 
+    alias -g C='| putclip'
+fi

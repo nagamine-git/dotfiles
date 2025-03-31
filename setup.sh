@@ -63,19 +63,135 @@ else
   echo "日本語ロケールは既に設定されています"
 fi
 
-# Noto Sans CJK JP と HackGen Nerd Font のインストール
-echo "フォントをインストール中..."
+# フォントをインストール中...
+echo "プログラミングフォントをインストール中..."
 # Noto Sans CJK JP のインストール
 sudo apt install -y fonts-noto-cjk
 
-# HackGen Nerd Font のインストール（最新版を取得）
+# プログラミングフォントのインストール（HackGen、PlemolJP、UDEV Gothic、Firge）
+# 1. HackGen のインストール
 sudo mkdir -p /usr/share/fonts/HackGen
-VERSION=$(curl -sL https://api.github.com/repos/yuru7/HackGen/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
-echo "HackGen の最新バージョン: ${VERSION} をダウンロードします"
-wget https://github.com/yuru7/HackGen/releases/download/${VERSION}/HackGen_NF_${VERSION}.zip
-sudo unzip HackGen_NF_${VERSION}.zip -d /usr/share/fonts/HackGen
-rm HackGen_NF_${VERSION}.zip
+HACKGEN_VERSION=$(curl -sL https://api.github.com/repos/yuru7/HackGen/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "HackGen の最新バージョン: ${HACKGEN_VERSION} をダウンロードします"
+wget https://github.com/yuru7/HackGen/releases/download/${HACKGEN_VERSION}/HackGen_NF_${HACKGEN_VERSION}.zip
+sudo unzip HackGen_NF_${HACKGEN_VERSION}.zip -d /usr/share/fonts/HackGen
+rm HackGen_NF_${HACKGEN_VERSION}.zip
+
+# 2. PlemolJP のインストール
+sudo mkdir -p /usr/share/fonts/PlemolJP
+PLEMOLJP_VERSION=$(curl -sL https://api.github.com/repos/yuru7/PlemolJP/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "PlemolJP の最新バージョン: ${PLEMOLJP_VERSION} をダウンロードします"
+wget https://github.com/yuru7/PlemolJP/releases/download/${PLEMOLJP_VERSION}/PlemolJP_NF_${PLEMOLJP_VERSION}.zip
+sudo unzip PlemolJP_NF_${PLEMOLJP_VERSION}.zip -d /usr/share/fonts/PlemolJP
+rm PlemolJP_NF_${PLEMOLJP_VERSION}.zip
+
+# 3. UDEV Gothic のインストール
+sudo mkdir -p /usr/share/fonts/UDEVGothic
+UDEV_VERSION=$(curl -sL https://api.github.com/repos/yuru7/udev-gothic/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "UDEV Gothic の最新バージョン: ${UDEV_VERSION} をダウンロードします"
+wget https://github.com/yuru7/udev-gothic/releases/download/${UDEV_VERSION}/UDEVGothic_NF_${UDEV_VERSION}.zip
+sudo unzip UDEVGothic_NF_${UDEV_VERSION}.zip -d /usr/share/fonts/UDEVGothic
+rm UDEVGothic_NF_${UDEV_VERSION}.zip
+
+# 4. Firge のインストール
+sudo mkdir -p /usr/share/fonts/Firge
+FIRGE_VERSION=$(curl -sL https://api.github.com/repos/yuru7/Firge/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "Firge の最新バージョン: ${FIRGE_VERSION} をダウンロードします"
+wget https://github.com/yuru7/Firge/releases/download/${FIRGE_VERSION}/FirgeNerd_${FIRGE_VERSION}.zip
+sudo unzip FirgeNerd_${FIRGE_VERSION}.zip -d /usr/share/fonts/Firge
+rm FirgeNerd_${FIRGE_VERSION}.zip
+
+# 5. RobotoNotoSansJP のインストール
+echo "RobotoNotoSansJP フォントをインストール中..."
+sudo mkdir -p /usr/share/fonts/RobotoNotoSansJP
+# 各ウェイトのフォントをダウンロード
+ROBOTO_BASE_URL="https://raw.githubusercontent.com/reindex-ot/RobotoNotoSansJP/main"
+ROBOTO_WEIGHTS=("Black" "Bold" "Light" "Medium" "Regular" "Thin")
+
+for weight in "${ROBOTO_WEIGHTS[@]}"; do
+  echo "Roboto-NotoSansJP-${weight}.ttf をダウンロード中..."
+  sudo wget -q "${ROBOTO_BASE_URL}/Roboto-NotoSansJP-${weight}.ttf" -O "/usr/share/fonts/RobotoNotoSansJP/Roboto-NotoSansJP-${weight}.ttf"
+done
+
+# フォントキャッシュの更新
 sudo fc-cache -f -v
+echo "RobotoNotoSansJPフォントのインストールが完了しました"
+
+# Firefoxが適切に日本語フォントを表示するための設定
+echo "Firefoxの日本語フォント設定をセットアップ中..."
+sudo mkdir -p /etc/fonts
+sudo tee /etc/fonts/local.conf > /dev/null << 'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+    <alias>
+        <family>serif</family>
+        <prefer>
+            <family>Roboto</family>
+            <family>Noto Sans JP</family>
+            <family>Noto Serif</family>
+        </prefer>
+    </alias>
+    <alias>
+        <family>sans-serif</family>
+        <prefer>
+            <family>Roboto</family>
+            <family>Noto Sans JP</family>
+        </prefer>
+    </alias>
+    <alias>
+        <family>monospace</family>
+        <prefer>
+            <family>Firge35Nerd Console</family>
+            <family>Firge</family>
+        </prefer>
+    </alias>
+</fontconfig>
+EOF
+sudo fc-cache -f -v
+echo "Firefoxのフォント設定が完了しました"
+
+# フォントのレンダリング設定を調整
+echo "フォントレンダリング設定を調整中..."
+sudo mkdir -p /etc/fonts/conf.d
+sudo tee /etc/fonts/conf.d/10-hinting-none.conf > /dev/null << 'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="font">
+    <edit name="hintstyle" mode="assign">
+      <const>hintnone</const>
+    </edit>
+  </match>
+</fontconfig>
+EOF
+
+sudo tee /etc/fonts/conf.d/11-lcdfilter-default.conf > /dev/null << 'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="font">
+    <edit name="lcdfilter" mode="assign">
+      <const>lcddefault</const>
+    </edit>
+  </match>
+</fontconfig>
+EOF
+
+sudo tee /etc/fonts/conf.d/12-subpixel-none.conf > /dev/null << 'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="font">
+    <edit name="rgba" mode="assign">
+      <const>none</const>
+    </edit>
+  </match>
+</fontconfig>
+EOF
+
+sudo fc-cache -f -v
+echo "フォントレンダリング設定の調整が完了しました"
 
 # Dockerのインストール
 # Dockerの公式GPGキーを追加
