@@ -256,7 +256,7 @@ CURSOR_APPIMAGE_PATH="/opt/cursor.AppImage"
 cursor() {
   # setsid で新しいセッションで起動し、標準入出力も閉じる
   # これによりターミナルとの関連を断ち切る
-  setsid "${CURSOR_APPIMAGE_PATH}" "$PWD" < /dev/null > /dev/null 2>&1 &
+  setsid "${CURSOR_APPIMAGE_PATH}" --no-sandbox "$PWD" < /dev/null > /dev/null 2>&1 &
 
   # 念のため少し待つ (不要かもしれないが一応)
   # sleep 0.1
