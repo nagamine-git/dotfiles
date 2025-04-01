@@ -111,6 +111,9 @@ alias la="eza -la --icons"
 alias lt="eza --tree --icons"
 alias vim='nvim'
 
+# ezaの補完を有効化
+compdef _ls eza
+
 # `time`コマンドのフォーマット設定
 TIMEFMT=$'\nreal\t%E\nuser\t%U\nsys\t%S\ncpu\t%P'
 
