@@ -10,3 +10,17 @@ tags
 *.swp
 *~
 .DS_Store
+
+# Rust関連
+target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+.cargo/
+.rustup/
+*.rlib
+*.rmeta
+*.so
+*.dylib
+*.dll
+.cargo-ok
