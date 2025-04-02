@@ -103,9 +103,10 @@ setopt hist_ignore_dups       # 重複したコマンドを無視
 setopt hist_ignore_space      # スペースで始まるコマンドを無視
 setopt hist_verify            # ヒストリー展開後にコマンドを表示
 setopt share_history          # ヒストリーデータを共有
+setopt extended_history       # コマンドの開始時刻と実行時間を記録
 
-# ヒストリーを完全に表示
-alias history="history 0"
+# ヒストリーを完全に表示（実行時間を含む）
+alias history="fc -li 1"
 
 # エイリアスの設定
 
