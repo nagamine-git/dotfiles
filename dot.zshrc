@@ -1,3 +1,8 @@
+# エミュレーションモードをチェックし、必要に応じて修正
+if [[ "$(emulate)" != "zsh" ]]; then
+  exec zsh
+fi
+
 # パスの設定（oh-my-zshのインストール先を指定）
 export ZSH="$HOME/.oh-my-zsh"
 export LANG=ja_JP.UTF-8
@@ -108,7 +113,9 @@ alias history="history 0"
 alias ls="eza --icons"
 alias ll="eza -l --icons"
 alias la="eza -la --icons"
-alias lt="eza --tree --icons"
+alias lt="eza --tree --icons --git-ignore"
+alias lta="eza --tree --icons"
+alias lmt='eza --tree --git-ignore --classify=always --no-user --no-time --no-filesize --color=never'
 alias vim='nvim'
 
 # ezaの補完を有効化
