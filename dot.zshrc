@@ -17,6 +17,9 @@ export ASDF_DEFAULT_TOOL_VERSIONS_FILENAME=".tool-versions"
 # テーマの設定（独自のプロンプトを使用するため、テーマは無効化）
 ZSH_THEME=""
 
+# Rustのパス設定
+export PATH="$HOME/.cargo/bin:$PATH"
+
 # プラグインの設定（必要なプラグインを指定）
 plugins=(
     git
