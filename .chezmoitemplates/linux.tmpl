@@ -86,7 +86,7 @@ fi
 mkdir -p ~/.local/share/fonts
 
 # Firgeフォントのインストール
-if [ ! -f ~/.local/share/fonts/Firge35*.ttf ]; then
+if [ ! -f ~/.local/share/fonts/Firge35Nerd-Console-Regular.ttf ]; then
     echo "Firgeフォントをインストールしています..."
     
     # Firge35Nerd Consoleをダウンロード
@@ -104,8 +104,13 @@ if [ ! -f ~/.local/share/fonts/Firge35*.ttf ]; then
 fi
 
 # RobotoNotoSansJPフォントのインストール
-if [ ! -f ~/.local/share/fonts/RobotoNotoSansJP*.otf ]; then
+if [ ! -f ~/.local/share/fonts/RobotoNotoSansJP-Regular.otf ]; then
     echo "RobotoNotoSansJPフォントをインストールしています..."
+    
+    # 既存のディレクトリがあれば削除
+    if [ -d /tmp/robotonoto ]; then
+        rm -rf /tmp/robotonoto
+    fi
     
     # リポジトリをクローンして必要なファイルをコピー
     git clone --depth 1 https://github.com/reindex-ot/RobotoNotoSansJP.git /tmp/robotonoto
@@ -113,30 +118,6 @@ if [ ! -f ~/.local/share/fonts/RobotoNotoSansJP*.otf ]; then
     
     # 片付け
     rm -rf /tmp/robotonoto
-fi
-
-# Nerd Fontのインストール
-if [ ! -f ~/.local/share/fonts/FiraCode*.ttf ]; then
-    echo "Nerd Fontをインストールしています..."
-    
-    # FiraCode Nerd Fontをダウンロード
-    FONT_VERSION="3.0.2"
-    FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FONT_VERSION}/FiraCode.zip"
-    wget -O /tmp/FiraCode.zip "$FONT_URL"
-    
-    # 解凍して配置
-    mkdir -p /tmp/FiraCode
-    unzip -o /tmp/FiraCode.zip -d /tmp/FiraCode
-    cp /tmp/FiraCode/*.ttf ~/.local/share/fonts/
-    
-    # 片付け
-    rm -rf /tmp/FiraCode /tmp/FiraCode.zip
-fi
-
-# Noto Sans JPフォントのインストール
-if [ ! -f ~/.local/share/fonts/NotoSansCJP-Regular.otf ]; then
-    echo "Noto Sans JPフォントをインストールしています..."
-    sudo apt install -y fonts-noto-cjk
 fi
 
 # フォントキャッシュの更新
