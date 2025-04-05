@@ -1,27 +1,26 @@
-# システム関連
-.DS_Store
-*~
-*.swp
-*.swo
-
-# chezmoi関連
-.chezmoistate.boltdb
-.chezmoicache
-.chezmoiversion
-.chezmoiroot
-
-# エディタ/IDE関連
+config/*
+!config/alacritty
+!config/btop
+!config/nvim
+!config/fusuma
+config/nvim/plugged/*
+tags
 .aider*
 .env
-tags
+*.swp
+*~
+.DS_Store
 
-# Neovim関連
-dot_config/nvim/plugged/*
-
-# アプリケーション
-*.AppImage
-
-# その他のバイナリ・一時ファイル
+# Rust関連
+target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+.cargo/
+.rustup/
+*.rlib
+*.rmeta
 *.so
 *.dylib
 *.dll
+.cargo-ok
