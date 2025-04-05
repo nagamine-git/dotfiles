@@ -1,0 +1,13 @@
+plugin:
+  inputs:
+    pointing_stick_input:
+      device_name_pattern: "" # 明示的に空の文字列を指定
+
+# Add thumbsense context
+---
+context:
+  thumbsense: true
+
+remap:
+  J: BTN_LEFT
+  K: BTN_RIGHT

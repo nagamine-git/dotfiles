@@ -1,0 +1,145 @@
+#!/bin/bash
+# Linux向けのシンプルなセットアップスクリプト
+set -e
+
+# Debianの場合
+if [ -f /etc/debian_version ]; then
+    echo "Debian/Ubuntu系のセットアップを実行します..."
+
+# 基本パッケージのインストール
+sudo apt update
+    sudo apt install -y zsh tmux git curl wget ripgrep fzf
+
+    # Starshipのインストール
+    echo "Starshipをインストールしています..."
+    curl -sS https://starship.rs/install.sh | sh
+    
+    # ezaのインストール（aptでインストールできない場合は手動インストール）
+    if ! command -v eza &> /dev/null; then
+        if apt-cache search --names-only '^eza$' | grep -q eza; then
+            sudo apt install -y eza
+        else
+            latest_eza_deb=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | 
+                            grep "browser_download_url.*deb" | 
+                            grep -v musl | 
+                            grep $(dpkg --print-architecture) | 
+                            cut -d : -f 2,3 | 
+                            tr -d \")
+            if [ -n "$latest_eza_deb" ]; then
+                wget -O /tmp/eza.deb "$latest_eza_deb"
+                sudo dpkg -i /tmp/eza.deb
+                rm /tmp/eza.deb
+            fi
+        fi
+    fi
+    
+    # 日本語入力設定（必要な場合）
+    sudo apt install -y ibus-mozc
+    
+    # カスタムキーボード設定関連のパッケージ
+    sudo apt install -y x11-xkb-utils xkbset
+
+    # Fusumaのインストール（タッチパッドジェスチャー）
+    if ! command -v fusuma &> /dev/null; then
+        echo "Fusumaをインストールしています..."
+        sudo apt install -y libinput-tools ruby
+        sudo gem install fusuma
+        sudo gpasswd -a $USER input
+        
+        # Fusumaのsystemdサービスを有効化
+        systemctl --user daemon-reload
+        systemctl --user enable fusuma.service
+        systemctl --user start fusuma.service
+    fi
+    
+    # カスタムXKB設定の適用
+    if [ -f "$HOME/.local/share/xkb/symbols/custom" ]; then
+        echo "カスタムXKB設定を適用します..."
+        # 自動起動設定が有効になっていることを確認
+        mkdir -p "$HOME/.config/autostart"
+    fi
+    
+    # UI関連パッケージのインストール
+    echo "UIテーマとアイコンをインストールしています..."
+    
+    # Arc Theme
+    if ! dpkg -l arc-theme &>/dev/null; then
+        echo "Arc Themeをインストールしています..."
+        sudo apt install -y arc-theme
+    fi
+    
+    # Papirus Icon Theme
+    if ! dpkg -l papirus-icon-theme &>/dev/null; then
+        echo "Papirus Icon Themeをインストールしています..."
+        sudo apt install -y papirus-icon-theme
+    fi
+
+# その他のLinuxディストリビューション向け設定
+else
+    echo "このLinuxディストリビューションは明示的にサポートされていません。基本的な設定のみ行います。"
+    
+    # Starship
+    curl -sS https://starship.rs/install.sh | sh
+fi
+
+# フォント設定
+mkdir -p ~/.local/share/fonts
+
+# Firgeフォントのインストール
+if [ ! -f ~/.local/share/fonts/Firge35*.ttf ]; then
+    echo "Firgeフォントをインストールしています..."
+    
+    # Firge35Nerd Consoleをダウンロード
+    FIRGE_VERSION="0.2.0"
+    FIRGE_URL="https://github.com/yuru7/Firge/releases/download/v${FIRGE_VERSION}/FirgeNerd_v${FIRGE_VERSION}.zip"
+    wget -O /tmp/firge.zip "$FIRGE_URL"
+    
+    # 解凍して配置
+    mkdir -p /tmp/firge
+    unzip -o /tmp/firge.zip -d /tmp/firge
+    cp /tmp/firge/FirgeNerd_v${FIRGE_VERSION}/*.ttf ~/.local/share/fonts/
+    
+    # 片付け
+    rm -rf /tmp/firge /tmp/firge.zip
+fi
+
+# RobotoNotoSansJPフォントのインストール
+if [ ! -f ~/.local/share/fonts/RobotoNotoSansJP*.otf ]; then
+    echo "RobotoNotoSansJPフォントをインストールしています..."
+    
+    # リポジトリをクローンして必要なファイルをコピー
+    git clone --depth 1 https://github.com/reindex-ot/RobotoNotoSansJP.git /tmp/robotonoto
+    cp /tmp/robotonoto/fonts/*.otf ~/.local/share/fonts/
+    
+    # 片付け
+    rm -rf /tmp/robotonoto
+fi
+
+# Nerd Fontのインストール
+if [ ! -f ~/.local/share/fonts/FiraCode*.ttf ]; then
+    echo "Nerd Fontをインストールしています..."
+    
+    # FiraCode Nerd Fontをダウンロード
+    FONT_VERSION="3.0.2"
+    FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FONT_VERSION}/FiraCode.zip"
+    wget -O /tmp/FiraCode.zip "$FONT_URL"
+    
+    # 解凍して配置
+    mkdir -p /tmp/FiraCode
+    unzip -o /tmp/FiraCode.zip -d /tmp/FiraCode
+    cp /tmp/FiraCode/*.ttf ~/.local/share/fonts/
+    
+    # 片付け
+    rm -rf /tmp/FiraCode /tmp/FiraCode.zip
+fi
+
+# Noto Sans JPフォントのインストール
+if [ ! -f ~/.local/share/fonts/NotoSansCJP-Regular.otf ]; then
+    echo "Noto Sans JPフォントをインストールしています..."
+    sudo apt install -y fonts-noto-cjk
+fi
+
+# フォントキャッシュの更新
+fc-cache -f -v
+
+echo "Linuxセットアップが完了しました。" 

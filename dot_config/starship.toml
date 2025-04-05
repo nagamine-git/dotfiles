@@ -1,0 +1,72 @@
+# Starship設定
+
+# プロンプトの一般設定
+add_newline = true  # コマンド入力前に改行を追加
+scan_timeout = 10   # 各モジュールのスキャンタイムアウト（ミリ秒）
+
+# フォーマット
+format = """
+$username$hostname$directory$git_branch$git_status
+$character"""
+
+# キャラクター設定
+[character]
+success_symbol = "[➜](bold green)"  # コマンド成功時
+error_symbol = "[✗](bold red)"      # コマンド失敗時
+
+# ディレクトリ表示設定
+[directory]
+truncation_length = 3  # 表示するディレクトリの深さ
+truncate_to_repo = true  # Gitリポジトリではリポジトリルートから表示
+
+# Git設定
+[git_branch]
+format = "[$symbol$branch]($style) "
+symbol = " "
+style = "bold purple"
+
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "bold yellow"
+
+# ユーザー名表示
+[username]
+style_user = "green bold"
+style_root = "red bold"
+format = "[$user]($style)"
+disabled = false
+show_always = false
+
+# ホスト名表示
+[hostname]
+ssh_only = true
+format = "@[$hostname](bold blue) "
+disabled = false
+
+# コマンド実行時間表示
+[cmd_duration]
+min_time = 500  # ミリ秒
+format = "took [$duration](bold yellow) "
+
+# 言語バージョン表示設定
+[nodejs]
+format = "via [🤖 $version](bold green) "
+
+[python]
+format = "via [🐍 $version](bold blue) "
+
+[ruby]
+format = "via [💎 $version](bold red) "
+
+[rust]
+format = "via [🦀 $version](bold red) "
+
+[golang]
+format = "via [🏎️ $version](bold cyan) "
+
+# メモリ使用量表示
+[memory_usage]
+disabled = true
+threshold = 75
+style = "bold dimmed red"
+format = "via $symbol [${ram_pct}]($style) " 

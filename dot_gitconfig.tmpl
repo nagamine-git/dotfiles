@@ -1,0 +1,29 @@
+[user]
+	name = {{ .name }}
+	email = {{ .email }}
+
+[core]
+	editor = {{ if lookPath "nvim" }}nvim{{ else }}vim{{ end }}
+	excludesfile = ~/.gitignore
+	autocrlf = input
+
+[init]
+	defaultBranch = main
+
+[color]
+	ui = auto
+
+[ghq]
+	root = ~/ghq
+
+[alias]
+	st = status
+	co = checkout
+	br = branch
+	ci = commit
+	unstage = reset HEAD --
+	last = log -1 HEAD
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative 
+	    
+[url "git@github.com:"]
+	insteadOf = https://github.com/

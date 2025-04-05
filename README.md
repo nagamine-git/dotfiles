@@ -1,6 +1,15 @@
+# シンプルクロスプラットフォーム対応dotfiles
+
+このリポジトリは、Mac/Linuxで共通して使える最小限の開発環境セットアップのためのdotfilesです。  
+[chezmoi](https://www.chezmoi.io/)を使用して、複数の環境間で一貫した設定を維持します。
+
+## クイックセットアップ
+
+### 1. chezmoiをインストール
+
 ```bash
-# bash --version > 5.0.0
-./setup.sh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 <details>
