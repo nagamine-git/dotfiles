@@ -1,0 +1,67 @@
+#!/bin/bash
+# MacOS用シンプルなセットアップスクリプト
+
+# Homebrewパッケージのインストール
+echo "MacOSの基本パッケージをインストールしています..."
+brew bundle --file=- <<EOF
+# 基本パッケージ
+brew "git"
+brew "tmux"
+brew "fzf"
+brew "gh"
+brew "ghq"
+brew "eza"
+brew "ripgrep"
+brew "neovim"
+brew "jq"
+brew "curl"
+brew "wget"
+brew "tree"
+
+# Starship
+brew "starship"
+
+# 基本フォント
+cask "font-noto-sans-jp"
+cask "font-fira-code-nerd-font"
+cask "font-firge-nerd-font"
+EOF
+
+# oh-my-zshとプラグインのインストール
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+  echo "Oh My Zshをインストールしています..."
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+fi
+
+# ZSHプラグインのインストール
+plugins_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
+if [ ! -d "$plugins_dir/zsh-autosuggestions" ]; then
+  echo "ZSHプラグインをインストールしています..."
+  git clone https://github.com/zsh-users/zsh-autosuggestions $plugins_dir/zsh-autosuggestions
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $plugins_dir/zsh-syntax-highlighting
+  git clone https://github.com/zsh-users/zsh-history-substring-search $plugins_dir/zsh-history-substring-search
+fi
+
+# RobotoNotoSansJPフォントのインストール
+if [ ! -d "$HOME/Library/Fonts/RobotoNotoSansJP" ]; then
+  echo "RobotoNotoSansJPフォントをインストールしています..."
+  
+  # 一時ディレクトリを作成
+  TEMP_DIR=$(mktemp -d)
+  
+  # リポジトリをクローン
+  git clone --depth 1 https://github.com/reindex-ot/RobotoNotoSansJP.git "$TEMP_DIR/robotonoto"
+  
+  # フォントディレクトリを作成
+  mkdir -p "$HOME/Library/Fonts/RobotoNotoSansJP"
+  
+  # フォントをコピー
+  cp "$TEMP_DIR/robotonoto/fonts/"*.otf "$HOME/Library/Fonts/RobotoNotoSansJP/"
+  
+  # 一時ディレクトリを削除
+  rm -rf "$TEMP_DIR"
+  
+  echo "RobotoNotoSansJPフォントのインストールが完了しました。"
+fi
+
+echo "MacOSセットアップが完了しました。" 

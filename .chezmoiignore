@@ -1,0 +1,18 @@
+README.md
+LICENSE
+backup/
+.git/
+
+# ユーティリティファイル
+Brewfile.lock.json
+*.AppImage
+
+{{- if ne .osid "darwin" }}
+# macOS固有ファイルをLinuxでは無視
+dot_config/karabiner/
+{{- end }}
+
+{{- if ne .osid "debian" }}
+# Linux固有ファイルをmacOSでは無視
+dot_config/fusuma/
+{{- end }} 

@@ -1,0 +1,85 @@
+window:
+  padding:
+    x: 6
+    y: 6
+  dynamic_padding: true
+  decorations: full
+  opacity: 0.98
+  title: Alacritty
+  dynamic_title: true
+
+scrolling:
+  history: 10000
+  multiplier: 3
+
+font:
+  normal:
+    family: Firge35Nerd Console
+    style: Regular
+  bold:
+    family: Firge35Nerd Console
+    style: Bold
+  italic:
+    family: Firge35Nerd Console
+    style: Italic
+  bold_italic:
+    family: Firge35Nerd Console
+    style: Bold Italic
+  size: 14.0
+  offset:
+    x: 0
+    y: 0
+  glyph_offset:
+    x: 0
+    y: 0
+
+draw_bold_text_with_bright_colors: true
+
+# Arc-Darkテーマに合わせた配色
+colors:
+  primary:
+    background: '#2f343f'
+    foreground: '#d3dae3'
+  cursor:
+    text: '#2f343f'
+    cursor: '#d3dae3'
+  normal:
+    black:   '#4b5164'
+    red:     '#e14245'
+    green:   '#5ca75b'
+    yellow:  '#f6ab32'
+    blue:    '#4877b1'
+    magenta: '#a660c3'
+    cyan:    '#5294e2'
+    white:   '#a9a9aa'
+  bright:
+    black:   '#686d79'
+    red:     '#e16f7e'
+    green:   '#84cb88'
+    yellow:  '#f8cd65'
+    blue:    '#80aaeb'
+    magenta: '#bd84dc'
+    cyan:    '#7dc1ff'
+    white:   '#efefef'
+
+selection:
+  semantic_escape_chars: ",│`|:\"' ()[]{}<>"
+  save_to_clipboard: true
+
+cursor:
+  style:
+    shape: Block
+    blinking: On
+  vi_mode_style: Block
+  blink_interval: 750
+
+live_config_reload: true
+
+key_bindings:
+  - { key: V,        mods: Control|Shift, action: Paste            }
+  - { key: C,        mods: Control|Shift, action: Copy             }
+  - { key: Insert,   mods: Shift,         action: PasteSelection   }
+  - { key: Key0,     mods: Control,       action: ResetFontSize    }
+  - { key: Plus,     mods: Control,       action: IncreaseFontSize }
+  - { key: Minus,    mods: Control,       action: DecreaseFontSize }
+  - { key: F11,      mods: None,          action: ToggleFullscreen } 

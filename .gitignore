@@ -1,10 +1,27 @@
-config/*
-!config/alacritty
-!config/btop
-!config/nvim
-config/nvim/plugged/*
-!config/karabiner
-config/karabiner/automatic_backups/*
-tags
+# システム関連
+.DS_Store
+*~
+*.swp
+*.swo
+
+# chezmoi関連
+.chezmoistate.boltdb
+.chezmoicache
+.chezmoiversion
+.chezmoiroot
+
+# エディタ/IDE関連
 .aider*
 .env
+tags
+
+# Neovim関連
+dot_config/nvim/plugged/*
+
+# アプリケーション
+*.AppImage
+
+# その他のバイナリ・一時ファイル
+*.so
+*.dylib
+*.dll

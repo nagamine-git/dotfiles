@@ -1,0 +1,28 @@
+{{- /* 環境検出ロジック */ -}}
+{{- $osID := "unknown" -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $osID = "darwin" -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{-   if lookPath "apt" -}}
+{{-     $osID = "debian" -}}
+{{-   else if lookPath "dnf" -}}
+{{-     $osID = "fedora" -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* ユーザー情報 */ -}}
+{{- $name := "nagamine-git" -}}
+{{- $email := "tsuyoshi.nagamine@efg-technologies.com" -}}
+
+# 設定データ
+[data]
+    osid = "{{ $osID }}"
+    name = "{{ $name }}"
+    email = "{{ $email }}"
+    # フォント設定
+    mono_font = "FirgeNerd Console"
+    # パッケージマネージャー
+    use_homebrew = {{ or (eq $osID "darwin") (eq $osID "debian") }}
+
+[edit]
+    command = "nvim" 
