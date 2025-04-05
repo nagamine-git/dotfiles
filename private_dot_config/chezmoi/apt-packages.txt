@@ -1,0 +1,6 @@
+curl
+git
+vim
+zsh
+build-essential
+
