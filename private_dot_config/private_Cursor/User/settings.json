@@ -1,0 +1,27 @@
+{
+    "editor.fontFamily": "'Firge35Nerd Console', 'Droid Sans Mono', 'monospace', monospace",
+    "terminal.integrated.enableFileLinks": "off",
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "terminal.integrated.profiles.linux": {
+
+        "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+        },
+        "zsh": {
+            "path": "zsh"
+        },
+        "fish": {
+            "path": "fish"
+        },
+        "tmux": {
+            "path": "tmux",
+            "icon": "terminal-tmux"
+        },
+        "pwsh": {
+            "path": "pwsh",
+            "icon": "terminal-powershell"
+        }
+    },
+    "git.autofetch": true
+}

@@ -73,7 +73,7 @@ install_if_missing gh "GitHub CLI" "curl -fsSL https://cli.github.com/packages/g
 gh auth status || gh auth login
 
 # cargo
-cargo install sheldon
+cargo install sheldon eza
 
 # ghq
 install_if_missing ghq ghq "go install github.com/x-motemen/ghq@latest"

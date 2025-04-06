@@ -53,3 +53,10 @@ find_cursor() {
 }
 alias cursor='env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox'
 alias code='cursor'
+
+alias ls='eza --icons --color=always'
+alias ll='ls -l'
+alias la='ls -la'
+alias l='ls -l'
+alias tree='ls --tree --git-ignore'
+alias lmt='eza --tree --git-ignore --icons=never --classify'
