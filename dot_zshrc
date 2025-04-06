@@ -1,13 +1,8 @@
 # Created by newuser for 5.9
 export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
-if [[ -n "$CURSOR_APPIMAGE" ]]; then
-  export PATH="$HOME/.local/share/mise/shims:$PATH"
-  export PATH="$HOME/.local/share/sheldon/shims:$PATH"
-else
-  eval "$(~/.local/bin/mise activate zsh)"
-  eval "$(sheldon source)"
-fi
+
+eval "$(mise activate --shims)"
 eval "$(starship init zsh)"
 export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
 export EDITOR=nvim
