@@ -1,0 +1,16 @@
+# Created by newuser for 5.9
+export LANG=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
+eval "$(starship init zsh)"
+eval "$(~/.local/bin/mise activate zsh)"
+eval "$(sheldon source)"
+export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+export EDITOR=nvim
+# history
+HISTFILE=~/.zsh_history
+HISTSIZE=1000
+SAVEHIST=2000
+setopt hist_expire_dups_first
+setopt hist_verify
+setopt share_history
+alias vim='nvim'

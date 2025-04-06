@@ -3,4 +3,19 @@ git
 vim
 zsh
 build-essential
+tmux
+fzf
+ibus-mozc
+xkbset
+arc-theme
+papirus-icon-theme
+gpg
+libssl-dev
+zlib1g-dev
+libyaml-dev
+libreadline-dev
+libncurses5-dev
+libffi-dev
+libgdbm-dev
+libdb-dev
 
