@@ -31,7 +31,6 @@ SAVEHIST=2000
 setopt hist_expire_dups_first
 setopt hist_verify
 setopt share_history
-
 # エイリアス
 alias vim='nvim'
 
@@ -41,3 +40,16 @@ cgh() {
     dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
+
+find_cursor() {
+    local cursor_base_dir="$HOME/Applications/extracted"
+    local latest_cursor_dir=$(find "$cursor_base_dir" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
+    
+    if [ -n "$latest_cursor_dir" ] && [ -d "$latest_cursor_dir" ]; then
+        echo "$latest_cursor_dir"
+    else
+        echo "Cursorが見つかりません"
+    fi
+}
+alias cursor='env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox'
+alias code='cursor'
