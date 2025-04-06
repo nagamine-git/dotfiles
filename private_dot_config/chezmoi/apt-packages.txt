@@ -18,4 +18,5 @@ libncurses5-dev
 libffi-dev
 libgdbm-dev
 libdb-dev
-
+snapd
+gnupg2
