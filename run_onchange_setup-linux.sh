@@ -38,6 +38,18 @@ echo "Running apt clean..."
 sudo apt clean
 sudo snap install snapd
 
+# Create symbolic links for Snap applications in Xfce menu
+echo "Setting up Snap applications in Xfce menu..."
+if [ ! -d "/var/lib/snapd/desktop/applications" ]; then
+    echo "Snap applications directory not found, skipping menu setup"
+else
+    # Remove any existing broken links first
+    sudo find /usr/share/applications -xtype l -delete
+    # Create symbolic links for all Snap desktop entries
+    sudo ln -sf /var/lib/snapd/desktop/applications/*.desktop /usr/share/applications/
+    echo "Snap applications added to Xfce menu"
+fi
+
 # zsh 
 if [ "$SHELL" != "/bin/zsh" ]; then
   echo "Changing shell to zsh..."
