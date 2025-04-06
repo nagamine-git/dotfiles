@@ -20,3 +20,15 @@ shell = "zsh"
 # github = "chriskempson/base16-shell"
 [plugins.zsh-syntax-highlighting]
 github = "zsh-users/zsh-syntax-highlighting"
+
+# Zshの補完システムを有効化
+[plugins.zsh-completions]
+github = "zsh-users/zsh-completions"
+
+[plugins.zsh-autosuggestions]
+github = "zsh-users/zsh-autosuggestions"
+
+# Oh-My-Zsh Git plugin
+[plugins.omz-git]
+github = "ohmyzsh/ohmyzsh"
+use = ["plugins/git/git.plugin.zsh"]

@@ -64,10 +64,13 @@ if ! command -v mise &> /dev/null; then
   curl https://mise.run | sh
   
   echo "Running mise i..."
-  mise i
 else
   echo "mise already installed, skipping"
 fi
+mise i
+
+# cargo(using mise)
+cargo install sheldon
 
 # Wallpaper
 WALLPAPER_FILE="$HOME/Pictures/Wallpapers/unsplash-phIFdC6lA4E.jpg"
@@ -98,7 +101,7 @@ fi
 sudo mkdir -p /usr/share/fonts
 
 # Firgeフォントのインストール
-if [ ! -f /usr/share/fonts/Firge35Nerd-Console-Regular.ttf ]; then
+if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
     echo "Firgeフォントをインストールしています..."
 
     # Firge35Nerd Consoleをダウンロード

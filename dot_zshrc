@@ -1,16 +1,34 @@
 # Created by newuser for 5.9
+# 基本的な環境変数
 export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
-
-eval "$(mise activate --shims)"
-eval "$(starship init zsh)"
-export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
 export EDITOR=nvim
-# history
+
+# PATHの設定
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+
+# 補完システムを有効化（sheldonより先に実行）
+autoload -Uz compinit
+compinit -i
+
+# 補完の設定
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # 大文字小文字を区別しない
+zstyle ':completion:*' menu select # 補完メニューを有効化
+zstyle ':completion:*' verbose yes # 補完の詳細を表示
+
+# プラグイン管理
+eval "$(starship init zsh)"
+eval "$(mise activate --shims)"
+eval "$(sheldon source)"
+
+# ヒストリー設定
 HISTFILE=~/.zsh_history
 HISTSIZE=1000
 SAVEHIST=2000
 setopt hist_expire_dups_first
 setopt hist_verify
 setopt share_history
+
+# エイリアス
 alias vim='nvim'
