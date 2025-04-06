@@ -69,8 +69,40 @@ else
 fi
 mise i
 
+# GitHub CLI (gh)のインストール
+if ! command -v gh &> /dev/null; then
+    echo "Installing GitHub CLI (gh)..."
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    sudo apt update
+    sudo apt install gh -y
+else
+    echo "GitHub CLI (gh) already installed, skipping"
+fi
+
+# gh auth login
+if ! gh auth status; then
+  gh auth login
+fi
+
 # cargo(using mise)
 cargo install sheldon
+
+# ghqのインストール
+if ! command -v ghq &> /dev/null; then
+    echo "Installing ghq..."
+    go install github.com/x-motemen/ghq@latest
+else
+    echo "ghq already installed, skipping"
+fi
+
+# gh-q拡張機能のインストール
+if ! gh extension list | grep -q "kawarimidoll/gh-q"; then
+    echo "Installing gh-q extension..."
+    gh extension install kawarimidoll/gh-q
+else
+    echo "gh-q extension already installed, skipping"
+fi
 
 # Wallpaper
 WALLPAPER_FILE="$HOME/Pictures/Wallpapers/unsplash-phIFdC6lA4E.jpg"

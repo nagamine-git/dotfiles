@@ -7,6 +7,8 @@ export EDITOR=nvim
 # PATHの設定
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
 
 # 補完システムを有効化（sheldonより先に実行）
 autoload -Uz compinit
@@ -32,3 +34,10 @@ setopt share_history
 
 # エイリアス
 alias vim='nvim'
+
+# ghqでクローンしたリポジトリへ簡単に移動するための関数
+cgh() { 
+    local dir
+    dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
+    [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
+}
