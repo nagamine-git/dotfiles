@@ -51,7 +51,15 @@ find_cursor() {
         echo "Cursorが見つかりません"
     fi
 }
-alias cursor='nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox > /dev/null 2>&1 &'
+
+# cursorをディレクトリを対象に開くための関数
+cursor_path() {
+    local target_path="${1:-.}"
+    target_path=$(realpath "$target_path" 2>/dev/null || echo "$target_path")
+    nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox "$target_path" > /dev/null 2>&1 &
+}
+
+alias cursor='cursor_path'
 alias code='cursor'
 
 alias ls='eza --icons --color=always'

@@ -200,6 +200,7 @@ if command -v fusuma &> /dev/null; then
     
     # systemdサービスのセットアップ
     mkdir -p ~/.config/systemd/user/
+    cp "$SOURCE_DIR/private_dot_config/systemd/user/fusuma.service" ~/.config/systemd/user/
     systemctl --user daemon-reload
     systemctl --user enable --now fusuma.service
     echo "Fusuma configured and service enabled"

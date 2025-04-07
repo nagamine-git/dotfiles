@@ -1,11 +1,16 @@
 [Unit]
-Description=Fusuma multitouch gesture recognizer
+Description=Fusuma Multitouch Gesture Daemon
+Before=keyd.service
 Documentation=https://github.com/iberianpig/fusuma
 
 [Service]
+Type=simple
 ExecStart=/usr/local/bin/fusuma
-Restart=always
+Restart=on-failure
 RestartSec=3
+User=%USER%
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/%USER%/.Xauthority
 
 [Install]
 WantedBy=default.target 
