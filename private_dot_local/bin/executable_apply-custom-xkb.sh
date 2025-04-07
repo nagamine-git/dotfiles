@@ -9,10 +9,10 @@ setxkbmap -option
 echo "clear existing settings" >> $LOG_FILE
 
 setxkbmap -layout us -variant colemak -option
-echo "apply colemak layou 1" >> $LOG_FILE
+echo "apply colemak layout 1" >> $LOG_FILE
 
 echo "trying to apply custom XKB layout..." >> $LOG_FILE
-setxkbmap -I$HOME/.local/share/xkb/symbols/custom -layout custom -variant vim
+setxkbmap -I$HOME/.local/share/xkb/symbols/custom -layout custom -variant vim -option
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then
@@ -21,7 +21,7 @@ else
     echo "custom XKB layout failed: exit code $RESULT" >> $LOG_FILE
     # 失敗した場合
     echo "apply alternative settings" >> $LOG_FILE
-    setxkbmap -option ctrl:nocaps
+    setxkbmap -layout us -variant colemak -option ctrl:nocaps
     echo "set CapsLock to Ctrl" >> $LOG_FILE
 fi
 
