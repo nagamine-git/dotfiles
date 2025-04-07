@@ -20,3 +20,6 @@ libgdbm-dev
 libdb-dev
 snapd
 gnupg2
+ruby-full
+ruby-dev
+libinput-tools

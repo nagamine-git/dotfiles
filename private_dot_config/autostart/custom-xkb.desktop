@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Custom XKB Layout
+Comment=Apply custom XKB layout and settings
+Exec=bash -c "sleep 5 && $HOME/.local/bin/apply-custom-xkb.sh"
+Terminal=false
+X-GNOME-Autostart-enabled=true 

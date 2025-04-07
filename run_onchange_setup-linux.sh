@@ -75,6 +75,9 @@ gh auth status || gh auth login
 # cargo
 cargo install sheldon eza
 
+# gem
+sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense
+
 # ghq
 install_if_missing ghq ghq "go install github.com/x-motemen/ghq@latest"
 
@@ -185,3 +188,29 @@ elif [ -x "$(which wavemon)" ] && [ ! -u "$(which wavemon)" ]; then
 else
     echo "wavemon already installed with proper permissions, skipping"
 fi
+
+# fusumaのセットアップ
+if command -v fusuma &> /dev/null; then
+    echo "Configuring fusuma..."
+    # ユーザーをinputグループに追加
+    sudo usermod -a -G input $USER
+
+    echo 'KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-udev-fusuma-remap.rules
+    sudo udevadm control --reload-rules && sudo udevadm trigger
+    
+    # systemdサービスのセットアップ
+    mkdir -p ~/.config/systemd/user/
+    systemctl --user daemon-reload
+    systemctl --user enable --now fusuma.service
+    echo "Fusuma configured and service enabled"
+else
+    echo "Fusuma not installed, skipping configuration"
+fi
+
+# XKBカスタム設定のセットアップ
+sudo ln -sf $HOME/.local/share/xkb/symbols/custom /usr/share/X11/xkb/symbols/custom
+echo "Setting up custom XKB layout..."
+chmod +x ~/.local/bin/apply-custom-xkb.sh
+mkdir -p ~/.config/autostart
+~/.local/bin/apply-custom-xkb.sh
+echo "Custom XKB layout setup complete"

@@ -51,7 +51,7 @@ find_cursor() {
         echo "Cursorが見つかりません"
     fi
 }
-alias cursor='env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox'
+alias cursor='nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox > /dev/null 2>&1 &'
 alias code='cursor'
 
 alias ls='eza --icons --color=always'

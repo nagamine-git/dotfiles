@@ -1,0 +1,12 @@
+plugin:
+  inputs:
+    pointing_stick_input:
+      device_name_pattern: ""
+
+---
+context:
+  thumbsense: true
+
+remap:
+  J: BTN_LEFT
+  K: BTN_RIGHT 
