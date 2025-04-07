@@ -8,9 +8,8 @@ Type=simple
 ExecStart=/usr/local/bin/fusuma
 Restart=on-failure
 RestartSec=3
-User=%USER%
 Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/%USER%/.Xauthority
+Environment=XAUTHORITY=/home/tsuyoshi/.Xauthority
 
 [Install]
 WantedBy=default.target 

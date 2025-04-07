@@ -8,7 +8,7 @@ echo "start XKB setup: $(date)" > $LOG_FILE
 setxkbmap -option
 echo "clear existing settings" >> $LOG_FILE
 
-setxkbmap -layout us -variant colemak
+setxkbmap -layout us -variant colemak -option
 echo "apply colemak layou 1" >> $LOG_FILE
 
 echo "trying to apply custom XKB layout..." >> $LOG_FILE
