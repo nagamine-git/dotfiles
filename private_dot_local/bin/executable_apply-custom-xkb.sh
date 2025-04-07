@@ -12,7 +12,7 @@ setxkbmap -layout us -variant colemak
 echo "apply colemak layou 1" >> $LOG_FILE
 
 echo "trying to apply custom XKB layout..." >> $LOG_FILE
-setxkbmap -I/usr/share/X11/xkb -layout custom -variant vim
+setxkbmap -I$HOME/.local/share/xkb/symbols/custom -layout custom -variant vim
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then

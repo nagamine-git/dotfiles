@@ -208,7 +208,6 @@ else
 fi
 
 # XKBカスタム設定のセットアップ
-sudo ln -sf $HOME/.local/share/xkb/symbols/custom /usr/share/X11/xkb/symbols/custom
 echo "Setting up custom XKB layout..."
 chmod +x ~/.local/bin/apply-custom-xkb.sh
 mkdir -p ~/.config/autostart
