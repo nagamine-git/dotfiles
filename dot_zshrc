@@ -63,7 +63,8 @@ find_cursor() {
 cursor_path() {
     local target_path="${1:-.}"
     target_path=$(realpath "$target_path" 2>/dev/null || echo "$target_path")
-    nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox "$target_path" > /dev/null 2>&1 &
+    nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox "$target_path" < /dev/null > /dev/null 2>&1 &
+    disown
 }
 
 alias cursor='cursor_path'
