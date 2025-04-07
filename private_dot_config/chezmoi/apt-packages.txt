@@ -5,7 +5,10 @@ zsh
 build-essential
 tmux
 fzf
+ibus
 ibus-mozc
+mozc-utils-gui
+im-config
 xkbset
 arc-theme
 papirus-icon-theme

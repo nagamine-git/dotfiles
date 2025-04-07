@@ -90,7 +90,7 @@ else
 fi
 
 # Wallpaper
-WALLPAPER_FILE="$HOME/Pictures/Wallpapers/unsplash-phIFdC6lA4E.jpg"
+WALLPAPER_FILE="$HOME/Pictures/Wallpapers/benjamin-voros-phIFdC6lA4E-unsplash.jpg"
 if [ ! -f "$WALLPAPER_FILE" ]; then
   echo "Downloading wallpaper..."
   mkdir -p ~/Pictures/Wallpapers && wget --content-disposition -P ~/Pictures/Wallpapers "https://unsplash.com/photos/phIFdC6lA4E/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNzQzODUwMjgyfA&force=true"
