@@ -6,4 +6,6 @@ Exec=/home/tsuyoshi/.local/bin/apply-custom-xkb.sh
 Terminal=false
 Hidden=false
 X-GNOME-Autostart-enabled=true
-X-XFCE-Autostart-enabled=true 
+X-XFCE-Autostart-enabled=true
+X-GNOME-Autostart-Phase=Applications
+X-GNOME-Autostart-Delay=5 
