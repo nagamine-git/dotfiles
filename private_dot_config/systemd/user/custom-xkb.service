@@ -1,0 +1,13 @@
+[Unit]
+Description=Custom XKB Layout
+After=default.target
+PartOf=default.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 10
+ExecStart=/home/tsuyoshi/.local/bin/apply-custom-xkb.sh
+Restart=no
+
+[Install]
+WantedBy=default.target
