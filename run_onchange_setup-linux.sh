@@ -214,3 +214,34 @@ chmod +x ~/.local/bin/apply-custom-xkb.sh
 mkdir -p ~/.config/autostart
 ~/.local/bin/apply-custom-xkb.sh
 echo "Custom XKB layout setup complete"
+
+# Dockerのインストール
+echo "Installing Docker..."
+if ! command -v docker &> /dev/null; then
+    echo "Setting up Docker's apt repository..."
+    # Docker公式GPGキーを追加
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    # リポジトリをAptソースに追加
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+
+    # Dockerパッケージのインストール
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # ユーザーをdockerグループに追加（sudoなしでDockerを使用可能に）
+    sudo groupadd -f docker
+    sudo usermod -aG docker $USER
+    
+    echo "Docker installation complete. You may need to log out and log back in to use Docker without sudo."
+    echo "To verify Docker installation, run: docker run hello-world"
+else
+    echo "Docker is already installed, skipping"
+fi
