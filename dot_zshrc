@@ -1,10 +1,5 @@
 # Created by newuser for 5.9
 
-# ibus
-export GTK_IM_MODLUE=ibus
-export XMODIFIRES=@im=ibus
-export QT_IM_MODULE=ibus
-
 # 基本的な環境変数
 export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8

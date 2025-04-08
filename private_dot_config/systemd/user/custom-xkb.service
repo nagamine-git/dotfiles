@@ -1,7 +1,9 @@
 [Unit]
 Description=Custom XKB Layout
-After=default.target
+After=default.target fcitx5.service
 PartOf=default.target
+# fcitx5.serviceの後に起動するように明示的に指定
+Requires=fcitx5.service
 
 [Service]
 Type=oneshot

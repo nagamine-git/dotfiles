@@ -47,6 +47,76 @@ echo "apt package installation process finished."
 echo "Running apt autoremove & clean..."
 sudo apt autoremove -y && sudo apt clean
 
+# im-configでfcitxを設定
+im-config -n fcitx
+
+# fcitx5-hazkeyのインストール
+echo "Installing fcitx5-hazkey..."
+if ! dpkg -l | grep -q "^ii  fcitx5-hazkey "; then
+  # アーキテクチャ検出
+  ARCH=$(dpkg --print-architecture)
+  
+  # 最新リリースURLとバージョン取得
+  LATEST_RELEASE_INFO=$(curl -s https://api.github.com/repos/7ka-Hiira/fcitx5-hazkey/releases/latest)
+  VERSION=$(echo $LATEST_RELEASE_INFO | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
+  
+  # ダウンロードURLからdebファイルを取得
+  DEB_URL=$(echo $LATEST_RELEASE_INFO | grep -o '"browser_download_url": "[^"]*\.deb"' | grep "$ARCH" | cut -d'"' -f4)
+  
+  if [ -n "$DEB_URL" ]; then
+    echo "Downloading fcitx5-hazkey from $DEB_URL..."
+    wget -O /tmp/fcitx5-hazkey.deb "$DEB_URL"
+    sudo apt install -y /tmp/fcitx5-hazkey.deb
+    rm /tmp/fcitx5-hazkey.deb
+    echo "fcitx5-hazkey installed successfully"
+  else
+    echo "Error: Could not find fcitx5-hazkey package for $ARCH architecture"
+  fi
+else
+  echo "fcitx5-hazkey already installed, skipping"
+fi
+
+# Zenzaiに必要なVulkanドライバのインストール
+echo "Installing Vulkan drivers for Zenzai..."
+if ! dpkg -l | grep -q "^ii  vulkan-tools " || ! dpkg -l | grep -q "^ii  libvulkan1 " || ! dpkg -l | grep -q "^ii  mesa-vulkan-drivers "; then
+  # apt-packages.txtに記載されているので、ここでのインストールは不要
+  echo "Vulkan drivers installed successfully"
+else
+  echo "Vulkan drivers already installed, skipping"
+fi
+
+# Zenzaiの設定
+echo "Configuring Zenzai for fcitx5-hazkey..."
+HAZKEY_CONFIG_DIR="$HOME/.config/fcitx5/conf/hazkey.conf"
+mkdir -p "$(dirname "$HAZKEY_CONFIG_DIR")"
+
+# 既存の設定ファイルがなければ作成
+if [ ! -f "$HAZKEY_CONFIG_DIR" ]; then
+  cat > "$HAZKEY_CONFIG_DIR" << EOL
+[Engine]
+# 「Zenzaiを有効化」の設定をオンにする
+EnableZenzai=True
+# 推論制限値（大きいほど精度が上がるが変換速度が下がる）
+InferenceLimit=2048
+# 文脈変換を有効にする場合はコメントを外す
+# EnableContextualConversion=True
+# プロフィール情報を設定する場合はコメントを外して編集
+# Profile=あなたの名前や関連する単語を入力してください
+EOL
+  echo "Created Zenzai configuration for fcitx5-hazkey"
+else
+  # 既存の設定ファイルがある場合は、Zenzaiの有効化だけ確認する
+  if ! grep -q "EnableZenzai=" "$HAZKEY_CONFIG_DIR"; then
+    echo "EnableZenzai=True" >> "$HAZKEY_CONFIG_DIR"
+    echo "Enabled Zenzai in existing fcitx5-hazkey configuration"
+  elif grep -q "EnableZenzai=False" "$HAZKEY_CONFIG_DIR"; then
+    sed -i 's/EnableZenzai=False/EnableZenzai=True/g' "$HAZKEY_CONFIG_DIR"
+    echo "Updated Zenzai setting to enabled in fcitx5-hazkey configuration"
+  else
+    echo "Zenzai already configured, skipping"
+  fi
+fi
+
 # snapdのインストール
 install_if_missing snapd snapd "sudo snap install snapd"
 
@@ -245,3 +315,4 @@ if ! command -v docker &> /dev/null; then
 else
     echo "Docker is already installed, skipping"
 fi
+

@@ -5,8 +5,8 @@ zsh
 build-essential
 tmux
 fzf
-ibus
-ibus-mozc
+fcitx-mozc
+fcitx-mozc-data
 mozc-utils-gui
 im-config
 xkbset
@@ -26,3 +26,6 @@ gnupg2
 ruby-full
 ruby-dev
 libinput-tools
+vulkan-tools
+libvulkan1
+mesa-vulkan-drivers
