@@ -29,3 +29,5 @@ libinput-tools
 vulkan-tools
 libvulkan1
 mesa-vulkan-drivers
+sqlite3
+libsqlite3-dev
