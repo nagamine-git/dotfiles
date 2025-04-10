@@ -8,6 +8,8 @@ export EDITOR=nvim
 # PATHの設定
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+PYTHON_VERSION=$(command -v python >/dev/null 2>&1 && python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")' || echo '3.13.3')
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/$PYTHON_VERSION/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
