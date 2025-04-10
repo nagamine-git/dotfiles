@@ -2,3 +2,6 @@
     name = nagamine-git
     email = tsuyoshi.nagamine@efg-technologies.com
 
+[url "git@github.com:"]
+    insteadOf = https://github.com/
+
