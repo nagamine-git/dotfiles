@@ -146,7 +146,7 @@ gh auth status || gh auth login
 cargo install sheldon eza
 
 # gem
-sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense
+sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense fusuma-plugin-wmctrl fusuma-plugin-keypress fusuma-plugin-sendkey          sp
 
 # ghq
 install_if_missing ghq ghq "go install github.com/x-motemen/ghq@latest"

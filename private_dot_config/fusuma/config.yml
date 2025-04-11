@@ -1,12 +1,12 @@
 plugin:
-  inputs:
-    pointing_stick_input:
-      device_name_pattern: ""
-
+# セクション区切り - ThumbSenseコンテキスト定義
 ---
 context:
   thumbsense: true
 
+# キーをマウスボタンにリマップする設定
+# ThumbsenseDetectorによって検出・有効化される
 remap:
+  # 最小限のキーマッピングで安定性を確保
   J: BTN_LEFT
-  K: BTN_RIGHT 
+  K: BTN_RIGHT

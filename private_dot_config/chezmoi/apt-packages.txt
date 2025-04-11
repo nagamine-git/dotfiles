@@ -31,3 +31,6 @@ libvulkan1
 mesa-vulkan-drivers
 sqlite3
 libsqlite3-dev
+wmctrl
+libevdev-dev
+blueman
