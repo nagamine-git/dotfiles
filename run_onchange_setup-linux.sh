@@ -231,6 +231,10 @@ fi
 # Slack
 install_if_missing slack Slack "sudo snap refresh snapd || true && sudo snap install slack --classic"
 
+# Snapの最適化
+snap list
+sudo snap remove gnome-3-38-2004 gtk-common-themes
+
 # 1Password
 install_if_missing 1password 1Password "wget -O /tmp/1password-latest.deb \"https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb\" && sudo dpkg -i /tmp/1password-latest.deb && sudo apt-get install -f -y && rm /tmp/1password-latest.deb"
 
@@ -309,6 +313,10 @@ if ! command -v docker &> /dev/null; then
     # ユーザーをdockerグループに追加（sudoなしでDockerを使用可能に）
     sudo groupadd -f docker
     sudo usermod -aG docker $USER
+
+    # Docker自動起動を無効化
+    sudo systemctl disable docker.service
+    sudo systemctl enable docker.socket
     
     echo "Docker installation complete. You may need to log out and log back in to use Docker without sudo."
     echo "To verify Docker installation, run: docker run hello-world"
