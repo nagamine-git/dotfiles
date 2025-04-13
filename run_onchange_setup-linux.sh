@@ -11,10 +11,18 @@ install_if_missing() {
   local name=${2:-$1}
   local install_cmd=$3
 
+  echo "=== Debug: install_if_missing check ==="
+  echo "Checking command: $cmd"
+  echo "Package name: $name"
+  echo "Install command: $install_cmd"
+  
   if ! command -v "$cmd" &> /dev/null; then
+    echo "Command '$cmd' not found in PATH"
+    echo "Current PATH: $PATH"
     echo "Installing $name..."
     eval "$install_cmd"
   else
+    echo "Command '$cmd' found at: $(which "$cmd")"
     echo "$name already installed, skipping"
   fi
 }
@@ -30,13 +38,22 @@ echo "Updating package lists..."
 sudo apt update
 
 # aptパッケージのインストール
-echo "Installing packages listed in $PACKAGE_LIST_FILE..."
+echo "=== Debug: Installing packages from $PACKAGE_LIST_FILE ==="
+echo "File contents:"
+cat "$PACKAGE_LIST_FILE"
+echo "---"
+
 while read -r package; do
   [[ "$package" =~ ^#.*$ || -z "$package" ]] && continue
   
+  echo "=== Debug: Processing package: $package ==="
+  echo "Running: dpkg -l | grep \"^ii  $package \""
+  dpkg -l | grep "^ii  $package " || echo "Package not found in dpkg -l"
+  
   if ! dpkg -l | grep -q "^ii  $package "; then
+    echo "Installing $package..."
     sudo apt install -y "$package"
-    echo "Installed $package"
+    echo "Installation completed with status: $?"
   else
     echo "Package $package already installed, skipping"
   fi
@@ -47,20 +64,21 @@ echo "apt package installation process finished."
 echo "Running apt autoremove & clean..."
 sudo apt autoremove -y && sudo apt clean
 
-# im-configでfcitxを設定
-im-config -n fcitx
+# im-configでfcitx5を設定
+if [ -x "$(command -v fcitx5)" ]; then
+  im-config -n fcitx5
+fi
 
-# fcitx5-hazkeyのインストール
-echo "Installing fcitx5-hazkey..."
-if ! dpkg -l | grep -q "^ii  fcitx5-hazkey "; then
-  # アーキテクチャ検出
+# fcitx5-hazkeyの確認とインストール
+if dpkg -s fcitx5-hazkey >/dev/null 2>&1; then
+  HAZKEY_VERSION=$(dpkg-query -W -f='${Version}' fcitx5-hazkey)
+  echo "fcitx5-hazkey is already installed (version: $HAZKEY_VERSION)"
+else
+  echo "Installing fcitx5-hazkey..."
   ARCH=$(dpkg --print-architecture)
   
-  # 最新リリースURLとバージョン取得
   LATEST_RELEASE_INFO=$(curl -s https://api.github.com/repos/7ka-Hiira/fcitx5-hazkey/releases/latest)
   VERSION=$(echo $LATEST_RELEASE_INFO | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-  
-  # ダウンロードURLからdebファイルを取得
   DEB_URL=$(echo $LATEST_RELEASE_INFO | grep -o '"browser_download_url": "[^"]*\.deb"' | grep "$ARCH" | cut -d'"' -f4)
   
   if [ -n "$DEB_URL" ]; then
@@ -72,8 +90,6 @@ if ! dpkg -l | grep -q "^ii  fcitx5-hazkey "; then
   else
     echo "Error: Could not find fcitx5-hazkey package for $ARCH architecture"
   fi
-else
-  echo "fcitx5-hazkey already installed, skipping"
 fi
 
 # Zenzaiに必要なVulkanドライバのインストール
@@ -83,38 +99,6 @@ if ! dpkg -l | grep -q "^ii  vulkan-tools " || ! dpkg -l | grep -q "^ii  libvulk
   echo "Vulkan drivers installed successfully"
 else
   echo "Vulkan drivers already installed, skipping"
-fi
-
-# Zenzaiの設定
-echo "Configuring Zenzai for fcitx5-hazkey..."
-HAZKEY_CONFIG_DIR="$HOME/.config/fcitx5/conf/hazkey.conf"
-mkdir -p "$(dirname "$HAZKEY_CONFIG_DIR")"
-
-# 既存の設定ファイルがなければ作成
-if [ ! -f "$HAZKEY_CONFIG_DIR" ]; then
-  cat > "$HAZKEY_CONFIG_DIR" << EOL
-[Engine]
-# 「Zenzaiを有効化」の設定をオンにする
-EnableZenzai=True
-# 推論制限値（大きいほど精度が上がるが変換速度が下がる）
-InferenceLimit=2048
-# 文脈変換を有効にする場合はコメントを外す
-# EnableContextualConversion=True
-# プロフィール情報を設定する場合はコメントを外して編集
-# Profile=あなたの名前や関連する単語を入力してください
-EOL
-  echo "Created Zenzai configuration for fcitx5-hazkey"
-else
-  # 既存の設定ファイルがある場合は、Zenzaiの有効化だけ確認する
-  if ! grep -q "EnableZenzai=" "$HAZKEY_CONFIG_DIR"; then
-    echo "EnableZenzai=True" >> "$HAZKEY_CONFIG_DIR"
-    echo "Enabled Zenzai in existing fcitx5-hazkey configuration"
-  elif grep -q "EnableZenzai=False" "$HAZKEY_CONFIG_DIR"; then
-    sed -i 's/EnableZenzai=False/EnableZenzai=True/g' "$HAZKEY_CONFIG_DIR"
-    echo "Updated Zenzai setting to enabled in fcitx5-hazkey configuration"
-  else
-    echo "Zenzai already configured, skipping"
-  fi
 fi
 
 # snapdのインストール
@@ -230,10 +214,6 @@ fi
 
 # Slack
 install_if_missing slack Slack "sudo snap refresh snapd || true && sudo snap install slack --classic"
-
-# Snapの最適化
-snap list
-sudo snap remove gnome-3-38-2004 gtk-common-themes
 
 # 1Password
 install_if_missing 1password 1Password "wget -O /tmp/1password-latest.deb \"https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb\" && sudo dpkg -i /tmp/1password-latest.deb && sudo apt-get install -f -y && rm /tmp/1password-latest.deb"

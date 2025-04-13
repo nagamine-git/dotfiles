@@ -5,7 +5,7 @@ zsh
 build-essential
 tmux
 fzf
-fcitx-mozc
+fcitx5-mozc
 fcitx-mozc-data
 mozc-utils-gui
 im-config
