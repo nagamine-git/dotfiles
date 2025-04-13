@@ -101,17 +101,17 @@ else
   echo "Vulkan drivers already installed, skipping"
 fi
 
-# snapdのインストール
-install_if_missing snapd snapd "sudo snap install snapd"
+# snapdのセットアップ
+if ! command -v snap &> /dev/null; then
+    sudo apt install -y snapd
+    sudo systemctl enable --now snapd.socket
+fi
 
-# Snap applications in Xfce menu
-echo "Setting up Snap applications in Xfce menu..."
-if [ -d "/var/lib/snapd/desktop/applications" ]; then
-    sudo find /usr/share/applications -xtype l -delete
-    sudo ln -sf /var/lib/snapd/desktop/applications/*.desktop /usr/share/applications/
-    echo "Snap applications added to Xfce menu"
-else
-    echo "Snap applications directory not found, skipping menu setup"
+# ロケールの設定
+if ! locale -a | grep -q 'ja_JP.utf8'; then
+    echo "Generating Japanese locale..."
+    sudo apt install -y language-pack-ja
+    sudo locale-gen ja_JP.UTF-8
 fi
 
 # zshへの変更

@@ -34,3 +34,4 @@ libsqlite3-dev
 wmctrl
 libevdev-dev
 blueman
+xdotool
