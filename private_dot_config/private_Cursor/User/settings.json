@@ -1,5 +1,5 @@
 {
-    "editor.fontFamily": "'Firge35Nerd Console', 'Droid Sans Mono', 'monospace', monospace",
+    "editor.fontFamily": "'Firge35Nerd Console', 'Droid Sans Mono', 'monospace', monospace, 'Noto Color Emoji'",
     "terminal.integrated.enableFileLinks": "off",
     "terminal.integrated.defaultProfile.linux": "zsh",
     "terminal.integrated.profiles.linux": {
