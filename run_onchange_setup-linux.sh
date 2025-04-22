@@ -169,7 +169,18 @@ sudo mkdir -p /usr/share/fonts
 # Firgeフォント
 if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
     echo "Firgeフォントをインストールしています..."
-    FIRGE_VERSION="0.2.0"
+    
+    # GitHub APIを使用して最新バージョンを取得
+    LATEST_RELEASE_INFO=$(curl -s https://api.github.com/repos/yuru7/Firge/releases/latest)
+    FIRGE_VERSION=$(echo $LATEST_RELEASE_INFO | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//')
+    
+    if [ -z "$FIRGE_VERSION" ]; then
+        echo "最新バージョンの取得に失敗しました。デフォルトバージョンを使用します。"
+        FIRGE_VERSION="0.3.0"
+    else
+        echo "最新バージョン ${FIRGE_VERSION} を使用します。"
+    fi
+    
     wget -O /tmp/firge.zip "https://github.com/yuru7/Firge/releases/download/v${FIRGE_VERSION}/FirgeNerd_v${FIRGE_VERSION}.zip"
     mkdir -p /tmp/firge
     unzip -o /tmp/firge.zip -d /tmp/firge
