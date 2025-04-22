@@ -156,6 +156,7 @@ fi
 if [ ! -d "$HOME/.themes/Arc-Dark" ]; then
   echo "Installing Arc HiDPI themes..."
   TMPDIR=$(mktemp -d) && wget -q -O - "https://master.dl.sourceforge.net/project/arc-xfwm4-hidpi/arc-theme-xfwm4-hidpi.tar.gz?viasf=1" | tar -xz -C "$TMPDIR" && mkdir -p ~/.themes && mv "$TMPDIR"/Arc* ~/.themes/ && rm -rf "$TMPDIR" && echo "Arc HiDPI themes installed into ~/.themes/"
+  sudo cp -r "$HOME/.themes/Arc-Dark" /usr/share/themes/
 else
   echo "Arc HiDPI themes already installed, skipping"
 fi
