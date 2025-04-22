@@ -35,3 +35,4 @@ wmctrl
 libevdev-dev
 blueman
 xdotool
+fonts-noto-color-emoji
