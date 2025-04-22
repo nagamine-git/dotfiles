@@ -191,6 +191,13 @@ else
     echo "Firgeフォントはすでにインストールされています。スキップします。"
 fi
 
+# ユーザーディレクトリの重複フォントをクリーンアップ
+if [ -d "$HOME/.local/share/fonts" ]; then
+    echo "ユーザーディレクトリの重複Firgeフォントをクリーンアップしています..."
+    find "$HOME/.local/share/fonts" -name "Firge*Nerd*.ttf" -exec rm -v {} \;
+    fc-cache -f -v
+fi
+
 # RobotoNotoSansJP
 if [ ! -f /usr/share/fonts/Roboto-NotoSansJP-Regular.ttf ]; then
     echo "RobotoNotoSansJPフォントをインストールしています..."
