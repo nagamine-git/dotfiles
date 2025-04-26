@@ -134,7 +134,7 @@ require('lazy').setup({
 })
 
 -- カラースキーム設定
-vim.cmd('colorscheme tokyonight')
+vim.cmd('colorscheme tokyonight-night')
 
 -- lualine設定
 require('lualine').setup({
