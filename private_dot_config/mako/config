@@ -1,0 +1,35 @@
+# Core settings
+sort=-time
+layer=overlay
+font=Firge35Nerd Console 8
+width=320
+height=100
+margin=6
+padding=12
+border-size=1
+border-radius=12
+progress-color=over #88c0d0
+max-icon-size=48
+icon-path=/usr/share/icons/Papirus-Dark
+default-timeout=4000
+
+# Colors 
+background-color=#2e3440ee
+text-color=#eceff4
+border-color=#88c0d0b2
+
+# Urgency-specific styling
+[urgency=low]
+border-color=#8fbcbb80
+
+[urgency=normal]
+border-color=#d08770b2
+
+[urgency=high]
+border-color=#bf616af2
+background-color=#2e3440f2
+default-timeout=0
+
+# Group settings
+group-by=app-name,body
+

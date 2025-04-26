@@ -1,0 +1,67 @@
+* {
+  font-family: "Firge35Nerd Console", sans-serif;
+  font-size: 13px;
+}
+
+window {
+  margin: 0px;
+  background-color: rgba(46, 52, 64, 0.75);
+  border-radius: 12px;
+  border: 1px solid rgba(136, 192, 208, 0.7);
+}
+
+#input {
+  margin: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: none;
+  color: #eceff4;
+  background-color: rgba(59, 66, 82, 0.7);
+  transition: background-color 0.2s ease;
+}
+
+#input:focus {
+  border: none;
+  outline: none;
+  background-color: rgba(76, 86, 106, 0.5);
+}
+
+#inner-box {
+  margin: 4px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+#outer-box {
+  margin: 4px;
+  padding: 6px;
+  border: none;
+}
+
+#entry {
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+#entry:selected {
+  background-color: rgba(94, 129, 172, 0.4);
+}
+
+#text {
+  color: #eceff4;
+  margin-left: 8px;
+}
+
+#text:selected {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+#img {
+  margin-right: 8px;
+}
+
+#scroll {
+  margin: 4px;
+}

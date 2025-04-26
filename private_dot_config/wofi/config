@@ -1,0 +1,17 @@
+show=drun
+width=350
+height=400
+prompt=アプリ検索
+allow_markup=true
+always_parse_args=true
+show_all=true
+print_command=true
+layer=overlay
+insensitive=true
+matching=contains
+location=center
+no_actions=true
+sort_order=default
+gtk_dark=true
+key_forward=Tab
+key_backward=ISO_Left_Tab

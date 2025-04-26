@@ -1,0 +1,97 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 26,
+  "margin": "6 6 0 6",
+  "spacing": 3,
+  "radius": 8,
+  "font": "Firge35Nerd Console",
+
+  "modules-left": ["hyprland/workspaces", "hyprland/window"],
+  "modules-center": ["clock"],
+  "modules-right": ["cpu", "memory", "disk", "temperature", "network", "battery", "pulseaudio", "tray", "custom/power"],
+
+  "hyprland/workspaces": {
+    "format": "{icon}",
+    "format-icons": {
+      "active": "●",
+      "default": "○"
+    },
+    "on-click": "hyprctl dispatch workspace {name}",
+    "tooltip": false
+  },
+
+  "hyprland/window": {
+    "max-length": 40
+  },
+
+  "clock": {
+    "format": "{:%y.%m.%d %H:%M:%S}",
+    "timezone": "Asia/Tokyo",
+    "interval": 1
+  },
+
+  "cpu": {
+    "format": " {usage}%",
+    "interval": 3,
+    "tooltip": false
+  },
+
+  "memory": {
+    "format": "󰆻 {percentage}%",
+    "interval": 5,
+    "tooltip": false
+  },
+
+  "disk": {
+    "format": "󰋊 {percentage_used}%",
+    "path": "/",
+    "interval": 30
+  },
+
+  "temperature": {
+    "format": "󰔏 {temperatureC}°C",
+    "critical-threshold": 80,
+    "interval": 5,
+    "tooltip": false
+  },
+
+  "network": {
+    "format-wifi": "󰤨 {essid}",
+    "format-ethernet": "󰈀 {bandwidthUpBytes} 󰈂 {bandwidthDownBytes}",
+    "format-linked": "󰈁 {ifname}",
+    "format-disconnected": "󰤮",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+    "tooltip-format-ethernet": "󰈀 {ifname}: {ipaddr}/{cidr}\n󰕒 {bandwidthUpBits}\n󰇚 {bandwidthDownBits}",
+    "interval": 10
+  },
+
+  "battery": {
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": "󰚥 {capacity}%",
+    "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰂂", "󰁹"],
+    "interval": 30
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "󰝟",
+    "format-icons": {
+      "headphones": "󰋋",
+      "default": ["󰕿", "󰖀", "󰕾"]
+    },
+    "on-click": "pavucontrol",
+    "interval": 1
+  },
+
+  "custom/power": {
+    "format": "⏻",
+    "tooltip": false,
+    "on-click": "wlogout -p layer-shell"
+  }
+}

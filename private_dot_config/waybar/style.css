@@ -1,0 +1,87 @@
+* {
+  margin: 0;
+  padding: 0;
+  font-family: "Firge35Nerd Console", sans-serif;
+  font-size: 12px;
+  color: #eceff4;
+  background-color: transparent;
+}
+
+#waybar {
+  padding: 4px;
+  background-color: transparent;
+}
+
+/* Common module styling */
+#cpu, #memory, #disk, #temperature, 
+#network, #battery, #pulseaudio,
+#clock, #tray, #custom-power {
+  padding: 0 8px;
+  margin: 0 3px;
+  border-radius: 12px;
+  background-color: rgba(46, 52, 64, 0.5);
+  transition: background-color 0.2s ease;
+}
+
+/* Battery states */
+#battery.warning {
+  color: #ebcb8b;
+  font-weight: bold;
+  background-color: rgba(235, 203, 139, 0.35);
+}
+
+#battery.critical {
+  color: #ffffff;
+  font-weight: bold;
+  background-color: rgba(191, 97, 106, 0.45);
+  box-shadow: 0 0 5px rgba(255, 0, 0, 0.6);
+}
+
+/* Workspaces */
+#workspaces {
+  background-color: rgba(46, 52, 64, 0.75);
+  border-radius: 12px;
+  padding: 0 5px;
+}
+
+#workspaces button {
+  color: #9da4b0;
+  background: transparent;
+  padding: 0 5px;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+#workspaces button.active,
+#workspaces button.focused {
+  color: #eceff4;
+  font-weight: bold;
+}
+
+/* Context menu styling */
+tooltip {
+  background-color: rgba(46, 52, 64, 0.9);
+  border-radius: 8px;
+  border: 1px solid rgba(76, 86, 106, 0.5);
+}
+
+tooltip label {
+  color: #eceff4;
+  padding: 6px 12px;
+}
+
+menu {
+  background-color: rgba(46, 52, 64, 0.9);
+  border-radius: 8px;
+  border: 1px solid rgba(76, 86, 106, 0.5);
+}
+
+menuitem {
+  padding: 8px 12px;
+  margin: 2px 0;
+}
+
+menuitem:hover {
+  background-color: rgba(76, 86, 106, 0.5);
+  border-radius: 4px;
+}

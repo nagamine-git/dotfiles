@@ -1,0 +1,50 @@
+# Created by newuser for 5.9
+export LANG=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
+export EDITOR=nvim
+
+# 補完
+autoload -Uz compinit
+compinit -i
+
+# プラグイン管理
+eval "$(starship init zsh)"
+eval "$(mise activate --shims)"
+eval "$(sheldon source)"
+eval "$(atuin init zsh)"
+
+# コマンド履歴
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+
+# alias
+alias vim='nvim'
+
+# ghqでクローンしたリポジトリへ簡単に移動するための関数
+cgh() { 
+    local dir
+    dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
+    [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
+}
+
+find_cursor() {
+    local cursor_base_dir="$HOME/Applications/extracted"
+    local latest_cursor_dir=$(find "$cursor_base_dir" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
+    
+    if [ -n "$latest_cursor_dir" ] && [ -d "$latest_cursor_dir" ]; then
+        echo "$latest_cursor_dir"
+    else
+        echo "Cursorが見つかりません"
+    fi
+}
+
+alias ls='eza --icons --color=always'
+alias ll='ls -l'
+alias la='ls -la'
+alias l='ls -l'
+alias tree='ls --tree --git-ignore'
+alias lmt='eza --tree --git-ignore --icons=never --classify'
+alias zj='zellij'
+alias supabase='npx supabase'
+alias pbcopy='wl-copy'
