@@ -12,7 +12,6 @@ fcitx5-hazkey-bin
 fcitx5
 fcitx5-config-qt
 brave-bin
-kitty
 dolphin
 wofi
 playerctl
@@ -56,3 +55,7 @@ linux-zen
 linux-zen-headers
 hyprsession
 hyprsession-sh
+irqbalance
+powertop
+corectrl
+lazydocker

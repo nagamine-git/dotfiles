@@ -11,6 +11,8 @@
 - ターミナル: foot
 - エディタ: Neovim
 - 入力メソッド: fcitx5
+- システム最適化: irqbalance, powertop
+- 開発ツール: Docker, lazygit, lazydocker, atuin
 - その他: git, SSH, waybar など
 
 ## 使い方
@@ -19,7 +21,7 @@
 
 ```bash
 # chezmoiのインストール
-yay -S chezmoi
+paru -S chezmoi
 
 # リポジトリの取得と適用
 chezmoi init --apply nagamine-git
