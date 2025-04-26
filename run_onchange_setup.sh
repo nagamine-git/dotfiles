@@ -8,19 +8,11 @@ install_if_missing() {
   local cmd=$1
   local name=${2:-$1}
   local install_cmd=$3
-
-  echo "=== Debug: install_if_missing check ==="
-  echo "Checking command: $cmd"
-  echo "Package name: $name"
-  echo "Install command: $install_cmd"
   
   if ! command -v "$cmd" &> /dev/null; then
-    echo "Command '$cmd' not found in PATH"
-    echo "Current PATH: $PATH"
     echo "Installing $name..."
     eval "$install_cmd"
   else
-    echo "Command '$cmd' found at: $(which "$cmd")"
     echo "$name already installed, skipping"
   fi
 }
@@ -29,8 +21,11 @@ install_if_missing() {
 sudo cp usr/share/X11/xkb/symbols/custom /usr/share/X11/xkb/symbols/custom
 
 # bbr
-grep -q "/etc/sysctl.d/99-bbr.conf" /etc/sysctl.d/99-bbr.conf 2>/dev/null || echo "/etc/sysctl.d/99-bbr.conf" | sudo tee -a /etc/sysctl.d/99-bbr.conf >/dev/null
+# Enable BBR congestion control algorithm
+echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf
+echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.d/99-bbr.conf
 
+# Apply se
 # 1password
 curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 

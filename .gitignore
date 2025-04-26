@@ -1,0 +1,19 @@
+# Chezmoi state file
+.chezmoistate.boltdb
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*~
+
+# Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
