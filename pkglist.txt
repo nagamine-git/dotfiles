@@ -52,3 +52,7 @@ hypridle
 hyprlock
 slack-desktop
 zellij
+linux-zen
+linux-zen-headers
+hyprsession
+hyprsession-sh

@@ -25,6 +25,12 @@ install_if_missing() {
   fi
 }
 
+# keyboard layout
+sudo cp usr/share/X11/xkb/symbols/custom /usr/share/X11/xkb/symbols/custom
+
+# bbr
+grep -q "/etc/sysctl.d/99-bbr.conf" /etc/sysctl.d/99-bbr.conf 2>/dev/null || echo "/etc/sysctl.d/99-bbr.conf" | sudo tee -a /etc/sysctl.d/99-bbr.conf >/dev/null
+
 # 1password
 curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 
@@ -82,4 +88,5 @@ sudo modprobe v4l2loopback devices=1 exclusive_caps=1 label="DroidCam"
 # gh extension
 gh extension install HikaruEgashira/gh-q
 ghq get HikaruEgashira/gh-q
+
 

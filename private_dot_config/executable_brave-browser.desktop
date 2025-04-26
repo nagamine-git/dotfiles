@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Brave Web Browser
+Comment=Access the Internet without KDE Wallet prompts
+GenericName=Web Browser
+Exec=brave-browser %U --password-store=basic
+Terminal=false
+Icon=brave-browser
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ipfs;x-scheme-handler/ipns;
+Actions=new-window;new-private-window; 
