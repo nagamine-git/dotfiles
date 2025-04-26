@@ -60,3 +60,6 @@ powertop
 corectrl
 lazydocker
 wavemon
+tokyonight-gtk-theme-git
+xdg-desktop-portal-gtk
+xdg-desktop-portal-hyprland
