@@ -5,7 +5,7 @@
   "margin": "6 6 0 6",
   "spacing": 4,
   "radius": 8,
-  "font": "Firge35Nerd Console",
+  "font": "'Roboto + Noto Sans JP', 'Firge35Nerd Console', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],
@@ -14,8 +14,8 @@
   "hyprland/workspaces": {
     "format": "{icon}",
     "format-icons": {
-      "active": "●",
-      "default": "○"
+      "active": "",
+      "default": ""
     },
     "on-click": "hyprctl dispatch workspace {name}",
     "tooltip": true
