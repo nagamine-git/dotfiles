@@ -1,15 +1,15 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 26,
+  "height": 28,
   "margin": "6 6 0 6",
-  "spacing": 3,
+  "spacing": 4,
   "radius": 8,
   "font": "Firge35Nerd Console",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],
-  "modules-right": ["cpu", "memory", "disk", "temperature", "network", "battery", "pulseaudio", "tray", "custom/power"],
+  "modules-right": ["tray", "temperature", "cpu", "memory", "custom/disk", "network", "pulseaudio", "battery", "custom/power"],
 
   "hyprland/workspaces": {
     "format": "{icon}",
@@ -18,7 +18,7 @@
       "default": "○"
     },
     "on-click": "hyprctl dispatch workspace {name}",
-    "tooltip": false
+    "tooltip": true
   },
 
   "hyprland/window": {
@@ -28,37 +28,53 @@
   "clock": {
     "format": "{:%y.%m.%d %H:%M:%S}",
     "timezone": "Asia/Tokyo",
-    "interval": 1
+    "interval": 1,
+    "tooltip": true
   },
 
   "cpu": {
-    "format": " {usage}%",
     "interval": 3,
-    "tooltip": false
+    "format": " {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "states": {
+      "warning": 80,
+      "critical": 95
+    },
+    "tooltip": true
   },
 
   "memory": {
-    "format": "󰆻 {percentage}%",
     "interval": 5,
-    "tooltip": false
+    "format": "󰆻 {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "states": {
+      "warning": 80,
+      "critical": 90
+    },
+    "tooltip": true
   },
 
-  "disk": {
-    "format": "󰋊 {percentage_used}%",
-    "path": "/",
-    "interval": 30
+  "custom/disk": {
+    "format": "󰋊 {}",
+    "exec": "df -h / | awk 'NR==2 {perc=substr($5, 1, length($5)-1); if (perc < 13) {icon=\"⡀\"} else if (perc < 25) {icon=\"⣀\"} else if (perc < 38) {icon=\"⣄\"} else if (perc < 50) {icon=\"⣤\"} else if (perc < 63) {icon=\"⣦\"} else if (perc < 75) {icon=\"⣶\"} else if (perc < 88) {icon=\"⣷\"} else {icon=\"⣿\"}; printf \"%s\", icon}'",
+    "exec-if": "exit 0",
+    "interval": 30,
+    "tooltip": true,
+    "tooltip-format": "ディスク使用量: {}"
   },
 
   "temperature": {
-    "format": "󰔏 {temperatureC}°C",
-    "critical-threshold": 80,
     "interval": 5,
-    "tooltip": false
+    "format": "󰔏 {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "warning-threshold": 75,
+    "critical-threshold": 85,
+    "tooltip": true
   },
 
   "network": {
     "format-wifi": "󰤨 {essid}",
-    "format-ethernet": "󰈀 {bandwidthUpBytes} 󰈂 {bandwidthDownBytes}",
+    "format-ethernet": "󰈀",
     "format-linked": "󰈁 {ifname}",
     "format-disconnected": "󰤮",
     "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
@@ -71,27 +87,43 @@
       "warning": 30,
       "critical": 15
     },
-    "format": "{icon} {capacity}%",
-    "format-charging": "󰂄 {capacity}%",
-    "format-plugged": "󰚥 {capacity}%",
+    "format": "{icon} {time}",
+    "format-charging": "󰂄 {time}",
+    "format-plugged": "󰚥",
+    "format-alt": "{icon} {capacity}%",
+    "format-time": "{H}:{M}",
     "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰂂", "󰁹"],
-    "interval": 30
+    "interval": 30,
+    "tooltip": true,
+    "tooltip-format": "バッテリー: {capacity}%\n残り時間: {time}"
   },
 
   "pulseaudio": {
-    "format": "{icon} {volume}%",
+    "format": "{icon}",
     "format-muted": "󰝟",
     "format-icons": {
       "headphones": "󰋋",
-      "default": ["󰕿", "󰖀", "󰕾"]
+      "default": [
+        "󰕿  ",
+        "󰖀 ⡀",
+        "󰖀 ⣀",
+        "󰖀 ⣄",
+        "󰖀 ⣤",
+        "󰕾 ⣦",
+        "󰕾 ⣶",
+        "󰕾 ⣷",
+        "󰕾 ⣿"
+      ]
     },
     "on-click": "pavucontrol",
-    "interval": 1
+    "interval": 1,
+    "tooltip": true,
+    "tooltip-format": "音量: {volume}%"
   },
 
   "custom/power": {
     "format": "⏻",
-    "tooltip": false,
+    "tooltip": true,
     "on-click": "wlogout -p layer-shell"
   }
 }
