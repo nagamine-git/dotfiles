@@ -114,7 +114,7 @@ install_if_missing gh "GitHub CLI" "curl -fsSL https://cli.github.com/packages/g
 gh auth status || gh auth login
 
 # cargo (sheldonはinstall_if_missingで管理するように修正)
-cargo install eza
+cargo install eza du-dust
 
 # gem
 sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense fusuma-plugin-wmctrl fusuma-plugin-keypress fusuma-plugin-sendkey sp
