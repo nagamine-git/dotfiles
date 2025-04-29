@@ -10,19 +10,11 @@ install_if_missing() {
   local cmd=$1
   local name=${2:-$1}
   local install_cmd=$3
-
-  echo "=== Debug: install_if_missing check ==="
-  echo "Checking command: $cmd"
-  echo "Package name: $name"
-  echo "Install command: $install_cmd"
   
   if ! command -v "$cmd" &> /dev/null; then
-    echo "Command '$cmd' not found in PATH"
-    echo "Current PATH: $PATH"
     echo "Installing $name..."
     eval "$install_cmd"
   else
-    echo "Command '$cmd' found at: $(which "$cmd")"
     echo "$name already installed, skipping"
   fi
 }
@@ -38,22 +30,14 @@ echo "Updating package lists..."
 sudo apt update
 
 # aptパッケージのインストール
-echo "=== Debug: Installing packages from $PACKAGE_LIST_FILE ==="
-echo "File contents:"
-cat "$PACKAGE_LIST_FILE"
-echo "---"
+echo "Installing packages from $PACKAGE_LIST_FILE..."
 
 while read -r package; do
   [[ "$package" =~ ^#.*$ || -z "$package" ]] && continue
   
-  echo "=== Debug: Processing package: $package ==="
-  echo "Running: dpkg -l | grep \"^ii  $package \""
-  dpkg -l | grep "^ii  $package " || echo "Package not found in dpkg -l"
-  
   if ! dpkg -l | grep -q "^ii  $package "; then
     echo "Installing $package..."
     sudo apt install -y "$package"
-    echo "Installation completed with status: $?"
   else
     echo "Package $package already installed, skipping"
   fi
@@ -70,10 +54,7 @@ if [ -x "$(command -v fcitx5)" ]; then
 fi
 
 # fcitx5-hazkeyの確認とインストール
-if dpkg -s fcitx5-hazkey >/dev/null 2>&1; then
-  HAZKEY_VERSION=$(dpkg-query -W -f='${Version}' fcitx5-hazkey)
-  echo "fcitx5-hazkey is already installed (version: $HAZKEY_VERSION)"
-else
+if ! dpkg -s fcitx5-hazkey >/dev/null 2>&1; then
   echo "Installing fcitx5-hazkey..."
   ARCH=$(dpkg --print-architecture)
   
@@ -90,15 +71,16 @@ else
   else
     echo "Error: Could not find fcitx5-hazkey package for $ARCH architecture"
   fi
+else
+  echo "fcitx5-hazkey is already installed"
 fi
 
-# Zenzaiに必要なVulkanドライバのインストール
-echo "Installing Vulkan drivers for Zenzai..."
-if ! dpkg -l | grep -q "^ii  vulkan-tools " || ! dpkg -l | grep -q "^ii  libvulkan1 " || ! dpkg -l | grep -q "^ii  mesa-vulkan-drivers "; then
-  # apt-packages.txtに記載されているので、ここでのインストールは不要
-  echo "Vulkan drivers installed successfully"
+# Vulkan ドライバのインストール確認 (apt-packages.txtに記載されているため冗長なインストール処理は削除)
+echo "Checking Vulkan drivers for Zenzai..."
+if dpkg -l | grep -q "^ii  vulkan-tools " && dpkg -l | grep -q "^ii  libvulkan1 " && dpkg -l | grep -q "^ii  mesa-vulkan-drivers "; then
+  echo "Vulkan drivers already installed"
 else
-  echo "Vulkan drivers already installed, skipping"
+  echo "Vulkan drivers will be installed via apt-packages.txt"
 fi
 
 # snapdのセットアップ
@@ -115,7 +97,12 @@ if ! locale -a | grep -q 'ja_JP.utf8'; then
 fi
 
 # zshへの変更
-[ "$SHELL" != "/bin/zsh" ] && { echo "Changing shell to zsh..."; chsh -s /bin/zsh; } || echo "Shell already set to zsh, skipping"
+if [[ "$SHELL" != *"zsh" ]]; then
+    echo "Changing shell to zsh..." 
+    chsh -s /bin/zsh
+else
+    echo "Shell already set to zsh, skipping"
+fi
 
 # mise
 install_if_missing mise mise "curl https://mise.run | sh && mise i"
@@ -126,11 +113,11 @@ install_if_missing gh "GitHub CLI" "curl -fsSL https://cli.github.com/packages/g
 # GitHub認証
 gh auth status || gh auth login
 
-# cargo
-cargo install sheldon eza
+# cargo (sheldonはinstall_if_missingで管理するように修正)
+cargo install eza
 
 # gem
-sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense fusuma-plugin-wmctrl fusuma-plugin-keypress fusuma-plugin-sendkey          sp
+sudo gem install fusuma fusuma-plugin-remap fusuma-plugin-thumbsense fusuma-plugin-wmctrl fusuma-plugin-keypress fusuma-plugin-sendkey sp
 
 # ghq
 install_if_missing ghq ghq "go install github.com/x-motemen/ghq@latest"
@@ -176,8 +163,8 @@ if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
     FIRGE_VERSION=$(echo $LATEST_RELEASE_INFO | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//')
     
     if [ -z "$FIRGE_VERSION" ]; then
-        echo "最新バージョンの取得に失敗しました。デフォルトバージョンを使用します。"
         FIRGE_VERSION="0.3.0"
+        echo "最新バージョンの取得に失敗しました。バージョン ${FIRGE_VERSION} を使用します。"
     else
         echo "最新バージョン ${FIRGE_VERSION} を使用します。"
     fi
@@ -189,7 +176,7 @@ if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
     rm -rf /tmp/firge /tmp/firge.zip
     fc-cache -f -v
 else
-    echo "Firgeフォントはすでにインストールされています。スキップします。"
+    echo "Firgeフォントはすでにインストールされています。"
 fi
 
 # ユーザーディレクトリの重複フォントをクリーンアップ
@@ -208,7 +195,7 @@ if [ ! -f /usr/share/fonts/Roboto-NotoSansJP-Regular.ttf ]; then
     rm -rf /tmp/robotonoto
     fc-cache -f -v
 else
-    echo "RobotoNotoSansJPフォントはすでにインストールされています。スキップします。"
+    echo "RobotoNotoSansJPフォントはすでにインストールされています。"
 fi
 
 # アプリケーションのインストール
@@ -226,7 +213,6 @@ if ! command -v nvim &> /dev/null && [ ! -d "$HOME/.local/share/nvim-linux-x86_6
       echo 'export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"' >> ~/.zshrc
     
     rm nvim-linux-x86_64.tar.gz
-    echo "Neovim installed to ~/.local/share/, PATH added to ~/.zshrc."
 else
     echo "Neovim already installed, skipping"
 fi
@@ -253,7 +239,6 @@ if ! command -v wavemon &> /dev/null; then
         ./configure && make && sudo make install-suid-root
         cd - > /dev/null
         rm -rf "$WAVEMON_TMP"
-        echo "wavemon built and installed from source with scanning privileges."
     fi
 elif [ -x "$(which wavemon)" ] && [ ! -u "$(which wavemon)" ]; then
     echo "Setting proper permissions for wavemon..."
@@ -276,7 +261,6 @@ if command -v fusuma &> /dev/null; then
     cp "$SOURCE_DIR/private_dot_config/systemd/user/fusuma.service" ~/.config/systemd/user/
     systemctl --user daemon-reload
     systemctl --user enable --now fusuma.service
-    echo "Fusuma configured and service enabled"
 else
     echo "Fusuma not installed, skipping configuration"
 fi
@@ -286,12 +270,10 @@ echo "Setting up custom XKB layout..."
 chmod +x ~/.local/bin/apply-custom-xkb.sh
 mkdir -p ~/.config/autostart
 ~/.local/bin/apply-custom-xkb.sh
-echo "Custom XKB layout setup complete"
 
 # Dockerのインストール
-echo "Installing Docker..."
 if ! command -v docker &> /dev/null; then
-    echo "Setting up Docker's apt repository..."
+    echo "Installing Docker..."
     # Docker公式GPGキーを追加
     sudo apt-get update
     sudo apt-get install -y ca-certificates curl
@@ -318,7 +300,6 @@ if ! command -v docker &> /dev/null; then
     sudo systemctl enable docker.socket
     
     echo "Docker installation complete. You may need to log out and log back in to use Docker without sudo."
-    echo "To verify Docker installation, run: docker run hello-world"
 else
     echo "Docker is already installed, skipping"
 fi

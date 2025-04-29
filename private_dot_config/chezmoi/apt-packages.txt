@@ -36,6 +36,8 @@ libevdev-dev
 blueman
 xdotool
 fonts-noto-color-emoji
+fonts-noto
+fonts-noto-cjk
 preload
 zram-tools
 xfce4-whiskermenu-plugin
