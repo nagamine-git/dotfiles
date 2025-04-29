@@ -38,3 +38,5 @@ xdotool
 fonts-noto-color-emoji
 preload
 zram-tools
+xfce4-whiskermenu-plugin
+irqbalance
