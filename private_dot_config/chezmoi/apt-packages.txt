@@ -6,13 +6,11 @@ build-essential
 tmux
 fzf
 fcitx5-mozc
-fcitx-mozc-data
 mozc-utils-gui
 im-config
 xkbset
 arc-theme
 papirus-icon-theme
-gpg
 libssl-dev
 zlib1g-dev
 libyaml-dev
@@ -24,7 +22,6 @@ libdb-dev
 snapd
 gnupg2
 ruby-full
-ruby-dev
 libinput-tools
 vulkan-tools
 libvulkan1
@@ -38,7 +35,5 @@ xdotool
 fonts-noto-color-emoji
 fonts-noto
 fonts-noto-cjk
-preload
 zram-tools
-xfce4-whiskermenu-plugin
 irqbalance

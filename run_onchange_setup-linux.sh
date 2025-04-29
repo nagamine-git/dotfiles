@@ -303,3 +303,4 @@ if ! command -v docker &> /dev/null; then
 else
     echo "Docker is already installed, skipping"
 fi
+
