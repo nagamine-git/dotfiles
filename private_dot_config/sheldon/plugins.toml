@@ -32,3 +32,15 @@ github = "zsh-users/zsh-autosuggestions"
 [plugins.omz-git]
 github = "ohmyzsh/ohmyzsh"
 use = ["plugins/git/git.plugin.zsh"]
+
+# Starship プロンプト
+[plugins.starship]
+inline = 'eval "$(starship init zsh)"'
+
+# mise 言語バージョンマネージャ
+[plugins.mise]
+inline = 'eval "$(mise activate --shims)"'
+
+# atuin シェル履歴マネージャ
+[plugins.atuin]
+inline = 'eval "$(atuin init zsh)"'
