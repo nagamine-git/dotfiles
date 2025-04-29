@@ -36,3 +36,5 @@ libevdev-dev
 blueman
 xdotool
 fonts-noto-color-emoji
+preload
+zram-tools
