@@ -5,11 +5,9 @@ export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
 export EDITOR=nvim
 
-# PATHの設定
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
-PYTHON_VERSION=$(command -v python >/dev/null 2>&1 && python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")' || echo '3.13.3')
-export PATH="$PATH:$HOME/.local/share/mise/installs/python/$PYTHON_VERSION/bin"
+# PATHの設定 - 一箇所にまとめてシンプル化
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
@@ -46,28 +44,23 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
 
-find_cursor() {
-    local cursor_base_dir="$HOME/Applications/extracted"
-    local latest_cursor_dir=$(find "$cursor_base_dir" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
+# シンプル化したCursor検出・実行関数
+cursor_path() {
+    local target_path="${1:-.}"
+    local cursor_dir=$(find "$HOME/Applications/extracted" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
     
-    if [ -n "$latest_cursor_dir" ] && [ -d "$latest_cursor_dir" ]; then
-        echo "$latest_cursor_dir"
+    if [ -n "$cursor_dir" ] && [ -d "$cursor_dir" ]; then
+        nohup env CURSOR_APPIMAGE=1 "$cursor_dir/AppRun" --no-sandbox "$target_path" > /dev/null 2>&1 &
+        disown
     else
         echo "Cursorが見つかりません"
     fi
 }
 
-# cursorをディレクトリを対象に開くための関数
-cursor_path() {
-    local target_path="${1:-.}"
-    target_path=$(realpath "$target_path" 2>/dev/null || echo "$target_path")
-    nohup env CURSOR_APPIMAGE=1 "$(find_cursor)/AppRun" --no-sandbox "$target_path" < /dev/null > /dev/null 2>&1 &
-    disown
-}
-
 alias cursor='cursor_path'
 alias code='cursor'
 
+# ls系コマンドの統合
 alias ls='eza --icons --color=always'
 alias ll='ls -l'
 alias la='ls -la'

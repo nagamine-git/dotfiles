@@ -2,8 +2,6 @@
 Description=Fcitx5 Input Method
 PartOf=graphical-session.target
 After=graphical-session.target
-# custom-xkb.serviceよりも先に起動するように
-Before=custom-xkb.service
 
 [Service]
 Type=simple

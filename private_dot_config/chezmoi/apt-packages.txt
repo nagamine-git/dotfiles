@@ -19,15 +19,12 @@ libncurses5-dev
 libffi-dev
 libgdbm-dev
 libdb-dev
-snapd
 gnupg2
 ruby-full
 libinput-tools
 vulkan-tools
 libvulkan1
 mesa-vulkan-drivers
-sqlite3
-libsqlite3-dev
 wmctrl
 libevdev-dev
 blueman
@@ -36,4 +33,3 @@ fonts-noto-color-emoji
 fonts-noto
 fonts-noto-cjk
 zram-tools
-irqbalance

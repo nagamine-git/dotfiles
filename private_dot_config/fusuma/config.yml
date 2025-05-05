@@ -1,12 +1,10 @@
 plugin:
-# セクション区切り - ThumbSenseコンテキスト定義
 ---
+# 最小限の設定
 context:
   thumbsense: true
 
-# キーをマウスボタンにリマップする設定
-# ThumbsenseDetectorによって検出・有効化される
+# 必須キーマッピングのみ残す
 remap:
-  # 最小限のキーマッピングで安定性を確保
   J: BTN_LEFT
   K: BTN_RIGHT

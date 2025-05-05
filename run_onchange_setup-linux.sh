@@ -265,11 +265,6 @@ else
     echo "Fusuma not installed, skipping configuration"
 fi
 
-# XKBカスタム設定のセットアップ
-echo "Setting up custom XKB layout..."
-chmod +x ~/.local/bin/apply-custom-xkb.sh
-mkdir -p ~/.config/autostart
-~/.local/bin/apply-custom-xkb.sh
 
 # Dockerのインストール
 if ! command -v docker &> /dev/null; then

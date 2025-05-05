@@ -1,0 +1,15 @@
+[Unit]
+Description=Unified Keyboard Setup Service
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/tsuyoshi/.local/bin/keyboard-setup.sh --restart
+RemainAfterExit=yes
+# 以下は関連するすべてのサービスが停止したときに自動再起動するための設定
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target 
