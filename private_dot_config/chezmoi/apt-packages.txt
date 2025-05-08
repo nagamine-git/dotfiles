@@ -16,6 +16,10 @@ libffi-dev
 libgdbm-dev
 libdb-dev
 libevdev-dev
+libhidapi-dev
+libhidapi-hidraw0
+libhidapi-libusb0
+libxcb-xtest0
 gnupg2
 ruby-full
 fcitx5-mozc
