@@ -1,4 +1,9 @@
-plugin:
+plugin:  
+  inputs:  
+    remap_touchpad_input:
+      touchpad_name_patterns: ["Apple Inc. Magic Trackpad", "Trackpad", "touchpad", "Touchpad", "TOUCHPAD"]
+    remap_keyboard_input:
+      keyboard_name_patterns: ["PFU Limited HHKB-Hybrid", "Keyboard", "keyboard", "Keyboard", "KEYBOARD"]
 ---
 # 最小限の設定
 context:

@@ -83,12 +83,6 @@ else
   echo "Vulkan drivers will be installed via apt-packages.txt"
 fi
 
-# snapdのセットアップ
-if ! command -v snap &> /dev/null; then
-    sudo apt install -y snapd
-    sudo systemctl enable --now snapd.socket
-fi
-
 # ロケールの設定
 if ! locale -a | grep -q 'ja_JP.utf8'; then
     echo "Generating Japanese locale..."
@@ -216,9 +210,6 @@ if ! command -v nvim &> /dev/null && [ ! -d "$HOME/.local/share/nvim-linux-x86_6
 else
     echo "Neovim already installed, skipping"
 fi
-
-# Slack
-install_if_missing slack Slack "sudo snap refresh snapd || true && sudo snap install slack --classic"
 
 # 1Password
 install_if_missing 1password 1Password "wget -O /tmp/1password-latest.deb \"https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb\" && sudo dpkg -i /tmp/1password-latest.deb && sudo apt-get install -f -y && rm /tmp/1password-latest.deb"

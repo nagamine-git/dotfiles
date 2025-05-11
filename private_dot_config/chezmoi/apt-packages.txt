@@ -4,6 +4,8 @@ vim
 zsh
 tmux
 fzf
+locales
+locales-all
 xdotool
 wmctrl
 build-essential
