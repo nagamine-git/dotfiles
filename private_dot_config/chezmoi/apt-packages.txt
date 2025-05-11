@@ -43,3 +43,4 @@ neofetch
 nvtop
 wavemon
 zram-tools
+mpv
