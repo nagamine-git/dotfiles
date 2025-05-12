@@ -62,7 +62,12 @@ if pgrep slack > /dev/null; then
     echo "Slack is already running" | tee -a "$DEBUG_LOG"
 else
     echo "Slack is not running, starting..." | tee -a "$DEBUG_LOG"
-    env BAMF_DESKTOP_FILE_HINT=/var/lib/snapd/desktop/applications/slack_slack.desktop /snap/bin/slack %U > "$LOG_DIR/slack.log" 2>&1 &
+    # Check which Slack executable exists and use that one
+    if [ -f "/usr/bin/slack" ]; then
+        echo "Using /usr/bin/slack" | tee -a "$DEBUG_LOG"
+    else
+        echo "Could not find Slack executable" | tee -a "$DEBUG_LOG"
+    fi
 fi
 
 echo "Script completed at $(date)" | tee -a "$DEBUG_LOG"
