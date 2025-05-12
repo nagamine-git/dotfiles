@@ -1,0 +1,24 @@
+# Core utilities
+gh
+ghq
+fzf
+eza
+du-dust
+starship
+
+# Development tools
+mise
+go
+rust
+
+# Terminal utilities
+tmux
+sheldon
+neovim
+
+# Other utilities
+wget
+jq
+pup
+
+# Add any other brew packages you need

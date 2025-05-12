@@ -1,3 +1,13 @@
 data/
 data/**/* 
 README.md
+
+# OSごとに適用されるファイルを制御
+{{ if eq .chezmoi.os "darwin" }}
+# Macでは使わないLinux用のファイル
+run_onchange_setup-linux.sh
+dot_xsessionrc
+{{ else if eq .chezmoi.os "linux" }}
+# Linuxでは使わないMac用のファイル
+run_onchange_setup-darwin.sh
+{{ end }}
