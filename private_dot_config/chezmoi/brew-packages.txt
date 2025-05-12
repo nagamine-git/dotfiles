@@ -3,7 +3,8 @@ gh
 ghq
 fzf
 eza
-du-dust
+dust
+atuin
 starship
 
 # Development tools

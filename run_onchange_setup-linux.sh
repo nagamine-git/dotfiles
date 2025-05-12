@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Macでは実行しない
+if [[ "$(uname)" != "Linux" ]]; then
+  echo "Linuxではないため、このスクリプトはスキップします"
+  exit 0
+fi
+
 set -eu # エラー時や未定義変数使用時にスクリプトを終了させる
 
 SOURCE_DIR='/home/tsuyoshi/.local/share/chezmoi'

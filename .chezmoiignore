@@ -11,3 +11,5 @@ dot_xsessionrc
 # Linuxでは使わないMac用のファイル
 run_onchange_setup-darwin.sh
 {{ end }}
+
+run_*_setup-linux.sh
