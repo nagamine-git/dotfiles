@@ -44,3 +44,5 @@ nvtop
 wavemon
 zram-tools
 mpv
+hwinfo
+inxi

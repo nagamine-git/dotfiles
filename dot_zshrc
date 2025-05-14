@@ -10,6 +10,7 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86
 export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
+export PATH="$PATH:/snap/bin"
 
 # atuin
 source $HOME/.atuin/bin/env
@@ -58,7 +59,6 @@ cursor_path() {
 }
 
 alias cursor='cursor_path'
-alias code='cursor'
 
 # ls系コマンドの統合
 alias ls='eza --icons --color=always'
@@ -68,3 +68,25 @@ alias l='ls -l'
 alias tree='ls --tree --git-ignore'
 alias lmt='eza --tree --git-ignore --icons=never --classify'
 alias supabase='npx supabase'
+
+
+# LXD Kali 起動＆シェル投入
+kali() {
+  xhost +SI:localuser:"$USER" &>/dev/null
+  st=$(lxc info kali 2>/dev/null \
+       | grep '^Status:' \
+       | cut -d' ' -f2 \
+       | tr '[:lower:]' '[:upper:]')
+
+  if [[ -z $st ]]; then
+    echo "→ Launching new Kali container…"
+    lxc launch images:kali/rolling kali
+  elif [[ $st != RUNNING ]]; then
+    echo "→ Starting Kali container…"
+    lxc start kali
+  fi
+
+  lxc exec kali -- /bin/bash --login
+}
+
+alias k='kali'

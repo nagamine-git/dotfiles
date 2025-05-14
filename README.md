@@ -58,7 +58,9 @@ sudo sh -c 'echo "deb http://deb.debian.org/debian $(lsb_release -cs)-backports 
 sudo apt update
 
 # 最新カーネルのインストール
-sudo apt install linux-image-6.12.9+bpo-amd64
+# sudo apt install linux-image-6.12.9+bpo-amd64
+# 最新かつリアルタイムカーネル
+sudo apt install linux-image-6.12.22+bpo-rt-amd64 linux-headers-6.12.22+bpo-rt-amd64
 sudo update-grub
 sudo reboot
 ```
@@ -166,3 +168,39 @@ v4l2-ctl -d /dev/video4 -p 60
 重要なポイントは、正しいバージョン（0.13.2-1）、解像度設定、exclusive_caps=1パラメータの使用、そして適切なパーミッション設定です。
 
 </details>
+
+
+## Kali lxd
+
+```bash
+# ホスト側：LXD のインストールと初期化（1回だけ）
+sudo apt update
+sudo apt install -y snapd
+sudo snap install lxd --classic
+sudo lxd init --auto
+
+# X ソケットを許可
+xhost +local:
+
+# LXD デバイスとして X ソケットを追加（一度だけで OK）
+lxc config device add kali X0 disk source=/tmp/.X11-unix path=/tmp/.X11-unix
+
+# Kali コンテナを初回起動
+lxc launch images:kali/rolling kali
+
+# コンテナ内でパッケージを入れる
+lxc exec kali -- bash -c "apt update && apt install -y kali-linux-large"
+```
+
+```bash
+# ホスト側：X ソケットを許可
+xhost +local:
+
+# コンテナが停止中なら起動
+if ! lxc info kali | grep -q "Status: Running"; then
+  lxc start kali
+fi
+
+# コンテナに入りたいだけなら exec
+lxc exec kali -- /bin/bash
+```

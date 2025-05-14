@@ -25,5 +25,7 @@
     },
     "git.autofetch": true,
     "git.confirmSync": false,
+    "cursor.composer.shouldChimeAfterChatFinishes": true,
+    "cursor.composer.shouldAllowCustomModes": true,
     "git.enableSmartCommit": true
 }
