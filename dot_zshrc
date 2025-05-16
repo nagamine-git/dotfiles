@@ -69,24 +69,49 @@ alias tree='ls --tree --git-ignore'
 alias lmt='eza --tree --git-ignore --icons=never --classify'
 alias supabase='npx supabase'
 
+# LXDコンテナ準備の共通処理
+_ensure_kali_running() {
+  local st
+  st=$(lxc info kali 2>/dev/null | grep '^Status:' | awk '{print $2}')
 
-# LXD Kali 起動＆シェル投入
-kali() {
-  xhost +SI:localuser:"$USER" &>/dev/null
-  st=$(lxc info kali 2>/dev/null \
-       | grep '^Status:' \
-       | cut -d' ' -f2 \
-       | tr '[:lower:]' '[:upper:]')
-
-  if [[ -z $st ]]; then
-    echo "→ Launching new Kali container…"
-    lxc launch images:kali/rolling kali
-  elif [[ $st != RUNNING ]]; then
-    echo "→ Starting Kali container…"
+  if [[ -z "$st" ]]; then
+    echo "→ Launching new Kali container (kali)..."
+    lxc launch images:kali/rolling kali && lxc start kali
+  elif [[ "$st" != "RUNNING" ]]; then
+    echo "→ Starting Kali container (kali)..."
     lxc start kali
   fi
-
-  lxc exec kali -- /bin/bash --login
+  return 0
 }
 
-alias k='kali'
+# Kaliコンテナ内でコマンドを実行するヘルパー関数
+_lxc_kali_exec() {
+  _ensure_kali_running || return 1
+
+  local container_display_num=":0"
+  local x_setup_commands="export DISPLAY='$container_display_num';"
+
+  # ユーザー指定のコマンドの前にX11セットアップコマンドを挿入して実行
+  local final_command_string="$x_setup_commands $@"
+  lxc exec kali -- bash -c "$final_command_string"
+  return $?
+}
+
+# Tor有効でKaliに入るエイリアス (仮・スリム版)
+k() {
+  _lxc_kali_exec '
+    sudo anonsurf start;
+    exec /bin/bash --login
+  '
+}
+
+# 通常モードでKaliに入るエイリアス (仮・スリム版)
+kpub() {
+  _lxc_kali_exec '
+    sudo anonsurf stop >/dev/null 2>&1;
+    (sudo systemctl restart networking.service || sudo systemctl restart NetworkManager.service) >/dev/null 2>&1;
+    exec /bin/bash --login
+  '
+}
+
+alias b='bizstart.sh'

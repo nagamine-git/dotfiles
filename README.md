@@ -182,25 +182,26 @@ sudo lxd init --auto
 # X ソケットを許可
 xhost +local:
 
-# LXD デバイスとして X ソケットを追加（一度だけで OK）
-lxc config device add kali X0 disk source=/tmp/.X11-unix path=/tmp/.X11-unix
+# LXD プロキシデバイスとして X ソケットを追加（一度だけで OK）
+# ホストの抽象ソケット @/tmp/.X11-unix/X0 をコンテナ内の /tmp/.X11-unix/X0 に接続
+lxc config device add kali X0 proxy \
+  listen=unix:/tmp/.X11-unix/X0 \
+  connect=unix:@/tmp/.X11-unix/X0 \
+  bind=container \
+  mode=0777 \
+  uid=0 \
+  gid=0
 
 # Kali コンテナを初回起動
 lxc launch images:kali/rolling kali
+lxc start
 
 # コンテナ内でパッケージを入れる
-lxc exec kali -- bash -c "apt update && apt install -y kali-linux-large"
-```
-
-```bash
-# ホスト側：X ソケットを許可
-xhost +local:
-
-# コンテナが停止中なら起動
-if ! lxc info kali | grep -q "Status: Running"; then
-  lxc start kali
-fi
-
-# コンテナに入りたいだけなら exec
-lxc exec kali -- /bin/bash
+lxc exec kali -- bash -c "\
+apt update && \
+apt install -y kali-linux-large git dnsutils tor && \
+git clone https://github.com/Und3rf10w/kali-anonsurf.git /opt/kali-anonsurf && \
+cd /opt/kali-anonsurf && \
+bash ./installer.sh && \
+echo 'kali-anonsurf installation completed. X11 forwarding should be handled by .zshrc functions.'"
 ```
