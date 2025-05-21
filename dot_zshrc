@@ -89,27 +89,42 @@ _lxc_kali_exec() {
   _ensure_kali_running || return 1
 
   local container_display_num=":0"
+  local xauth_cookie
+  # ホストOSからX11認証クッキーを取得 (最初のMIT-MAGIC-COOKIE-1エントリのクッキー部分)
+  xauth_cookie=$(xauth list "$DISPLAY" 2>/dev/null | grep 'MIT-MAGIC-COOKIE-1' | head -n 1 | awk '{print $3}')
+
   local x_setup_commands="export DISPLAY='$container_display_num';"
+  if [[ -n "$xauth_cookie" ]]; then
+    # コンテナ内で .Xauthority ファイルを準備 (クリーンアップと作成)
+    x_setup_commands+="rm -rf /root/.Xauthority;"
+    x_setup_commands+="touch /root/.Xauthority;"
+    x_setup_commands+="chmod 600 /root/.Xauthority;"
+    x_setup_commands+="xauth add :0 MIT-MAGIC-COOKIE-1 $xauth_cookie;"
+  else
+    echo "警告: ホストOSのX11認証クッキーを取得できませんでした。コンテナ内GUIアプリは動作しない可能性があります。" >&2
+  fi
 
   # ユーザー指定のコマンドの前にX11セットアップコマンドを挿入して実行
-  local final_command_string="$x_setup_commands $@"
-  lxc exec kali -- bash -c "$final_command_string"
-  return $?
+  lxc exec kali -- bash -c "$x_setup_commands $@"
+  return $? # lxc exec の終了ステータスを返す
 }
 
-# Tor有効でKaliに入るエイリアス (仮・スリム版)
+# Torを有効にしてKaliコンテナに入る
 k() {
   _lxc_kali_exec '
     sudo anonsurf start;
+    sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null;
     exec /bin/bash --login
   '
 }
 
-# 通常モードでKaliに入るエイリアス (仮・スリム版)
+# 通常ネットワークモードでKaliコンテナに入る
 kpub() {
   _lxc_kali_exec '
     sudo anonsurf stop >/dev/null 2>&1;
+    # ネットワークサービスを再起動して通常接続を回復
     (sudo systemctl restart networking.service || sudo systemctl restart NetworkManager.service) >/dev/null 2>&1;
+    sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null;
     exec /bin/bash --login
   '
 }
