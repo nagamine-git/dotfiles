@@ -1,3 +1,5 @@
-# Ignore data directory and its contents
-data/
-data/**/* 
+activity.db
+private_dot_config/autokey/data/My Phrases/*.txt
+!private_dot_config/autokey/data/My Phrases/*.txt.sample
+private_dot_config/autokey/data/My Phrases/dot_*.json
+!private_dot_config/autokey/data/My Phrases/dot_*.json.sample

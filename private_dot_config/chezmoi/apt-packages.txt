@@ -46,3 +46,4 @@ zram-tools
 mpv
 hwinfo
 inxi
+autokey-gtk
