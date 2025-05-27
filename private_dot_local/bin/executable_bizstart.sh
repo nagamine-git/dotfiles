@@ -65,6 +65,7 @@ else
     # Check which Slack executable exists and use that one
     if [ -f "/usr/bin/slack" ]; then
         echo "Using /usr/bin/slack" | tee -a "$DEBUG_LOG"
+        '/usr/bin/slack' > "$LOG_DIR/slack.log" 2>&1 &
     else
         echo "Could not find Slack executable" | tee -a "$DEBUG_LOG"
     fi

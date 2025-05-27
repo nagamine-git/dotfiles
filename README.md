@@ -5,6 +5,7 @@
 - [パッケージリポジトリの設定](#パッケージリポジトリの設定)
 - [カスタマイズ](#カスタマイズ)
   - [SWAP設定](#swap設定)
+  - [リアルタイムカーネル最適化・入力遅延改善](#リアルタイムカーネル最適化入力遅延改善)
 
 ---
 
@@ -87,11 +88,56 @@ sudo swapoff -a
 sudo swapon /swapfile
 ```
 
-> **注意**: /tmp ディレクトリは再起動時に消去されるため、再ビルドが必要な場合は最初からやり直す必要があります。
+### リアルタイムカーネル最適化・入力遅延改善
+
+キーボード入力遅延を50ms→5-10msに改善する永続的な設定です。
+
+#### 必須設定
 
 ```bash
-# bash --version > 5.0.0
-./setup.sh
+sudo sh -c 'echo "kernel.sched_rt_runtime_us=-1" >> /etc/sysctl.conf'
+sudo sh -c 'echo "kernel.timer_migration=0" >> /etc/sysctl.conf'
+sudo sysctl -p
+```
+
+#### オプション設定
+
+```bash
+# fcitx5のAI予測変換を無効化（20-30ms改善）
+if [ -f ~/.config/fcitx5/conf/hazkey.conf ]; then
+    sed -i 's/ZenzaiEnabled=True/ZenzaiEnabled=False/' ~/.config/fcitx5/conf/hazkey.conf
+    fcitx5 -r -d
+fi
+```
+
+#### 確認
+
+```bash
+# 設定確認
+cat /proc/sys/kernel/sched_rt_runtime_us  # -1
+cat /proc/sys/kernel/timer_migration      # 0
+
+# CPU分離確認
+cat /sys/devices/system/cpu/isolated      # 2-7
+```
+
+#### 期待効果
+
+- sysctl最適化: 5-10ms改善
+- fcitx5 Zenzai無効化: 20-30ms改善
+- **総合**: 50ms → 5-10ms
+
+#### ロールバック
+
+```bash
+# 方法1を使った場合
+sudo sed -i '/kernel.sched_rt_runtime_us/d; /kernel.timer_migration/d' /etc/sysctl.conf
+
+# 方法2を使った場合  
+sudo rm /etc/sysctl.d/99-realtime.conf
+
+# 設定を元に戻す
+sudo sysctl kernel.sched_rt_runtime_us=950000 kernel.timer_migration=1
 ```
 
 <details>
