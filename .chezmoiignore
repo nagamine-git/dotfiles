@@ -1,3 +1,4 @@
 README.md
-activity.db
+data/activity.db
 !data/private_dot_config/autokey/**/*
+.docker/config.json
