@@ -47,3 +47,4 @@ mpv
 hwinfo
 inxi
 autokey-gtk
+fwupd

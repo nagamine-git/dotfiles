@@ -251,3 +251,28 @@ cd /opt/kali-anonsurf && \
 bash ./installer.sh && \
 echo 'kali-anonsurf installation completed. X11 forwarding should be handled by .zshrc functions.'"
 ```
+
+## システムメンテナンス
+
+システムを最新の状態に保つため、定期的に以下のコマンドを実行します:
+
+```bash
+sudo apt update && \
+sudo apt full-upgrade && \
+sudo apt autoremove --purge && \
+sudo apt clean
+```
+
+## BIOS アップデート
+
+BIOS/UEFI ファームウェアを最新に保つには、fwupd (LVFS) を利用するのが最も簡単です:
+
+```bash
+sudo fwupdmgr refresh --force
+fwupdmgr get-updates
+sudo fwupdmgr update
+```
+
+更新後は再起動が必要です。
+
+もし「UEFI capsule updates not available」などの警告が出る場合や、fwupd で BIOS 更新ができない場合は、Lenovo サポートサイトから機種向け BIOS ISO/EXE をダウンロードし、USB に書き込んでブートして画面の指示に従い手動更新してください。更新中は AC アダプタを接続の上、電源を切らないよう注意してください。
