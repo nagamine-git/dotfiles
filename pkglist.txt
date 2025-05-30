@@ -49,7 +49,7 @@ cliphist
 atuin
 hypridle
 hyprlock
-slack-desktop
+slack
 zellij
 linux-zen
 linux-zen-headers
