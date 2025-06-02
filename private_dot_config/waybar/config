@@ -5,7 +5,7 @@
   "margin": "6 6 0 6",
   "spacing": 4,
   "radius": 8,
-  "font": "'Roboto + Noto Sans JP', 'Firge35Nerd Console', sans-serif",
+  "font": "'Firge35Nerd Console', monospace",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],
@@ -14,8 +14,8 @@
   "hyprland/workspaces": {
     "format": "{icon}",
     "format-icons": {
-      "active": "",
-      "default": ""
+      "active": "●",
+      "default": "○"
     },
     "on-click": "hyprctl dispatch workspace {name}",
     "tooltip": true
@@ -64,7 +64,7 @@
   "temperature": {
     "interval": 5,
     "format": "󰔏 {icon}",
-    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "format-icons": ["⡀", "⡀", "⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
     "warning-threshold": 75,
     "critical-threshold": 85,
     "tooltip": true
@@ -86,14 +86,14 @@
       "critical": 15
     },
     "format": "{icon} {time}",
-    "format-charging": "󰂄 {time}",
+    "format-charging": "󰂄{time}",
     "format-plugged": "󰚥",
-    "format-alt": "{icon} {capacity}%",
     "format-time": "{H}:{M}",
     "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰂂", "󰁹"],
     "interval": 30,
     "tooltip": true,
-    "tooltip-format": "バッテリー: {capacity}%\n残り時間: {time}"
+    "tooltip-format": "バッテリー: {capacity}%\n残り時間: {time}",
+    "on-click": "echo -e 'ログアウト\\n再起動\\nシャットダウン' | wofi --dmenu | xargs -I {} sh -c 'case {} in ログアウト) hyprctl dispatch exit;; 再起動) systemctl reboot;; シャットダウン) systemctl poweroff;; esac'"
   },
 
   "pulseaudio": {
@@ -117,11 +117,5 @@
     "interval": 3,
     "tooltip": true,
     "tooltip-format": "音量: {volume}%"
-  },
-
-  "custom/power": {
-    "format": "⏻",
-    "tooltip": true,
-    "on-click": "wlogout -p layer-shell"
   }
 }
