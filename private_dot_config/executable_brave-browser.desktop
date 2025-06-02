@@ -2,7 +2,7 @@
 Name=Brave Web Browser
 Comment=Access the Internet without KDE Wallet prompts
 GenericName=Web Browser
-Exec=brave-browser %U --password-store=basic
+Exec=brave-browser --enable-features=UseOzonePlatform --ozone-platform=wayland --password-store=basic %U
 Terminal=false
 Icon=brave-browser
 Type=Application

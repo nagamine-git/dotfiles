@@ -1,6 +1,11 @@
 # Created by newuser for 5.9
 export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
+export XMODIFIERS=@im=fcitx
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export CLUTTER_IM_MODULE=fcitx
+export SDL_IM_MODULE=fcitx
 export EDITOR=nvim
 
 # 補完
@@ -9,7 +14,7 @@ compinit -i
 
 # プラグイン管理
 eval "$(starship init zsh)"
-eval "$(mise activate --shims)"
+eval "$(mise activate --shims --verbose)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
@@ -28,15 +33,13 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
 
-find_cursor() {
-    local cursor_base_dir="$HOME/Applications/extracted"
-    local latest_cursor_dir=$(find "$cursor_base_dir" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
-    
-    if [ -n "$latest_cursor_dir" ] && [ -d "$latest_cursor_dir" ]; then
-        echo "$latest_cursor_dir"
-    else
-        echo "Cursorが見つかりません"
-    fi
+cursor() {
+    command cursor \
+      --no-sandbox \
+      --enable-features=UseOzonePlatform \
+      --ozone-platform=wayland \
+      --enable-wayland-ime \
+      --wayland-text-input-version=1 "$@"
 }
 
 alias ls='eza --icons --color=always'

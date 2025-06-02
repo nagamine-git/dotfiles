@@ -11,12 +11,17 @@ tmux
 fcitx5-hazkey-bin
 fcitx5
 fcitx5-config-qt
+fcitx5-wayland
+fcitx5-gtk
+fcitx5-qt
 brave-bin
 dolphin
 wofi
 playerctl
 brightnessctl
 wireplumber
+pipewire
+pipewire-pulse
 zsh
 dialog
 vulkan-radeon
@@ -41,9 +46,6 @@ btop
 wl-clipboard
 lazygit
 wdisplays
-gammastep
-darkman
-geoclue
 grimshot
 cliphist
 atuin
@@ -63,3 +65,5 @@ wavemon
 tokyonight-gtk-theme-git
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
+xdg-desktop-portal-wlr
+lxd

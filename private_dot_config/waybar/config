@@ -56,13 +56,11 @@
 
   "custom/disk": {
     "format": "󰋊 {}",
-    "exec": "df -h / | awk 'NR==2 {perc=substr($5, 1, length($5)-1); if (perc < 13) {icon=\"⡀\"} else if (perc < 25) {icon=\"⣀\"} else if (perc < 38) {icon=\"⣄\"} else if (perc < 50) {icon=\"⣤\"} else if (perc < 63) {icon=\"⣦\"} else if (perc < 75) {icon=\"⣶\"} else if (perc < 88) {icon=\"⣷\"} else {icon=\"⣿\"}; printf \"%s\", icon}'",
-    "exec-if": "exit 0",
+    "exec": "df -P / | awk 'NR==2{used=$3;total=$2;perc=int(used/total*100);icon=(perc<13?\"⡀\":perc<25?\"⣀\":perc<38?\"⣄\":perc<50?\"⣤\":perc<63?\"⣦\":perc<75?\"⣶\":perc<88?\"⣷\":\"⣿\"); printf \"%s\", icon, perc;}'",
     "interval": 30,
     "tooltip": true,
     "tooltip-format": "ディスク使用量: {}"
   },
-
   "temperature": {
     "interval": 5,
     "format": "󰔏 {icon}",
@@ -116,7 +114,7 @@
       ]
     },
     "on-click": "pavucontrol",
-    "interval": 1,
+    "interval": 3,
     "tooltip": true,
     "tooltip-format": "音量: {volume}%"
   },
