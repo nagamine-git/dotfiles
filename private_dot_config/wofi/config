@@ -1,6 +1,6 @@
 show=drun
-width=350
-height=400
+width=800
+height=600
 prompt=アプリ検索
 allow_markup=true
 always_parse_args=true

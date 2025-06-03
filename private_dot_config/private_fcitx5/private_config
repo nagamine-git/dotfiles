@@ -48,20 +48,20 @@ ModifierOnlyKeyTimeout=250
 [Behavior]
 # デフォルトで有効にする
 ActiveByDefault=False
-# フォーカス時に状態をリセット（描画問題軽減のため）
-resetStateWhenFocusIn=Yes
+# フォーカス時に状態をリセット
+resetStateWhenFocusIn=No
 # 入力状態を共有する
 ShareInputState=No
 # アプリケーションにプリエディットを表示する
 PreeditEnabledByDefault=True
 # 入力メソッドを切り替える際に入力メソッドの情報を表示する
-ShowInputMethodInformation=False
+ShowInputMethodInformation=True
 # フォーカスを変更する際に入力メソッドの情報を表示する
 showInputMethodInformationWhenFocusIn=False
 # 入力メソッドの情報をコンパクトに表示する
 CompactInputMethodInformation=True
 # 第1入力メソッドの情報を表示する
-ShowFirstInputMethodInformation=False
+ShowFirstInputMethodInformation=True
 # デフォルトのページサイズ
 DefaultPageSize=5
 # XKB オプションより優先する
@@ -81,5 +81,3 @@ ShowPreeditForPassword=False
 # ユーザーデータを保存する間隔（分）
 AutoSavePeriod=30
 
-[Wayland]
-PreferTextInputV2=False

@@ -37,12 +37,8 @@ cgh() {
 }
 
 cursor() {
-    command cursor \
-      --no-sandbox \
-      --enable-features=UseOzonePlatform \
-      --ozone-platform=wayland \
-      --enable-wayland-ime \
-      --wayland-text-input-version=1 "$@"
+    command cursor "$@" > /dev/null 2>&1 &
+    disown
 }
 
 alias ls='eza --icons --color=always'
@@ -57,3 +53,4 @@ alias pbcopy='wl-copy'
 alias shutdown='hyprsession.sh shutdown'
 alias poweroff='hyprsession.sh shutdown'
 alias reboot='hyprsession.sh reboot'
+alias hibernate='hyprsession.sh save && systemctl hibernate'

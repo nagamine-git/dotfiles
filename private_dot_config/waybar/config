@@ -56,7 +56,7 @@
 
   "custom/disk": {
     "format": "󰋊 {}",
-    "exec": "df -P / | awk 'NR==2{used=$3;total=$2;perc=int(used/total*100);icon=(perc<13?\"⡀\":perc<25?\"⣀\":perc<38?\"⣄\":perc<50?\"⣤\":perc<63?\"⣦\":perc<75?\"⣶\":perc<88?\"⣷\":\"⣿\"); printf \"%s\", icon, perc;}'",
+    "exec": "df -P / | awk 'NR==2{used=$3;total=$2;perc=int(used/total*100);icon=(perc<6?\"⡀\":perc<12?\"⣀\":perc<19?\"⣄\":perc<25?\"⣤\":perc<31?\"⣦\":perc<37?\"⣶\":perc<44?\"⣷\":\"⣿\"); printf \"%s\", icon, perc;}'",
     "interval": 30,
     "tooltip": true,
     "tooltip-format": "ディスク使用量: {}"
