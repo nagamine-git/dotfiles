@@ -14,7 +14,10 @@ compinit -i
 
 # プラグイン管理
 eval "$(starship init zsh)"
-eval "$(mise activate --shims --verbose)"
+# Cursor内での問題を回避するため、shimsを無効化
+if [[ "$TERM_PROGRAM" != "vscode" ]]; then
+    eval "$(mise activate --shims)"
+fi
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
