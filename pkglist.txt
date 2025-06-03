@@ -51,7 +51,6 @@ cliphist
 atuin
 hypridle
 hyprlock
-slack
 zellij
 linux-zen
 linux-zen-headers
@@ -67,4 +66,5 @@ xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-wlr
 lxd
-nwg-displays
+slack-desktop-wayland
+mtr-git

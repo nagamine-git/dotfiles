@@ -1,6 +1,7 @@
 * {
   font-family: "Firge35Nerd Console", sans-serif;
   font-size: 13px;
+  scrollbar-width: none; /* Firefox */
 }
 
 window {
@@ -64,4 +65,9 @@ window {
 
 #scroll {
   margin: 4px;
+}
+
+/* スクロールバー非表示 */
+scrollbar {
+  all: unset;
 }

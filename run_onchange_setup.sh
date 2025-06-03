@@ -83,5 +83,3 @@ sudo modprobe v4l2loopback devices=1 exclusive_caps=1 label="DroidCam"
 # gh extension
 gh extension install HikaruEgashira/gh-q
 ghq get HikaruEgashira/gh-q
-
-

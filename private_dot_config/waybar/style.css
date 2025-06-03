@@ -38,13 +38,13 @@
 #workspaces {
   background-color: rgba(46, 52, 64, 0.75);
   border-radius: 6px;
-  padding: 0 5px;
+  padding: 0 8px;
 }
 
 #workspaces button {
   color: #9da4b0;
   background: transparent;
-  padding: 0 5px;
+  margin: 0;
   font-size: 14px;
   transition: color 0.2s ease;
 }

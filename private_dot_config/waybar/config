@@ -88,7 +88,7 @@
     "format": "{icon} {time}",
     "format-charging": "󰂄{time}",
     "format-plugged": "󰚥",
-    "format-time": "{H}:{M}",
+    "format-time": "{H}:{m}",
     "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰂂", "󰁹"],
     "interval": 30,
     "tooltip": true,
