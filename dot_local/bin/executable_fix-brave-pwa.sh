@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # 追加したいフラグをここで定義
-FLAGS='--enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --password-store=basic'
+FLAGS='--enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic'
 
 APPS_DIR="$HOME/.local/share/applications"
 
@@ -18,13 +18,13 @@ echo "[*] scanning Brave PWA desktop files …"
 
 find "$APPS_DIR" -name 'brave-*-Default.desktop' -print0 |
 while IFS= read -r -d '' file; do
-    # 既に --ozone-platform が入っていれば変更しない
-    if grep -q -- '--ozone-platform' "$file"; then
-        continue
-    fi
-
     echo "    + patching $(basename "$file")"
-    sed -i -E "s|^Exec=/opt/brave-bin/brave |Exec=/opt/brave-bin/brave $FLAGS |" "$file"
+    
+    # まずExec行を一旦クリーンアップ（基本形に戻す）
+    sed -i -E "s|^Exec=/opt/brave-bin/brave .* --profile-directory|Exec=/opt/brave-bin/brave --profile-directory|" "$file"
+    
+    # 次に新しいフラグを挿入
+    sed -i -E "s|^Exec=/opt/brave-bin/brave --profile-directory|Exec=/opt/brave-bin/brave $FLAGS --profile-directory|" "$file"
 done
 
 # .desktop キャッシュ更新（メニュー反映を早くするため）
