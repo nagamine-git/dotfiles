@@ -78,8 +78,11 @@ install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmaca
 
 # droidcam
 sudo dkms autoinstall
-sudo modprobe v4l2loopback devices=1 exclusive_caps=1 label="DroidCam"
+sudo modprobe -r v4l2loopback
+sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920" max_width=1920 max_height=1080
 
 # gh extension
 gh extension install HikaruEgashira/gh-q
 ghq get HikaruEgashira/gh-q
+
+

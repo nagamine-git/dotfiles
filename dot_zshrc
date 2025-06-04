@@ -1,12 +1,8 @@
 # Created by newuser for 5.9
-export LANG=ja_JP.UTF-8
-export LC_ALL=ja_JP.UTF-8
-export XMODIFIERS=@im=fcitx
-export GTK_IM_MODULE=fcitx
-export QT_IM_MODULE=fcitx
-export CLUTTER_IM_MODULE=fcitx
-export SDL_IM_MODULE=fcitx
+# Note: Most environment variables are now defined in ~/.config/hypr/env
+# Only shell-specific variables are kept here
 export EDITOR=nvim
+export ZSHRC_DEBUG=1
 
 # 補完
 autoload -Uz compinit

@@ -37,3 +37,15 @@ chezmoi apply -v
 ### パッケージ
 
 必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+
+### tuigreet
+/etc/greetd/config.toml
+```bash
+[terminal]
+vt = 1
+
+[default_session]
+# command = "tuigreet -t -r --remember-session --asterisks --cmd hyprland"
+command = "agreety -c hyprland"
+user    = "tsuyoshi"
+```

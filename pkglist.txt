@@ -1,6 +1,7 @@
 hyprland
 linux-headers
 greetd
+greetd-tuigreet
 waybar
 mako
 git
@@ -8,12 +9,9 @@ chezmoi
 vim
 neovim
 tmux
+fcitx5-im
+fcitx5-frontend-x11
 fcitx5-hazkey-bin
-fcitx5
-fcitx5-config-qt
-fcitx5-wayland
-fcitx5-gtk
-fcitx5-qt
 brave-bin
 dolphin
 wofi
@@ -38,9 +36,9 @@ neofetch
 ghq
 github-cli
 eza
-v4l2loopback-dkms
-obs-studio
-droidcam
+obs-studio-git
+droidcam-obs-plugin-git
+droidcam-git
 hyprpaper
 btop
 wl-clipboard
@@ -68,3 +66,5 @@ xdg-desktop-portal-wlr
 lxd
 slack-desktop-wayland
 mtr-git
+pdfunite
+cursor-bin
