@@ -10,7 +10,8 @@
 set -euo pipefail
 
 # 追加したいフラグをここで定義
-FLAGS='--enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic'
+# FLAGS='--enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic'
+FLAGS='--password-store=basic'
 
 APPS_DIR="$HOME/.local/share/applications"
 
