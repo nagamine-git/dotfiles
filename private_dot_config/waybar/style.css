@@ -1,7 +1,6 @@
 * {
   margin: 0;
   padding: 0;
-  font-family: "FirgeNerd Console", monospace;
   font-size: 14px;
   color: #eceff4;
   background-color: transparent;
@@ -47,6 +46,7 @@
   margin: 0;
   font-size: 14px;
   transition: color 0.2s ease;
+  font-family: "FirgeNerd Console", monospace;
 }
 
 #workspaces button.active,

@@ -5,7 +5,7 @@
   "margin": "6 6 0 6",
   "spacing": 4,
   "radius": 8,
-  "font": "'Firge35Nerd Console', monospace",
+  "font": "'Roboto + Noto Sans JP', 'FirgeNerd Console', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],

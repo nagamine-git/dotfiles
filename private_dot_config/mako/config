@@ -1,33 +1,33 @@
 # Core settings
 sort=-time
 layer=overlay
-font=Firge35Nerd Console 8
-width=320
-height=100
+font='Roboto + Noto Sans JP 10'
+width=400
+height=250
 margin=6
 padding=12
 border-size=1
 border-radius=12
-progress-color=over #88c0d0
+progress-color=over #808080
 max-icon-size=48
 icon-path=/usr/share/icons/Papirus-Dark
 default-timeout=4000
 
 # Colors 
-background-color=#2e3440ee
-text-color=#eceff4
-border-color=#88c0d0b2
+background-color=#1a1a1aee
+text-color=#f0f0f0
+border-color=#808080b2
 
 # Urgency-specific styling
 [urgency=low]
-border-color=#8fbcbb80
+border-color=#a0a0a080
 
 [urgency=normal]
-border-color=#d08770b2
+border-color=#808080b2
 
 [urgency=high]
-border-color=#bf616af2
-background-color=#2e3440f2
+border-color=#404040f2
+background-color=#0d0d0df2
 default-timeout=0
 
 # Group settings
