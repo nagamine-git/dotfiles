@@ -77,7 +77,8 @@
     "format-disconnected": "󰤮",
     "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
     "tooltip-format-ethernet": "󰈀 {ifname}: {ipaddr}/{cidr}\n󰕒 {bandwidthUpBits}\n󰇚 {bandwidthDownBits}",
-    "interval": 10
+    "interval": 10,
+    "on-click": "nm-connection-editor"
   },
 
   "battery": {
@@ -116,6 +117,6 @@
     "on-click": "pavucontrol",
     "interval": 3,
     "tooltip": true,
-    "tooltip-format": "音量: {volume}%"
+    "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
   }
 }

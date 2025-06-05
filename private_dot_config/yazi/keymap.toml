@@ -1,0 +1,28 @@
+# Colemak-friendly navigation keys (h/n/e/i = left/down/up/right)
+# Based on Hyprland configuration for consistency
+
+[mgr]
+prepend_keymap = [
+    # Colemak navigation - consistent with Hyprland
+    { on = "h", run = "leave", desc = "Go back to parent directory (left)" },
+    { on = "n", run = "arrow 1", desc = "Move cursor down" },
+    { on = "e", run = "arrow -1", desc = "Move cursor up" },
+    { on = "i", run = "enter", desc = "Enter directory (right)" },
+    
+    # Visual mode selection with Colemak
+    { on = ["H"], run = "seek -5", desc = "Seek up in preview" },
+    { on = ["N"], run = "arrow 5", desc = "Jump down 5 lines" },
+    { on = ["E"], run = "arrow -5", desc = "Jump up 5 lines" },
+    { on = ["I"], run = "seek 5", desc = "Seek down in preview" },
+    
+    # Search and find with Colemak-friendly keys
+    { on = ["g", "h"], run = "cd ~", desc = "Go to home directory" },
+    { on = ["g", "n"], run = "cd ~/Downloads", desc = "Go to Downloads" },
+    { on = ["g", "e"], run = "cd /etc", desc = "Go to /etc" },
+    { on = ["g", "i"], run = "cd /", desc = "Go to root directory" },
+    
+    # Disable original vim keys to avoid conflicts
+    { on = "j", run = "noop" },
+    { on = "k", run = "noop" },
+    { on = "l", run = "noop" },
+]

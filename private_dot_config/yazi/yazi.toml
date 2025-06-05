@@ -1,0 +1,34 @@
+# Yazi Configuration for Colemak users
+# Basic configuration optimized for vim-style navigation with Colemak layout
+
+[mgr]
+# Use vim-style navigation with Colemak mapping
+# This works with our keymap.toml configuration
+show_hidden = false
+show_symlink = true
+sort_by = "natural"
+sort_dir_first = true
+
+[preview]
+# Enable image preview and other file previews
+tab_size = 2
+max_width = 600
+max_height = 900
+
+[opener]
+# Text editor for code files
+edit = [
+    { run = '$EDITOR "$@"', block = true, desc = "Edit with default editor" },
+]
+
+# Archive management
+archive = [
+    { run = 'unar "$@"', desc = "Extract archive" },
+]
+
+[open]
+# File associations
+rules = [
+    { name = "*.{md,txt,json,toml,yml,yaml,conf}", use = "edit" },
+    { name = "*.{zip,tar,gz,bz2,xz,7z}", use = "archive" },
+]

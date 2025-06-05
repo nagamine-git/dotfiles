@@ -30,7 +30,7 @@ echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.d/99-bbr.co
 curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 
 # Install packages
-yay -S - < ~/pkglist.txt --noconfirm --needed
+paru -S --needed --noconfirm - < ~/pkglist.txt || echo "Some packages failed to install"
 
 # フォント設定
 sudo mkdir -p /usr/share/fonts
@@ -84,5 +84,4 @@ sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920"
 # gh extension
 gh extension install HikaruEgashira/gh-q
 ghq get HikaruEgashira/gh-q
-
 

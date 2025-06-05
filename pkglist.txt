@@ -10,7 +10,6 @@ vim
 neovim
 tmux
 fcitx5-im
-fcitx5-frontend-x11
 fcitx5-hazkey-bin
 brave-bin
 dolphin
@@ -52,7 +51,6 @@ hyprlock
 zellij
 linux-zen
 linux-zen-headers
-hyprsession
 hyprsession-sh
 irqbalance
 powertop
@@ -63,8 +61,15 @@ tokyonight-gtk-theme-git
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-wlr
-lxd
+distrobox
 slack-desktop-wayland
 mtr-git
-pdfunite
+pdfmerger
 cursor-bin
+thunar
+yazi
+nm-connection-editor
+wtype
+grim
+slurp
+swappy
