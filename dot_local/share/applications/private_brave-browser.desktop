@@ -6,7 +6,7 @@ Comment=Access the Internet
 StartupNotify=true
 StartupWMClass=brave-browser
 TryExec=brave
-Exec=brave %U
+Exec=brave --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 %U
 Terminal=false
 Icon=brave-desktop
 Type=Application
@@ -15,9 +15,9 @@ Actions=new-window;new-private-window;
 
 [Desktop Action new-window]
 Name=New Window
-Exec=brave
+Exec=brave --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1
 
 [Desktop Action new-private-window]
 Name=New Incognito Window
-Exec=brave --incognito
+Exec=brave --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 --incognito
 MimeType=x-scheme-handler/mailto;application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;
