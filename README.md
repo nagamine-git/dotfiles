@@ -60,11 +60,17 @@ sudo usermod -aG docker $USER
 sudo systemctl start docker
 distrobox create --name kali --image docker.io/kalilinux/kali-rolling:latest --home ~/distrobox/kali --additional-flags "--privileged"
 distrobox enter kali
-sudo apt update && sudo apt install -y locales
-sudo apt full-upgrade -y
-sudo apt install -y kali-linux-default
-sudo apt install -y kali-linux-large
-kali-tweaks
+export GTK_IM_MODULE=fcitx
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install -y kali-linux-large locales firefox-esr git dnsutils tor proxychains4
+cp /etc/proxychains4.conf ~/.proxychains.conf
+sudo systemctl enable tor
+```
+
+check ip and tor
+```bash
+curl -s https://httpbin.org/ip
+curl -s https://check.torproject.org/api/ip
 ```
 
 ## 日本語環境セットアップ（推奨）

@@ -1,12 +1,25 @@
 # Created by newuser for 5.9
-# Note: Most environment variables are now defined in ~/.config/hypr/env
-# Only shell-specific variables are kept here
-export EDITOR=nvim
-export ZSHRC_DEBUG=1
 
-# 補完
+# 基本的な環境変数
+export LANG=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
+export EDITOR=nvim
+
+# PATHの設定 - 一箇所にまとめてシンプル化
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+export PATH="$PATH:/snap/bin"
+
+# 補完｀
 autoload -Uz compinit
 compinit -i
+
+# 補完の設定
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # 大文字小文字を区別しない
+zstyle ':completion:*' menu select # 補完メニューを有効化
+zstyle ':completion:*' verbose yes # 補完の詳細を表示
 
 # プラグイン管理
 eval "$(starship init zsh)"
@@ -21,6 +34,10 @@ eval "$(atuin init zsh)"
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
+setopt hist_expire_dups_first
+setopt hist_verify
+setopt share_history
+setopt extended_history
 
 # alias
 alias vim='nvim'
@@ -32,11 +49,22 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
 
-cursor() {
-    command cursor "$@" > /dev/null 2>&1 &
-    disown
+# シンプル化したCursor検出・実行関数
+cursor_path() {
+    local target_path="${1:-.}"
+    local cursor_dir=$(find "$HOME/Applications/extracted" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
+    
+    if [ -n "$cursor_dir" ] && [ -d "$cursor_dir" ]; then
+        nohup env CURSOR_APPIMAGE=1 "$cursor_dir/AppRun" --no-sandbox "$target_path" > /dev/null 2>&1 &
+        disown
+    else
+        echo "Cursorが見つかりません"
+    fi
 }
 
+alias cursor='cursor_path'
+
+# ls系コマンドの統合
 alias ls='eza --icons --color=always'
 alias ll='ls -l'
 alias la='ls -la'
@@ -45,6 +73,67 @@ alias tree='ls --tree --git-ignore'
 alias lmt='eza --tree --git-ignore --icons=never --classify'
 alias zj='zellij'
 alias supabase='npx supabase'
+
+# Distroboxコンテナ準備の共通処理
+_ensure_kali_running() {
+    # Dockerサービスが起動しているか確認
+    if ! systemctl is-active --quiet docker; then
+        echo "→ Starting Docker service..."
+        sudo systemctl start docker
+    fi
+    
+    # Kaliコンテナが存在するか確認
+    if ! distrobox list | grep -q "^kali"; then
+        echo "→ Creating new Kali container (kali)..."
+        distrobox create --name kali --image docker.io/kalilinux/kali-rolling:latest --home ~/distrobox/kali --additional-flags "--privileged"
+    fi
+    
+    return 0
+}
+
+# Kaliコンテナ内でコマンドを実行するヘルパー関数
+_distrobox_kali_exec() {
+    _ensure_kali_running || return 1
+    
+    # distroboxのenterコマンドでbashコマンドを実行
+    distrobox enter kali -- bash -c "$@"
+    return $?
+}
+
+# Torを有効にしてKaliコンテナに入る
+k() {
+    _ensure_kali_running || return 1
+    
+    echo "→ Entering Kali container with Tor enabled..."
+    distrobox enter kali -- bash -c '
+        # anonsurf が利用可能か確認してから実行
+        if command -v anonsurf >/dev/null 2>&1; then
+            sudo anonsurf start
+        else
+            echo "Warning: anonsurf not installed. Install it first with the setup commands."
+        fi
+        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+        exec /bin/bash --login
+    '
+}
+
+# 通常ネットワークモードでKaliコンテナに入る
+k_pub() {
+    _ensure_kali_running || return 1
+    
+    echo "→ Entering Kali container with normal network..."
+    distrobox enter kali -- bash -c '
+        # anonsurf が利用可能か確認してから停止
+        if command -v anonsurf >/dev/null 2>&1; then
+            sudo anonsurf stop >/dev/null 2>&1
+        fi
+        # ネットワークサービスを再起動して通常接続を回復
+        (sudo systemctl restart networking.service || sudo systemctl restart NetworkManager.service) >/dev/null 2>&1
+        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+        exec /bin/bash --login
+    '
+}
+
 alias pbcopy='wl-copy'
 alias shutdown='hyprsession.sh shutdown'
 alias poweroff='hyprsession.sh shutdown'
