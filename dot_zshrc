@@ -100,19 +100,15 @@ _distrobox_kali_exec() {
     return $?
 }
 
-# Torを有効にしてKaliコンテナに入る
+# Torを有効にしてKaliコンテナに入る（proxychains4使用）
 k() {
     _ensure_kali_running || return 1
     
-    echo "→ Entering Kali container with Tor enabled..."
+    echo "→ Entering Kali container with Tor (proxychains4)..."
     distrobox enter kali -- bash -c '
-        # anonsurf が利用可能か確認してから実行
-        if command -v anonsurf >/dev/null 2>&1; then
-            sudo anonsurf start
-        else
-            echo "Warning: anonsurf not installed. Install it first with the setup commands."
-        fi
-        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+        # Torサービス開始
+        sudo systemctl start tor >/dev/null 2>&1
+        echo "Use: proxychains4 <command> for Tor routing"
         exec /bin/bash --login
     '
 }
@@ -123,13 +119,6 @@ k_pub() {
     
     echo "→ Entering Kali container with normal network..."
     distrobox enter kali -- bash -c '
-        # anonsurf が利用可能か確認してから停止
-        if command -v anonsurf >/dev/null 2>&1; then
-            sudo anonsurf stop >/dev/null 2>&1
-        fi
-        # ネットワークサービスを再起動して通常接続を回復
-        (sudo systemctl restart networking.service || sudo systemctl restart NetworkManager.service) >/dev/null 2>&1
-        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
         exec /bin/bash --login
     '
 }
@@ -139,3 +128,4 @@ alias shutdown='hyprsession.sh shutdown'
 alias poweroff='hyprsession.sh shutdown'
 alias reboot='hyprsession.sh reboot'
 alias hibernate='hyprsession.sh save && systemctl hibernate'
+alias b='~/.local/bin/biz_start.sh '
