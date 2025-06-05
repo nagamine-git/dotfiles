@@ -49,20 +49,17 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
 
-# シンプル化したCursor検出・実行関数
-cursor_path() {
-    local target_path="${1:-.}"
-    local cursor_dir=$(find "$HOME/Applications/extracted" -maxdepth 1 -name "Cursor-*" -type d | sort -V | tail -n 1)
-    
-    if [ -n "$cursor_dir" ] && [ -d "$cursor_dir" ]; then
-        nohup env CURSOR_APPIMAGE=1 "$cursor_dir/AppRun" --no-sandbox "$target_path" > /dev/null 2>&1 &
-        disown
+# Cursorの実行
+cursor() {
+    # 既存のCursorプロセスをチェック
+    if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
+        echo "Cursor is already running. Opening new window..."
+        command /usr/bin/cursor "$@" --reuse-window
     else
-        echo "Cursorが見つかりません"
+        command /usr/bin/cursor "$@" --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic > /dev/null 2>&1 &
+        disown
     fi
 }
-
-alias cursor='cursor_path'
 
 # ls系コマンドの統合
 alias ls='eza --icons --color=always'
