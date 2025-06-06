@@ -11,8 +11,9 @@ export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
+# export MISE_VERBOSE=1
 
-# 補完｀
+# 補完
 autoload -Uz compinit
 compinit -i
 
@@ -23,10 +24,8 @@ zstyle ':completion:*' verbose yes # 補完の詳細を表示
 
 # プラグイン管理
 eval "$(starship init zsh)"
-# Cursor内での問題を回避するため、shimsを無効化
-if [[ "$TERM_PROGRAM" != "vscode" ]]; then
-    eval "$(mise activate --shims)"
-fi
+# 通常のシェル: フルアクティベート
+eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
@@ -50,7 +49,7 @@ cgh() {
 }
 
 # Cursorの実行
-cursor() {
+code() {
     # 既存のCursorプロセスをチェック
     if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
         echo "Cursor is already running. Opening new window..."

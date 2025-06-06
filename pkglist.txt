@@ -30,6 +30,7 @@ starship
 mise
 sheldon
 docker
+docker-compose
 fzf
 neofetch
 ghq
@@ -65,7 +66,7 @@ distrobox
 slack-desktop-wayland
 mtr-git
 pdfmerger
-cursor-bin
+cursor-extracted
 thunar
 yazi
 nm-connection-editor
