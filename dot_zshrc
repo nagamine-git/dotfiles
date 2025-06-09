@@ -55,6 +55,7 @@ code() {
         echo "Cursor is already running. Opening new window..."
         command /usr/bin/cursor "$@" --reuse-window
     else
+        echo "Cursor is not running. Starting new instance..."
         command /usr/bin/cursor "$@" --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic > /dev/null 2>&1 &
         disown
     fi
@@ -69,6 +70,7 @@ alias tree='ls --tree --git-ignore'
 alias lmt='eza --tree --git-ignore --icons=never --classify'
 alias zj='zellij'
 alias supabase='npx supabase'
+alias cursor='code'
 
 # Distroboxコンテナ準備の共通処理
 _ensure_kali_running() {
