@@ -43,7 +43,6 @@ hyprpaper
 btop
 wl-clipboard
 lazygit
-wdisplays
 grimshot
 cliphist
 atuin
@@ -66,7 +65,7 @@ distrobox
 slack-desktop-wayland
 mtr-git
 pdfmerger
-cursor-extracted
+cursor-bin
 thunar
 yazi
 nm-connection-editor
@@ -74,3 +73,5 @@ wtype
 grim
 slurp
 swappy
+base-devel
+libevdev

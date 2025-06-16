@@ -94,7 +94,7 @@
     "interval": 30,
     "tooltip": true,
     "tooltip-format": "バッテリー: {capacity}%\n残り時間: {time}",
-    "on-click": "echo -e 'ログアウト\\n再起動\\nシャットダウン\\nハイバネート' | wofi --dmenu | xargs -I {} sh -c 'case {} in ログアウト) hyprctl dispatch exit;; 再起動) hyprsession.sh reboot;; シャットダウン) hyprsession.sh shutdown;; ハイバネート) hyprsession.sh save && systemctl hibernate;; esac'"
+    "on-click": "echo -e 'ログアウト\\n再起動\\nシャットダウン\\nサスペンド\\nハイバネート' | wofi --dmenu | xargs -I {} sh -c 'case {} in ログアウト) hyprctl dispatch exit;; 再起動) hyprsession.sh reboot;; シャットダウン) hyprsession.sh shutdown;; サスペンド) systemctl suspend;; ハイバネート) hyprsession.sh save && systemctl hibernate;; esac'"
   },
 
   "pulseaudio": {

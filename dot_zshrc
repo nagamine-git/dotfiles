@@ -122,8 +122,4 @@ k_pub() {
 }
 
 alias pbcopy='wl-copy'
-alias shutdown='hyprsession.sh shutdown'
-alias poweroff='hyprsession.sh shutdown'
-alias reboot='hyprsession.sh reboot'
-alias hibernate='hyprsession.sh save && systemctl hibernate'
 alias b='~/.local/bin/biz_start.sh '
