@@ -8,8 +8,15 @@
   "font": "'Roboto + Noto Sans JP', 'FirgeNerd Console', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["clock"],
+  "modules-center": ["clock", "custom/pomodoro"],
   "modules-right": ["tray", "temperature", "cpu", "memory", "custom/disk", "network", "pulseaudio", "battery", "custom/power"],
+
+"custom/pomodoro": {
+  "exec": "~/.config/waybar/scripts/pomodoro.sh",
+  "interval": 60,
+  "return-type": "json",
+  "tooltip": true
+},
 
   "hyprland/workspaces": {
     "format": "{icon}",

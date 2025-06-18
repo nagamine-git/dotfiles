@@ -14,7 +14,7 @@
 /* Common module styling */
 #cpu, #memory, #disk, #temperature, 
 #network, #battery, #pulseaudio,
-#clock, #tray, #custom-power, #custom-disk {
+#clock, #tray, #custom-power, #custom-disk, #custom-pomodoro {
   padding: 0 8px;
   margin: 0 3px;
   border-radius: 6px;
@@ -82,3 +82,9 @@ menuitem:hover {
   background-color: rgba(76, 86, 106, 0.5);
   border-radius: 4px;
 }
+
+
+/* Pomodoro colors */
+#custom-pomodoro.warning { color: #bf616a; } /* 残り10分：赤 */
+#custom-pomodoro.break   { color: #a3be8c; } /* 休憩：緑 */
+/* work はデフォルト色 (#eceff4) を継承 */
