@@ -13,7 +13,7 @@
 
 "custom/pomodoro": {
   "exec": "~/.config/waybar/scripts/pomodoro.sh",
-  "interval": 60,
+  "interval": 1,
   "return-type": "json",
   "tooltip": true
 },

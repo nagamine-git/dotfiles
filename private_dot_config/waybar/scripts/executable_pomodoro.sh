@@ -7,6 +7,8 @@ partials=(⣿ ⣷ ⣶ ⣦ ⣤ ⣄ ⣀ ⡀)             # 8-step fade from full�
 min=$(date +%M)
 min=$((10#$min))                              # strip leading zero
 hour=$(date +%H)
+sec=$(date +%S)                              # seconds value for optional blinking animation
+sec=$((10#$sec))
 
 if (( min < 50 )); then                      # Work phase
   remaining=$((50 - min))
@@ -29,5 +31,28 @@ else                                          # Break phase (10 min)
   class="break"
 fi
 
+# ---- blink handling -------------------------------------------------------
+# At the exact minute boundaries 50 and 00 show a blinking effect by
+# adding an extra CSS class "blink" on even-numbered seconds.  Define the
+# animation in Waybar's CSS:
+# .blink { animation: blink 1s steps(2,start) infinite; }
+# @keyframes blink { to { visibility: hidden; } }
+classes="$class"
+if (( min == 50 || min == 0 )); then
+  (( sec % 2 == 0 )) && classes+=" blink"
+fi
+
+# ---- optional desktop notifications --------------------------------------
+# Send a single notification exactly at 50:00 (start break) and 00:00 (back to work)
+# Requires `notify-send` (libnotify).  Waybar typically executes this script every
+# second, so we gate on sec==0 to avoid duplicates.
+if (( (min == 50 || min == 0) && sec == 0 )); then
+  if (( min == 50 )); then
+    notify-send -u normal -i alarm-symbolic "Pomodoro" "Break time! 10 min rest"
+  else
+    notify-send -u normal -i alarm-symbolic "Pomodoro" "Back to work! 50 min focus"
+  fi
+fi
+
 printf '{"text":"%s","class":"%s","tooltip":"%s %02d:%02d"}\n' \
-       "$text" "$class" "$class" "$hour" "$min"
+       "$text" "$classes" "$class" "$hour" "$min"
