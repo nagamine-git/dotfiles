@@ -30,6 +30,8 @@ if [[ -f $state_file ]]; then
     keyword decoration:multisample_edges true;
     keyword cursor:animate true;
     keyword misc:vrr on;
+    keyword misc:vfr true;
+    keyword misc:animate_manual_resizes true;
   "
   powerprofilesctl set balanced
   rm -f "$state_file"
@@ -50,6 +52,8 @@ else
     keyword decoration:multisample_edges false;
     keyword cursor:animate false;
     keyword misc:vrr off;
+    keyword misc:vfr false;
+    keyword misc:animate_manual_resizes false;
   "
   powerprofilesctl set performance
   touch "$state_file"
