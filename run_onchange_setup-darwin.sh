@@ -126,3 +126,9 @@ install_if_missing sheldon sheldon "cargo install sheldon --locked"
 install_if_missing starship starship "curl -sS https://starship.rs/install.sh | sh"
 
 echo "Mac setup completed!"
+
+# window manager
+# echo "$(whoami) ALL=(root) NOPASSWD: $(which yabai) --load-sa" \
+#   | sudo tee /etc/sudoers.d/yabai
+# yabai --start-service
+# skhd --start-service

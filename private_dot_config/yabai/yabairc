@@ -1,0 +1,30 @@
+# yabairc – minimal Hyprland-like setup
+
+# General layout: similar to Hyprland dwindle (use bsp for tiling)
+yabai -m config layout           bsp
+
+yabai -m config auto_balance     on   # keep windows balanced
+
+yabai -m config window_gap       6
+yabai -m config top_padding      10
+yabai -m config bottom_padding   10
+yabai -m config left_padding     10
+yabai -m config right_padding    10
+
+yabai -m config focus_follows_mouse autofocus
+
+yabai -m config window_border    on
+yabai -m config border_width     2
+yabai -m config active_window_border_color   0xffa4c2e4   # match Hypr colors
+yabai -m config normal_window_border_color   0xff444444
+
+# Float special apps (scratch-pad style)
+yabai -m rule --add app='Raycast' manage=off  layer=above
+
+# Disable window animations to be snappy like Hyprland animations off
+defaults write -g NSAutomaticWindowAnimationsEnabled -bool false
+
+# Start sketchybar as a Waybar alternative
+if ! pgrep -x "sketchybar" >/dev/null; then
+  sketchybar &
+fi

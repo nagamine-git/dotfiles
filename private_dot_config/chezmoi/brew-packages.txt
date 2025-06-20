@@ -22,4 +22,6 @@ wget
 jq
 pup
 
-# Add any other brew packages you need
+# window manager
+yabai
+skhd
