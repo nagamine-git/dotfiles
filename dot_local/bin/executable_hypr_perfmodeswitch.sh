@@ -45,7 +45,7 @@ else
     keyword decoration:rounding 0;
     keyword decoration:active_opacity 1;
     keyword decoration:inactive_opacity 1;
-    keyword general:border_size 3;
+    keyword general:border_size 6;
     keyword render:max_fps 60;
     keyword general:gaps_in 0;
     keyword general:gaps_out 0;

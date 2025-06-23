@@ -8,7 +8,7 @@
 
 #waybar {
   padding: 4px;
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.01);
 }
 
 /* Common module styling */
@@ -17,8 +17,6 @@
 #clock, #tray, #custom-power, #custom-disk, #custom-pomodoro {
   padding: 0 8px;
   margin: 0 3px;
-  border-radius: 6px;
-  background-color: rgba(46, 52, 64, 0.5);
   transition: background-color 0.2s ease;
 }
 
@@ -35,8 +33,7 @@
 
 /* Workspaces */
 #workspaces {
-  background-color: rgba(46, 52, 64, 0.75);
-  border-radius: 6px;
+  background-color: transparent;
   padding: 0 8px;
 }
 
@@ -83,8 +80,6 @@ menuitem:hover {
   border-radius: 4px;
 }
 
-
 /* Pomodoro colors */
-#custom-pomodoro.warning { color: #bf616a; } /* 残り10分：赤 */
-#custom-pomodoro.break   { color: #a3be8c; } /* 休憩：緑 */
-/* work はデフォルト色 (#eceff4) を継承 */
+#custom-pomodoro.warning { color: #bf616a; }
+#custom-pomodoro.break   { color: #a3be8c; }
