@@ -25,7 +25,9 @@ zstyle ':completion:*' verbose yes # 補完の詳細を表示
 # プラグイン管理
 eval "$(starship init zsh)"
 # 通常のシェル: フルアクティベート
-eval "$(mise activate zsh)"
+if [ -n "$MISE_DIR" ]; then
+    eval "$(mise activate zsh)"
+fi
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
