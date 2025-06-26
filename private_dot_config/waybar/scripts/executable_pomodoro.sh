@@ -13,32 +13,49 @@ hour=$(date +%H)
 sec=$(date +%S)                              # seconds value for optional blinking animation
 sec=$((10#$sec))
 
-if (( min < 50 )); then                      # Work phase
-  remaining=$((50 - min))
-  full=$(( remaining / 10 ))                 # 0-5 full bars
-  rem=$(( remaining % 10 ))
-  text=""
-segments=0
-  for ((i=0; i<full; i++)); do               # build string safely for multibyte char
-    text+="$fill"
-  done
-segments=$full
-  if (( rem > 0 )); then                     # partial bar for current 10-min block
-    idx=$(( (10 - rem) * 8 / 10 ))           # map 1-9→0-7
-    text+="${partials[$idx]}"
-segments=$((segments+1))
-  fi
-  # pad with empties to reach total_seg
-while (( segments < total_seg )); do text+="$empty_markup"; segments=$((segments+1)); done
+# ---- build bar -------------------------------------------------------------
+work_seg_total=5  # segments for 50-min work
 
-class="work"
-  (( remaining <= 10 )) && class="warning"   # last 10 min red
-else                                          # Break phase (10 min)
-  passed=$(( min - 50 ))                     # 0-9
-  idx=$(( passed * 8 / 10 ))                 # 0-7
-  text="${partials[$idx]}"
-segments=1
-while (( segments < total_seg )); do text+="$empty_markup"; segments=$((segments+1)); done
+if (( min < 50 )); then  # -------------------- Work phase ------------
+  # 1) Break segment (still ahead)
+  text="$fill"
+  segments=1
+
+  # 2) Work remaining segments (5 slots)
+  remaining=$((50 - min))              # 50 → 1
+  full=$(( remaining / 10 ))           # 0-5 complete 10-min blocks
+  rem=$(( remaining % 10 ))
+
+  #   a) full 10-min blocks
+  for ((i=0;i<full;i++)); do text+="$fill"; segments=$((segments+1)); done
+  #   b) partial block for current 10-min chunk
+  if (( rem > 0 )); then
+    idx=$(( (10 - rem) * 8 / 10 ))     # 1-9 → fade index 0-7
+    text+="${partials[$idx]}"
+    segments=$((segments+1))
+  fi
+  #   c) pad rest with empty blocks
+  while (( segments < (1+work_seg_total) )); do text+="$empty_markup"; segments=$((segments+1)); done
+
+  class="work"
+  (( remaining <= 10 )) && class="warning"
+
+else                         # ------------- Break phase --------------
+  # 1) Break segment (counts down)
+  passed=$(( min - 50 ))     # 0-9 elapsed in break
+  remaining_break=$(( 10 - passed ))
+  if (( remaining_break == 10 )); then
+    text="$fill"
+    segments=1
+  else
+    idx=$(( (10 - remaining_break) * 8 / 10 )) # same fade logic
+    text="${partials[$idx]}"
+    segments=1
+  fi
+
+  # 2) All work segments greyed out
+  for ((i=segments;i<1+work_seg_total;i++)); do text+="$empty_markup"; done
+
   class="break"
 fi
 
