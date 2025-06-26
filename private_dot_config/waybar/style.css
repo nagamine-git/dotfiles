@@ -80,6 +80,14 @@ menuitem:hover {
   border-radius: 4px;
 }
 
-/* Pomodoro colors */
 #custom-pomodoro.warning { color: #bf616a; }
 #custom-pomodoro.break   { color: #a3be8c; }
+#custom-pomodoro { font-family: "FirgeNerd Console", monospace; }
+
+/* Blink animation used by pomodoro script */
+.blink {
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink {
+  to { color: transparent; }
+}

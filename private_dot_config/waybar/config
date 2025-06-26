@@ -25,7 +25,6 @@
       "default": "○"
     },
     "on-click": "hyprctl dispatch workspace {name}",
-    "tooltip": true
   },
 
   "hyprland/window": {
@@ -33,10 +32,29 @@
   },
 
   "clock": {
-    "format": "{:%y.%m.%d | %H:%M:%S}",
-    "timezone": "Asia/Tokyo",
+    "format": "{:%y-%m-%d %a %H:%M:%S}",
     "interval": 1,
-    "tooltip": true
+    "locale": "C",
+    "timezone": "Asia/Tokyo",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "month",
+      "weeks-pos": "right",
+      "on-scroll": 1,
+      "format": {
+        "months":   "<span color='#ffead3'><b>{}</b></span>",
+        "weekdays": "<span color='#d8dee9'><b>{}</b></span>",
+        "weeks":    "<span color='#88c0d0'><b>W{}</b></span>",
+        "days":     "<span color='#eceff4'><b>{}</b></span>",
+        "today":    "<span color='#81a1c1'><b><u>{}</u></b></span>"
+      }
+    },
+
+    "actions": {
+      "on-click-right": "mode",
+      "on-scroll-up":   "shift_up",
+      "on-scroll-down": "shift_down"
+    }
   },
 
   "cpu": {
