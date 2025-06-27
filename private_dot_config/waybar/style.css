@@ -38,7 +38,7 @@
 }
 
 #workspaces button {
-  color: #9da4b0;
+  color: #cccccc;
   background: transparent;
   margin: 0;
   font-size: 14px;
@@ -48,15 +48,15 @@
 
 #workspaces button.active,
 #workspaces button.focused {
-  color: #eceff4;
+  color: #aaaaaa;
   font-weight: bold;
 }
 
 /* Context menu styling */
 tooltip {
-  background-color: rgba(46, 52, 64, 0.9);
+  background-color: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
-  border: 1px solid rgba(76, 86, 106, 0.5);
+  border: 1px solid rgba(100, 100, 100, 0.8);
 }
 
 tooltip label {
@@ -65,9 +65,9 @@ tooltip label {
 }
 
 menu {
-  background-color: rgba(46, 52, 64, 0.9);
+  background-color: rgba(255, 255, 255, 0.6);
   border-radius: 6px;
-  border: 1px solid rgba(76, 86, 106, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 menuitem {
@@ -76,8 +76,9 @@ menuitem {
 }
 
 menuitem:hover {
-  background-color: rgba(76, 86, 106, 0.5);
+  background-color: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
+  color: #ffffff;
 }
 
 #custom-pomodoro.warning { color: #bf616a; }

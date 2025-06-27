@@ -10,6 +10,7 @@ total_seg=6             # 8-step fade from full→empty
 min=$(date +%M)
 min=$((10#$min))                              # strip leading zero
 hour=$(date +%H)
+hour=$((10#$hour)) 
 sec=$(date +%S)                              # seconds value for optional blinking animation
 sec=$((10#$sec))
 
