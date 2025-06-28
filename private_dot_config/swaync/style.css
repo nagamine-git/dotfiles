@@ -1,0 +1,207 @@
+/* 基本スタイル */
+* {
+  font-family: 'Roboto + Noto Sans JP', sans-serif;
+}
+
+.notification-row {
+  outline: none;
+}
+
+.notification-row:focus,
+.notification-row:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.notification {
+  background: rgba(26, 26, 26, 0.97);
+  padding: 12px;
+  margin: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(128, 128, 128, 0.7);
+  font-size: 10pt;
+}
+
+.notification-content {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.close-button {
+  background: rgba(128, 128, 128, 0.4);
+  color: rgba(240, 240, 240, 1);
+  text-shadow: none;
+  padding: 0;
+  border-radius: 8px;
+  margin-top: 8px;
+  margin-right: 8px;
+}
+
+.close-button:hover {
+  background: rgba(128, 128, 128, 0.6);
+}
+
+.notification-default-action,
+.notification-action {
+  background: rgba(40, 40, 40, 0.9);
+  color: rgba(240, 240, 240, 1);
+  margin: 4px;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.notification-default-action:hover,
+.notification-action:hover {
+  background: rgba(60, 60, 60, 0.9);
+}
+
+.notification-default-action {
+  background: rgba(26, 26, 26, 0.97);
+}
+
+.notification-default-action:hover {
+  background: rgba(40, 40, 40, 0.9);
+}
+
+.summary {
+  font-size: 10pt;
+  font-weight: bold;
+  background: transparent;
+  color: rgba(240, 240, 240, 1);
+  text-shadow: none;
+}
+
+.time {
+  font-size: 9pt;
+  font-weight: normal;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.7);
+  text-shadow: none;
+  margin-right: 16px;
+}
+
+.body {
+  font-size: 10pt;
+  font-weight: normal;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.9);
+  text-shadow: none;
+}
+
+.control-center {
+  background: rgba(26, 26, 26, 0.97);
+  border: 1px solid rgba(128, 128, 128, 0.7);
+  border-radius: 12px;
+  margin: 6px;
+}
+
+.control-center-list {
+  background: transparent;
+}
+
+.control-center-list-placeholder {
+  opacity: 0.5;
+  margin: 20px;
+}
+
+.floating-notifications {
+  background: transparent;
+}
+
+.blank-window {
+  background: alpha(black, 0.35);
+}
+
+.widget-title {
+  color: rgba(240, 240, 240, 1);
+  background: rgba(40, 40, 40, 0.9);
+  padding: 8px 12px;
+  margin: 12px;
+  border-radius: 8px;
+  font-size: 11pt;
+  font-weight: bold;
+}
+
+.widget-title > button {
+  font-size: 10pt;
+  color: rgba(240, 240, 240, 1);
+  background: rgba(60, 60, 60, 0.9);
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.widget-title > button:hover {
+  background: rgba(80, 80, 80, 0.9);
+}
+
+.widget-dnd {
+  color: rgba(240, 240, 240, 1);
+  background: rgba(40, 40, 40, 0.9);
+  padding: 8px 12px;
+  margin: 12px;
+  border-radius: 8px;
+  font-size: 10pt;
+}
+
+.widget-dnd > switch {
+  border-radius: 8px;
+  background: rgba(60, 60, 60, 0.9);
+}
+
+.widget-dnd > switch:checked {
+  background: rgba(80, 40, 40, 0.9);
+}
+
+.urgency-low {
+  background: rgba(26, 26, 26, 0.97);
+  border: 1px solid rgba(160, 160, 160, 0.5);
+}
+
+.urgency-normal {
+  background: rgba(26, 26, 26, 0.97);
+  border: 1px solid rgba(128, 128, 128, 0.7);
+}
+
+.urgency-critical {
+  background: rgba(13, 13, 13, 0.98);
+  border: 1px solid rgba(64, 64, 64, 0.98);
+}
+
+/* 通知タイトル */
+.notification .notification-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* 通知本文 */
+.notification .notification-body {
+  opacity: 0.9;
+}
+
+/* 通知アイコン */
+.notification .notification-icon {
+  margin-right: 8px;
+}
+
+/* プログレスバー */
+.notification .notification-progress {
+  background-color: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+  height: 4px;
+  margin-top: 8px;
+}
+
+.notification .notification-progress .notification-progress-bar {
+  background-color: rgba(128, 128, 128, 1);
+  border-radius: 4px;
+  height: 100%;
+}
+
+/* 空の通知リスト */
+.control-center .control-center-list .placeholder {
+  opacity: 0.7;
+  font-style: italic;
+  margin: 20px;
+  text-align: center;
+} 

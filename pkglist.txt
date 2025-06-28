@@ -3,7 +3,7 @@ linux-headers
 greetd
 greetd-tuigreet
 waybar
-mako
+swaync
 git
 chezmoi
 vim
