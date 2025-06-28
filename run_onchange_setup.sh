@@ -18,7 +18,7 @@ install_if_missing() {
 }
 
 # keyboard layout
-sudo cp usr/share/X11/xkb/symbols/custom /usr/share/X11/xkb/symbols/custom
+sudo cp etc/keyd/default.conf /etc/keyd/default.conf
 
 # bbr
 # Enable BBR congestion control algorithm

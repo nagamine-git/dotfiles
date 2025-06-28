@@ -75,3 +75,4 @@ slurp
 swappy
 base-devel
 libevdev
+keyd
