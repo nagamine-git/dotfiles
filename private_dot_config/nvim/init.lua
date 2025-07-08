@@ -171,14 +171,14 @@ require('nvim-tree').setup({
 })
 
 -- nvim-treeのキーマッピング
-vim.keymap.set('n', '<C-S-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
 
 -- gitsigns設定
 require('gitsigns').setup()
 
 -- Telescope設定
-vim.keymap.set('n', '<C-S-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
-vim.keymap.set('n', '<C-S-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
 
 -- LSP設定
 local lspconfig = require('lspconfig')

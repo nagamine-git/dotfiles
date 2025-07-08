@@ -11,6 +11,7 @@ export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
+export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 # export MISE_VERBOSE=1
 
 # 補完
@@ -25,9 +26,7 @@ zstyle ':completion:*' verbose yes # 補完の詳細を表示
 # プラグイン管理
 eval "$(starship init zsh)"
 # 通常のシェル: フルアクティベート
-if [ -n "$MISE_DIR" ]; then
-    eval "$(mise activate zsh)"
-fi
+eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
