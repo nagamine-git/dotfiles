@@ -8,7 +8,7 @@
   "font": "'Roboto + Noto Sans JP', 'FirgeNerd Console', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["clock", "custom/pomodoro"],
+  "modules-center": ["clock", "custom/pomodoro", "custom/toggl"],
   "modules-right": ["tray", "temperature", "cpu", "memory", "custom/disk", "network", "pulseaudio", "battery", "custom/power"],
 
 "custom/pomodoro": {
@@ -143,5 +143,12 @@
     "interval": 3,
     "tooltip": true,
     "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
+  },
+  
+  "custom/toggl": {
+    "exec": "~/.config/waybar/scripts/toggl_status.sh",
+    "interval": 60,
+    "return-type": "json",
+    "tooltip": true
   }
 }

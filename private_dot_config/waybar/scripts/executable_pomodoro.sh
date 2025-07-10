@@ -77,12 +77,33 @@ fi
 # Send a single notification exactly at 50:00 (start break) and 00:00 (back to work)
 # Requires `notify-send` (libnotify).  Waybar typically executes this script every
 # second, so we gate on sec==0 to avoid duplicates.
+ICON="alarm-symbolic"
+SOUND="/usr/share/sounds/freedesktop/stereo/complete.oga"
+
+# min, sec は外部から設定されている前提
 if (( (min == 50 || min == 0) && sec == 0 )); then
+
   if (( min == 50 )); then
-    notify-send -u normal -i alarm-symbolic "Pomodoro" "Break time! 10 min rest"
+    # 休憩タイム
+    notify-send \
+      -u critical \
+      -i "$ICON" \
+      -t 15000 \
+      "🚨【休憩タイム】🚨" \
+      "⏰ 10分間リラックスしよう！"
   else
-    notify-send -u normal -i alarm-symbolic "Pomodoro" "Back to work! 50 min focus"
+    # フォーカスタイム再開
+    notify-send \
+      -u critical \
+      -i "$ICON" \
+      -t 15000 \
+      "🔥【フォーカス開始】🔥" \
+      "💪 50分間集中タイム！"
   fi
+
+  # 休憩／フォーカスどちらでもサウンドを鳴らす
+  paplay "$SOUND" &
+
 fi
 
 printf '{"text":"%s","class":"%s","tooltip":"%s %02d:%02d"}\n' \
