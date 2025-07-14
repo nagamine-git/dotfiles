@@ -1,6 +1,7 @@
 /* 基本スタイル */
 * {
   font-family: 'Roboto + Noto Sans JP', sans-serif;
+  background-color: transparent;
 }
 
 .notification-row {

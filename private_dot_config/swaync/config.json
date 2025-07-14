@@ -3,7 +3,7 @@
   "positionY": "top",
   "layer": "overlay",
   "layer-shell": true,
-  "cssPriority": "application",
+  "cssPriority": "user",
   "control-center-layer": "top",
   "control-center-margin-top": 6,
   "control-center-margin-bottom": 6,
