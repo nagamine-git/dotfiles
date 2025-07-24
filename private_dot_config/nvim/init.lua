@@ -94,43 +94,16 @@ require('lazy').setup({
   -- アイコン表示
   { 'onsails/lspkind-nvim' },
 
-  -- Avante.nvim (Cursor AI IDEのようなAI機能)
+  -- Claude Code
   {
-    'yetone/avante.nvim',
-    event = "VeryLazy",
-    build = "make",
+    "greggh/claude-code.nvim",
     dependencies = {
-      'nvim-treesitter/nvim-treesitter',
-      'stevearc/dressing.nvim',
-      'nvim-lua/plenary.nvim',
-      'MunifTanjim/nui.nvim',
-      'nvim-tree/nvim-web-devicons',
-      'hrsh7th/nvim-cmp',
-      {
-        'MeanderingProgrammer/render-markdown.nvim',
-        opts = {
-          file_types = { "markdown", "Avante" },
-        },
-        ft = { "markdown", "Avante" },
-      },
+      "nvim-lua/plenary.nvim", -- Required for git operations
     },
-    opts = {
-      provider = "claude", -- デフォルトはclaudeですが、APIキーによって変更可能
-      claude = {
-        endpoint = "https://api.anthropic.com",
-        model = "claude-3-7-sonnet-20250219",
-        temperature = 0,
-        max_tokens = 4096,
-      },
-      behaviour = {
-        enable_cursor_planning_mode = true, -- カーソルのプランニングモードを有効化
-      },
-      windows = {
-        position = "right", -- サイドバーの位置
-        width = 40, -- サイドバーの幅
-      },
-    },
-  }
+    config = function()
+      require("claude-code").setup()
+    end
+  }  
 })
 
 -- カラースキーム設定

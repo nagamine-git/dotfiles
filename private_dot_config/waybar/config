@@ -147,7 +147,7 @@
   
   "custom/toggl": {
     "exec": "~/.config/waybar/scripts/toggl_status.sh",
-    "interval": 60,
+    "interval": 20,
     "return-type": "json",
     "tooltip": true
   }

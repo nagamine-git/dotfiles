@@ -62,15 +62,16 @@ fi
 
 # ---- blink handling -------------------------------------------------------
 # During the last minute of each phase (min 49 just before break, min 59 just before work)
-# add a CSS class "blink" every other second to flash the bar.  Define the
-# animation in Waybar's CSS:
-# adding an extra CSS class "blink" on even-numbered seconds.  Define the
-# animation in Waybar's CSS:
-# .blink { animation: blink 1s steps(2,start) infinite; }
-# @keyframes blink { to { visibility: hidden; } }
+# replace the bar with flashing warning message for maximum urgency!
 classes="$class"
 if (( min == 49 || min == 59 )); then
-  (( sec % 2 == 0 )) && classes+=" blink"
+  # Flash between warning message and normal bar every second for maximum urgency
+  if (( sec % 2 == 0 )); then
+    text="⚠️⚠️⚠️LAST MINUTE⚠️⚠️⚠️"
+    classes+=" blink urgent"
+  else
+    classes+=" blink urgent"
+  fi
 fi
 
 # ---- optional desktop notifications --------------------------------------

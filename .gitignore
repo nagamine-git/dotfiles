@@ -17,3 +17,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.aider*
+
+private*token

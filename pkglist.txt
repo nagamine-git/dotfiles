@@ -5,6 +5,7 @@ greetd-tuigreet
 waybar
 swaync
 git
+git-delta
 chezmoi
 vim
 neovim
@@ -76,3 +77,4 @@ swappy
 base-devel
 libevdev
 keyd
+
