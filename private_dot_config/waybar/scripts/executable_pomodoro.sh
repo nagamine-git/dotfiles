@@ -91,7 +91,8 @@ if (( (min == 50 || min == 0) && sec == 0 )); then
       -i "$ICON" \
       -t 15000 \
       "🚨【休憩タイム】🚨" \
-      "⏰ 10分間リラックスしよう！"
+      "⏰ 10分間リラックスしよう！" && \
+    ~/.config/waybar/scripts/blink.sh
   else
     # フォーカスタイム再開
     notify-send \
@@ -99,7 +100,8 @@ if (( (min == 50 || min == 0) && sec == 0 )); then
       -i "$ICON" \
       -t 15000 \
       "🔥【フォーカス開始】🔥" \
-      "💪 50分間集中タイム！"
+      "💪 50分間集中タイム！" && \
+    ~/.config/waybar/scripts/blink.sh
   fi
 
   # 休憩／フォーカスどちらでもサウンドを鳴らす
