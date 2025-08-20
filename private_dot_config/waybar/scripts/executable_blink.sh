@@ -14,4 +14,8 @@ for i in $(seq 1 $COUNT); do
 done
 
 # 最後にリセット（オプション）
-hyprshade auto
+if [[ "$1" == "--rest" ]]; then
+  hyprshade on blue-light-filter
+else
+  hyprshade auto
+fi

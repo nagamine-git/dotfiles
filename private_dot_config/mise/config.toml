@@ -4,3 +4,6 @@ rust = 'latest'
 go   = 'latest'
 node = 'latest'
 python = 'latest'
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]

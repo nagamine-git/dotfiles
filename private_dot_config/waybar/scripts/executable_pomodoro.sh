@@ -92,7 +92,7 @@ if (( (min == 50 || min == 0) && sec == 0 )); then
       -t 15000 \
       "🚨【休憩タイム】🚨" \
       "⏰ 10分間リラックスしよう！" && \
-    ~/.config/waybar/scripts/blink.sh
+    ~/.config/waybar/scripts/blink.sh --rest
   else
     # フォーカスタイム再開
     notify-send \
