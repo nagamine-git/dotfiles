@@ -105,10 +105,24 @@ k() {
     
     echo "→ Entering Kali container with Tor (proxychains4)..."
     distrobox enter kali -- bash -c '
-        # Torサービス開始
-        sudo systemctl start tor >/dev/null 2>&1
-        echo "Use: proxychains4 <command> for Tor routing"
-        exec /bin/bash --login
+        # systemd不要: ユーザーモードでTor起動（未起動なら）
+        if ! pgrep -x tor >/dev/null 2>&1; then
+            if ! command -v tor >/dev/null 2>&1; then
+                echo "[ERROR] tor が見つかりません。コンテナ内で: sudo apt-get update && sudo apt-get install -y tor proxychains4" >&2
+                exit 1
+            fi
+            mkdir -p "$HOME/.tor"
+            cat > "$HOME/.tor/torrc-k" <<EOF
+ClientOnly 1
+SocksPort 127.0.0.1:9050
+DataDirectory $HOME/.tor
+Log notice file $HOME/.tor/tor.log
+Sandbox 0
+EOF
+            tor -f "$HOME/.tor/torrc-k" --RunAsDaemon 1 >/dev/null 2>&1 || { echo "[ERROR] Tor failed to start; opening normal shell (no proxy)"; exec /bin/bash --login; }
+        fi
+        # 以降のシェルを proxychains4 でラップ
+        exec proxychains4 -q /bin/bash --login
     '
 }
 
