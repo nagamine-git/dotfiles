@@ -20,3 +20,7 @@
 
 [interactive]
   diffFilter = delta --color-only
+
+[delta]
+  features = collared-trogon
+  side-by-side = true
