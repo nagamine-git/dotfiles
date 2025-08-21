@@ -27,7 +27,7 @@
 }
 
 .critical {
-  color: #bf616a;
+  color: #ef616a;
   font-weight: bold;
 }
 
@@ -81,7 +81,7 @@ menuitem:hover {
   color: #ffffff;
 }
 
-#custom-pomodoro.warning { color: #bf616a; }
+#custom-pomodoro.warning { color: #ef616a; }
 #custom-pomodoro.break   { color: #a3be8c; }
 #custom-pomodoro { font-family: "FirgeNerd Console", monospace; }
 
