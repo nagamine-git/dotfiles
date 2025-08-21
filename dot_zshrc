@@ -69,7 +69,6 @@ alias la='ls -la'
 alias l='ls -l'
 alias tree='ls --tree --git-ignore'
 alias lmt='eza --tree --git-ignore --icons=never --classify'
-alias zj='zellij'
 alias supabase='npx supabase'
 alias cursor='code'
 

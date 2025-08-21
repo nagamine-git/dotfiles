@@ -66,6 +66,7 @@ require('lazy').setup({
   -- Git統合
   { 'lewis6991/gitsigns.nvim' },
   { 'tpope/vim-fugitive' },
+  { 'sindrets/diffview.nvim' },
 
   -- ファジーファインダー
   { 'nvim-telescope/telescope.nvim', dependencies = { 'nvim-lua/plenary.nvim' } },
@@ -158,6 +159,18 @@ require('gitsigns').setup()
 -- Telescope設定
 vim.keymap.set('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
+
+-- Diffview設定
+require('diffview').setup({
+  diff_binaries = false,
+  enhanced_diff_hl = true,
+  use_icons = true,
+})
+
+-- Nightfoxの場合は標準のdiff色が優れているのでカスタム色設定は削除
+
+vim.keymap.set('n', '<C-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent = true })
 
 -- LSP設定
 local lspconfig = require('lspconfig')
