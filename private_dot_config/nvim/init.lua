@@ -22,7 +22,7 @@ vim.opt.smartindent = true
 -- 表示設定
 vim.opt.list = true
 vim.opt.listchars = { tab = '»-', trail = '-', eol = '↲', extends = '»', precedes = '«', nbsp = '%' }
-vim.opt.diffopt:append('iwhite')
+vim.opt.diffopt:append('iwhite,iwhiteall,iblank')
 vim.opt.laststatus = 3 -- Global statusline (recommended for avante.nvim)
 vim.opt.showcmd = true
 vim.opt.wildmenu = true
@@ -167,7 +167,16 @@ require('diffview').setup({
   use_icons = true,
 })
 
--- Nightfoxの場合は標準のdiff色が優れているのでカスタム色設定は削除
+-- 通常のvim diff用のカスタム色設定
+local function set_base_diff_colors()
+  vim.api.nvim_set_hl(0, 'DiffAdd', { bg = '#003800', fg = '#ffffff' })
+  vim.api.nvim_set_hl(0, 'DiffDelete', { bg = '#880000', fg = '#ffffff' })
+  vim.api.nvim_set_hl(0, 'DiffText', { bg = '#003800', fg = '#ffffff' })
+  vim.api.nvim_set_hl(0, 'DiffChange', { bg = '#880000', fg = '#ffffff' })
+end
+
+set_base_diff_colors()
+vim.api.nvim_create_autocmd('ColorScheme', { callback = set_base_diff_colors })
 
 vim.keymap.set('n', '<C-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent = true })

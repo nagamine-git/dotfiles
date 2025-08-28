@@ -24,3 +24,10 @@
 [delta]
   features = collared-trogon
   side-by-side = true
+  line-numbers = true
+  syntax-theme = base16
+  plus-style = "syntax #003800"
+  minus-style = "syntax #3f0001"
+  plus-emph-style = "syntax #006000"
+  minus-emph-style = "syntax #600020"
+  ignore-whitespace = true

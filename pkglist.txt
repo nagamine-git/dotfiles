@@ -1,6 +1,5 @@
 hyprland
 linux-headers
-greetd
 greetd-tuigreet
 waybar
 swaync
