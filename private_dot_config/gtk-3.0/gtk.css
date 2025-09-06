@@ -3,7 +3,6 @@
 /* スクロールバーを完全に非表示 */
 scrollbar {
   opacity: 0;
-  -gtk-icon-size: 0;
   min-width: 0;
   min-height: 0;
   background: transparent;
@@ -21,14 +20,12 @@ scrollbar * {
 .wofi scrollbar {
   opacity: 0;
   background: transparent;
-  -gtk-icon-size: 0;
 }
 
 /* 代替案: スクロールバーを見えなくするが機能は残す */
 /*
 scrollbar {
   background: transparent;
-  -gtk-icon-size: 0;
 }
 
 scrollbar slider {

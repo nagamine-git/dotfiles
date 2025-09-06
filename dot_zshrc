@@ -5,6 +5,7 @@ export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
 export EDITOR=nvim
 
+
 # PATHの設定 - 一箇所にまとめてシンプル化
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
 export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
@@ -12,6 +13,8 @@ export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+GPG_TTY=`tty`
+export GPG_TTY
 # export MISE_VERBOSE=1
 
 # 補完
@@ -30,6 +33,9 @@ eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 
+# Starship
+unset PROMPT_EOL_MARK
+
 # コマンド履歴
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
@@ -41,6 +47,7 @@ setopt extended_history
 
 # alias
 alias vim='nvim'
+alias svim='vim ~/.note.gpg'
 
 # ghqでクローンしたリポジトリへ簡単に移動するための関数
 cgh() { 

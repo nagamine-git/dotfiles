@@ -14,7 +14,7 @@
 /* Common module styling */
 #cpu, #memory, #disk, #temperature, 
 #network, #battery, #pulseaudio,
-#clock, #tray, #custom-power, #custom-disk, #custom-pomodoro {
+#clock, #tray, #custom-power, #custom-disk, #custom-pomodoro, #custom-gpu {
   padding: 0 8px;
   margin: 0 3px;
   transition: background-color 0.2s ease;
@@ -65,20 +65,15 @@ tooltip label {
 }
 
 menu {
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
 }
-
 menuitem {
   padding: 8px 12px;
   margin: 2px 0;
 }
-
 menuitem:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  color: #ffffff;
+  background-color: rgba(0, 0, 0, 1);
 }
 
 #custom-pomodoro.warning { color: #ef616a; }
