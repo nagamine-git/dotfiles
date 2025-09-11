@@ -31,3 +31,6 @@
   plus-emph-style = "syntax #006000"
   minus-emph-style = "syntax #600020"
   ignore-whitespace = true
+
+[color]
+  ui = auto 
