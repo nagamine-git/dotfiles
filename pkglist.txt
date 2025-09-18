@@ -43,7 +43,6 @@ hyprpaper
 btop
 wl-clipboard
 lazygit
-grimshot
 cliphist
 atuin
 hypridle

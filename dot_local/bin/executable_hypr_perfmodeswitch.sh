@@ -33,7 +33,11 @@ if [[ -f $state_file ]]; then
     keyword misc:vfr true;
     keyword misc:animate_manual_resizes true;
   "
-  powerprofilesctl set balanced
+  # powerprofilesctl set balanced  # Disabled due to missing dependencies
+  # Set CPU governor to schedutil (adaptive)
+  if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
+    echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1
+  fi
   rm -f "$state_file"
   notify-send "Hyprland" "🌈 通常モード"
 else
@@ -55,7 +59,11 @@ else
     keyword misc:vfr false;
     keyword misc:animate_manual_resizes false;
   "
-  powerprofilesctl set performance
+  # powerprofilesctl set performance  # Disabled due to missing dependencies
+  # Set CPU governor to performance
+  if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
+    echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1
+  fi
   touch "$state_file"
   notify-send "Hyprland" "🚀 高速モード ON"
 fi
