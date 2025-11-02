@@ -1,10 +1,11 @@
 # dotfiles
 
 個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
-主にEndeavourOS（Archベース）向けに最適化されています。
+**Linux（EndeavourOS/Arch）とmacOSの両環境に対応**しています。
 
 ## 主な設定
 
+### Linux（EndeavourOS/Arch）
 - ディストリビューション: EndeavourOS / Arch Linux
 - シェル: Zsh + Starship
 - ウィンドウマネージャ: Hyprland
@@ -15,13 +16,30 @@
 - 開発ツール: Docker, lazygit, lazydocker, atuin
 - その他: git, SSH, waybar など
 
+### macOS
+- シェル: Zsh + Starship
+- パッケージマネージャ: Homebrew
+- エディタ: Neovim
+- 開発ツール: mise, gh, ghq, fzf, atuin
+- 1Password SSH Agent対応
+
 ## 使い方
 
-### インストール
+### インストール（Linux）
 
 ```bash
 # chezmoiのインストール
 paru -S chezmoi
+
+# リポジトリの取得と適用
+chezmoi init --apply nagamine-git
+```
+
+### インストール（macOS）
+
+```bash
+# chezmoiのインストール（Homebrewがない場合は先にインストール）
+brew install chezmoi
 
 # リポジトリの取得と適用
 chezmoi init --apply nagamine-git
@@ -36,7 +54,19 @@ chezmoi apply -v
 
 ### パッケージ
 
-必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+**Linux**: 必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+
+**macOS**: Homebrewで基本パッケージが自動インストールされます（git, neovim, tmux, fzf, ripgrep, gh等）。
+
+## OS別の動作
+
+このdotfilesはchezmoiのテンプレート機能を使用してOS別に動作を変更します：
+
+- **Linux専用**: Hyprland設定、Waybar、fcitx5、keyd等のLinux GUI/システム設定
+- **macOS専用**: Homebrew管理、macOS用PATH設定、1Password統合
+- **共通**: Zsh設定、tmux設定、Neovim設定、開発ツール（mise, starship, sheldon等）
+
+macOS環境では`.chezmoiignore`によりLinux専用ファイルが自動除外されます。
 
 ### tuigreet
 /etc/greetd/config.toml
