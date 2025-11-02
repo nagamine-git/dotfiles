@@ -1,0 +1,3 @@
+---
+is_linux: {{ eq .chezmoi.os "linux" }}
+is_darwin: {{ eq .chezmoi.os "darwin" }}

@@ -1,0 +1,35 @@
+{{- if eq .chezmoi.os "darwin" }}
+# Linux??GUI?systemd??
+etc/
+private_dot_config/hypr/
+private_dot_config/foot/
+private_dot_config/gammastep/
+private_dot_config/gtk-3.0/
+private_dot_config/swaync/
+private_dot_config/waybar/
+private_dot_config/wofi/
+private_dot_config/xdg-desktop-portal/
+private_dot_config/private_fcitx5/
+private_dot_config/cursor-flags.conf
+private_dot_config/electron-flags.conf
+private_dot_config/electron27-flags.conf
+private_dot_config/executable_brave-browser.desktop
+
+# Linux???????
+dot_local/bin/executable_hypr_auto_perfmonitor.sh
+dot_local/bin/executable_hypr_perfmodeswitch.sh
+dot_local/bin/executable_fix-brave-pwa.sh
+dot_local/bin/executable_integrate-appimage.sh
+dot_local/bin/executable_uninstall-appimage.sh
+dot_local/bin/executable_swaync_launcher.sh
+dot_local/bin/executable_unified_launcher.sh
+dot_local/bin/lib_hypr_perfmode.sh
+dot_local/bin/setup_sleep_backup.sh
+dot_local/bin/executable_sleep_backup.sh
+dot_local/share/applications/
+dot_local/share/dark-mode.d/
+dot_local/share/light-mode.d/
+
+# Linux??????????
+pkglist.txt
+{{- end }}

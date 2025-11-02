@@ -1,0 +1,205 @@
+# Created by newuser for 5.9
+
+# ????????
+export LANG=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
+export EDITOR=nvim
+
+{{- if eq .chezmoi.os "darwin" }}
+# ============================================================
+# macOS????
+# ============================================================
+
+# Homebrew????
+if [[ $(uname -m) == "arm64" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+# PATH???
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+
+# 1Password SSH Agent
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+# ?????????????macOS???pbcopy???
+alias pbcopy='pbcopy'
+alias pbpaste='pbpaste'
+
+{{- else if eq .chezmoi.os "linux" }}
+# ============================================================
+# Linux????
+# ============================================================
+
+# PATH??? - ?????????????
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+export PATH="$PATH:/snap/bin"
+
+# 1Password SSH Agent
+export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+
+# Wayland???????
+alias pbcopy='wl-copy'
+alias pbpaste='wl-paste'
+
+# Cursor???
+code() {
+    # ???Cursor?????????
+    if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
+        echo "Cursor is already running. Opening new window..."
+        command /usr/bin/cursor "$@" --reuse-window
+    else
+        echo "Cursor is not running. Starting new instance..."
+        command /usr/bin/cursor "$@" --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic > /dev/null 2>&1 &
+        disown
+    fi
+}
+
+# Distrobox???????????
+_ensure_kali_running() {
+    # Docker??????????????
+    if ! systemctl is-active --quiet docker; then
+        echo "? Starting Docker service..."
+        sudo systemctl start docker
+    fi
+    
+    # Kali????????????
+    if ! distrobox list | grep -q "^kali"; then
+        echo "? Creating new Kali container (kali)..."
+        distrobox create --name kali --image docker.io/kalilinux/kali-rolling:latest --home ~/distrobox/kali --additional-flags "--privileged"
+    fi
+    
+    return 0
+}
+
+# Kali?????????????????????
+_distrobox_kali_exec() {
+    _ensure_kali_running || return 1
+    
+    # distrobox?enter?????bash???????
+    distrobox enter kali -- bash -c "$@"
+    return $?
+}
+
+# Tor??????Kali????????proxychains4???
+k() {
+    _ensure_kali_running || return 1
+    
+    echo "? Entering Kali container with Tor (proxychains4)..."
+    distrobox enter kali -- bash -c '
+        # systemd??: ????????Tor?????????
+        if ! pgrep -x tor >/dev/null 2>&1; then
+            if ! command -v tor >/dev/null 2>&1; then
+                echo "[ERROR] tor ???????????????: sudo apt-get update && sudo apt-get install -y tor proxychains4" >&2
+                exit 1
+            fi
+            mkdir -p "$HOME/.tor"
+            cat > "$HOME/.tor/torrc-k" <<EOF
+ClientOnly 1
+SocksPort 127.0.0.1:9050
+DataDirectory $HOME/.tor
+Log notice file $HOME/.tor/tor.log
+Sandbox 0
+EOF
+            tor -f "$HOME/.tor/torrc-k" --RunAsDaemon 1 >/dev/null 2>&1 || { echo "[ERROR] Tor failed to start; opening normal shell (no proxy)"; exec /bin/bash --login; }
+        fi
+        # ??????? proxychains4 ????
+        exec proxychains4 -q /bin/bash --login
+    '
+}
+
+# ????????????Kali???????
+k_pub() {
+    _ensure_kali_running || return 1
+    
+    echo "? Entering Kali container with normal network..."
+    distrobox enter kali -- bash -c '
+        exec /bin/bash --login
+    '
+}
+
+alias b='~/.local/bin/biz_start.sh '
+
+{{- end }}
+
+# ============================================================
+# ?????OS???
+# ============================================================
+
+GPG_TTY=`tty`
+export GPG_TTY
+# export MISE_VERBOSE=1
+
+# ??
+autoload -Uz compinit
+compinit -i
+
+# ?????
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # ????????????
+zstyle ':completion:*' menu select # ??????????
+zstyle ':completion:*' verbose yes # ????????
+
+# ???????
+eval "$(starship init zsh)"
+# ??????: ?????????
+eval "$(mise activate zsh)"
+eval "$(sheldon source)"
+eval "$(atuin init zsh)"
+
+# Starship
+unset PROMPT_EOL_MARK
+
+# ??????
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt hist_expire_dups_first
+setopt hist_verify
+setopt share_history
+setopt extended_history
+
+# history??????????
+alias history='fc -il 1'
+
+# alias
+alias vim='nvim'
+alias svim='vim ~/.note.gpg'
+
+# ghq?????????????????????????
+cgh() { 
+    local dir
+    dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
+    [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
+}
+
+# ls????????
+alias ls='eza --icons --color=always'
+alias ll='ls -l'
+alias la='ls -la'
+alias l='ls -l'
+alias tree='ls --tree --git-ignore'
+alias lmt='eza --tree --git-ignore --icons=never --classify'
+alias supabase='npx supabase'
+alias cursor='code'
+
+{{- if eq .chezmoi.os "linux" }}
+# 1Password CLI plugin?Linux?????
+if [ -f /home/{{ .chezmoi.username }}/.config/op/plugins.sh ]; then
+    source /home/{{ .chezmoi.username }}/.config/op/plugins.sh
+fi
+{{- end }}
+
+# pnpm
+export PNPM_HOME="{{ .chezmoi.homeDir }}/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
