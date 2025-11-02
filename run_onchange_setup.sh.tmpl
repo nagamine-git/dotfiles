@@ -1,9 +1,10 @@
+{{- if eq .chezmoi.os "linux" -}}
 #! /bin/bash
 
 # Stop on error
 set -eu
 
-# 汎用インストール関数
+# ??????????
 install_if_missing() {
   local cmd=$1
   local name=${2:-$1}
@@ -32,22 +33,22 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # Install packages
 paru -S --needed --noconfirm - < ~/pkglist.txt || echo "Some packages failed to install"
 
-# フォント設定
+# ??????
 sudo mkdir -p /usr/share/fonts
 
-# Firgeフォントche
+# Firge????che
 if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
-    echo "Firgeフォントをインストールしています..."
+    echo "Firge????????????????..."
     
-    # GitHub APIを使用して最新バージョンを取得
+    # GitHub API???????????????
     LATEST_RELEASE_INFO=$(curl -s https://api.github.com/repos/yuru7/Firge/releases/latest)
     FIRGE_VERSION=$(echo $LATEST_RELEASE_INFO | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//')
     
     if [ -z "$FIRGE_VERSION" ]; then
-        echo "最新バージョンの取得に失敗しました。デフォルトバージョンを使用します。"
+        echo "???????????????????????????????????"
         FIRGE_VERSION="0.3.0"
     else
-        echo "最新バージョン ${FIRGE_VERSION} を使用します。"
+        echo "??????? ${FIRGE_VERSION} ???????"
     fi
     
     wget -O /tmp/firge.zip "https://github.com/yuru7/Firge/releases/download/v${FIRGE_VERSION}/FirgeNerd_v${FIRGE_VERSION}.zip"
@@ -57,22 +58,22 @@ if [ ! -f /usr/share/fonts/Firge35NerdConsole-Regular.ttf ]; then
     rm -rf /tmp/firge /tmp/firge.zip
     fc-cache -f -v
 else
-    echo "Firgeフォントはすでにインストールされています。スキップします。"
+    echo "Firge?????????????????????????????"
 fi
 
 # RobotoNotoSansJP
 if [ ! -f /usr/share/fonts/Roboto-NotoSansJP-Regular.ttf ]; then
-    echo "RobotoNotoSansJPフォントをインストールしています..."
+    echo "RobotoNotoSansJP????????????????..."
     [ -d /tmp/robotonoto ] && rm -rf /tmp/robotonoto
     git clone --depth 1 https://github.com/reindex-ot/RobotoNotoSansJP.git /tmp/robotonoto
     sudo cp /tmp/robotonoto/*.ttf /usr/share/fonts/
     rm -rf /tmp/robotonoto
     fc-cache -f -v
 else
-    echo "RobotoNotoSansJPフォントはすでにインストールされています。スキップします。"
+    echo "RobotoNotoSansJP?????????????????????????????"
 fi
 
-# アプリケーションのインストール
+# ???????????????
 install_if_missing starship starship "curl -sS https://starship.rs/install.sh | sh"
 install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin --force"
 
@@ -93,3 +94,99 @@ echo "Enabling Bluetooth service..."
 sudo systemctl enable --now bluetooth
 sudo usermod -a -G bluetooth $USER
 
+{{- else if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+
+set -eu
+
+log() {
+  printf '%s\n' "$1"
+}
+
+ensure_xcode_clt() {
+  if xcode-select -p >/dev/null 2>&1; then
+    return
+  fi
+  log "Installing Xcode Command Line Tools..."
+  xcode-select --install || true
+}
+
+ensure_homebrew() {
+  if command -v brew >/dev/null 2>&1; then
+    return
+  fi
+  log "Installing Homebrew..."
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+}
+
+setup_homebrew_env() {
+  local brew_bin=""
+  if [ -x /opt/homebrew/bin/brew ]; then
+    brew_bin=/opt/homebrew/bin/brew
+  elif [ -x /usr/local/bin/brew ]; then
+    brew_bin=/usr/local/bin/brew
+  else
+    brew_bin="$(command -v brew)"
+  fi
+
+  if [ -n "$brew_bin" ]; then
+    eval "$($brew_bin shellenv)"
+  fi
+}
+
+install_homebrew_bundle() {
+  local brewfile="${HOME}/Brewfile"
+  if [ ! -f "$brewfile" ]; then
+    log "Brewfile not found at $brewfile, skipping brew bundle."
+    return
+  fi
+
+  log "Installing Homebrew bundle packages..."
+  brew bundle --file "$brewfile" --no-lock
+}
+
+install_gh_extension() {
+  if ! command -v gh >/dev/null 2>&1; then
+    return
+  fi
+
+  if ! gh extension list 2>/dev/null | grep -q 'HikaruEgashira/gh-q'; then
+    log "Installing gh-q extension..."
+    gh extension install HikaruEgashira/gh-q || log "gh-q extension install skipped."
+  fi
+}
+
+sync_ghq_repo() {
+  if ! command -v ghq >/dev/null 2>&1; then
+    return
+  fi
+
+  if ! ghq list 2>/dev/null | grep -q '^github.com/HikaruEgashira/gh-q$'; then
+    log "Fetching gh-q repository via ghq..."
+    ghq get HikaruEgashira/gh-q || log "ghq get gh-q skipped."
+  fi
+}
+
+install_tmux_plugins() {
+  if [ -d "${HOME}/.tmux/plugins/tpm" ]; then
+    return
+  fi
+  log "Cloning tmux plugin manager..."
+  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+}
+
+ensure_xcode_clt
+ensure_homebrew
+setup_homebrew_env
+install_homebrew_bundle
+install_gh_extension
+sync_ghq_repo
+install_tmux_plugins
+
+{{- else -}}
+#!/usr/bin/env bash
+
+set -eu
+
+echo "Unsupported platform: {{ .chezmoi.os }}"
+{{- end }}
