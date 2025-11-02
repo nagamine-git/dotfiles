@@ -88,3 +88,8 @@ ghq get HikaruEgashira/gh-q
 # tmux
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
+# bluetooth
+echo "Enabling Bluetooth service..."
+sudo systemctl enable --now bluetooth
+sudo usermod -a -G bluetooth $USER
+

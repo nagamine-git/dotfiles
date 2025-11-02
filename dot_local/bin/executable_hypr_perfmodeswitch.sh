@@ -2,6 +2,10 @@
 # ~/bin/hypr_perfmodeswitch.sh
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=dot_local/bin/lib_hypr_perfmode.sh
+source "$SCRIPT_DIR/lib_hypr_perfmode.sh"
+
 # ---- error handling ----
 # Notify and exit if any command fails
 error_handler() {
@@ -35,23 +39,7 @@ toggle_fcitx5_zenzai() {
 
 if [[ -f $state_file ]]; then
   # 通常モードへ戻す
-  hyprctl --batch "
-    keyword animations:enabled true;
-    keyword decoration:blur:enabled true;
-    keyword decoration:shadow:enabled true;
-    keyword decoration:rounding 8;
-    keyword decoration:active_opacity 1;
-    keyword decoration:inactive_opacity 0.8;
-    keyword general:border_size 1;
-    keyword render:max_fps 0;
-    keyword general:gaps_in 5;
-    keyword general:gaps_out 5;
-    keyword decoration:multisample_edges true;
-    keyword cursor:animate true;
-    keyword misc:vrr on;
-    keyword misc:vfr true;
-    keyword misc:animate_manual_resizes true;
-  "
+  hyprctl --batch "$HYPR_NORMAL_BATCH"
   # powerprofilesctl set balanced  # Disabled due to missing dependencies
   # Set CPU governor to schedutil (adaptive)
   if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
@@ -65,23 +53,7 @@ if [[ -f $state_file ]]; then
   notify-send "Hyprland" "🌈 通常モード (Zenzai: ON)"
 else
   # 高速モードへ
-  hyprctl --batch "
-    keyword animations:enabled false;
-    keyword decoration:blur:enabled false;
-    keyword decoration:shadow:enabled false;
-    keyword decoration:rounding 0;
-    keyword decoration:active_opacity 1;
-    keyword decoration:inactive_opacity 1;
-    keyword general:border_size 6;
-    keyword render:max_fps 60;
-    keyword general:gaps_in 0;
-    keyword general:gaps_out 0;
-    keyword decoration:multisample_edges false;
-    keyword cursor:animate false;
-    keyword misc:vrr off;
-    keyword misc:vfr false;
-    keyword misc:animate_manual_resizes false;
-  "
+  hyprctl --batch "$HYPR_PERFORMANCE_BATCH"
   # powerprofilesctl set performance  # Disabled due to missing dependencies
   # Set CPU governor to performance
   if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then

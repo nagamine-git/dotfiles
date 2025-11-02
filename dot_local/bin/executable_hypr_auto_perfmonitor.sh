@@ -3,6 +3,10 @@
 # 実用的な自動パフォーマンス監視・調整システム
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=dot_local/bin/lib_hypr_perfmode.sh
+source "$SCRIPT_DIR/lib_hypr_perfmode.sh"
+
 # CPU使用率計算用の前回値
 PREV_TOTAL=0
 PREV_IDLE=0
@@ -197,23 +201,7 @@ switch_to_performance() {
     log "Switching to PERFORMANCE mode (CPU: ${cpu_usage}%, Temp: ${cpu_temp}°C)"
     
     # Hyprland設定変更
-    if ! hyprctl --batch "
-        keyword animations:enabled false;
-        keyword decoration:blur:enabled false;
-        keyword decoration:shadow:enabled false;
-        keyword decoration:rounding 0;
-        keyword decoration:active_opacity 1;
-        keyword decoration:inactive_opacity 1;
-        keyword general:border_size 6;
-        keyword render:max_fps 60;
-        keyword general:gaps_in 0;
-        keyword general:gaps_out 0;
-        keyword decoration:multisample_edges false;
-        keyword cursor:animate false;
-        keyword misc:vrr off;
-        keyword misc:vfr false;
-        keyword misc:animate_manual_resizes false;
-    " >/dev/null 2>&1; then
+    if ! hyprctl --batch "$HYPR_PERFORMANCE_BATCH" >/dev/null 2>&1; then
         log "hyprctl performance batch failed"
     fi
 
@@ -255,23 +243,7 @@ switch_to_normal() {
     log "Switching to NORMAL mode (CPU: ${cpu_usage}%, Temp: ${cpu_temp}°C)"
     
     # Hyprland設定変更
-    if ! hyprctl --batch "
-        keyword animations:enabled true;
-        keyword decoration:blur:enabled true;
-        keyword decoration:shadow:enabled true;
-        keyword decoration:rounding 8;
-        keyword decoration:active_opacity 1;
-        keyword decoration:inactive_opacity 0.8;
-        keyword general:border_size 1;
-        keyword render:max_fps 0;
-        keyword general:gaps_in 5;
-        keyword general:gaps_out 5;
-        keyword decoration:multisample_edges true;
-        keyword cursor:animate true;
-        keyword misc:vrr on;
-        keyword misc:vfr true;
-        keyword misc:animate_manual_resizes true;
-    " >/dev/null 2>&1; then
+    if ! hyprctl --batch "$HYPR_NORMAL_BATCH" >/dev/null 2>&1; then
         log "hyprctl normal batch failed"
     fi
 

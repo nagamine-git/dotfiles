@@ -8,7 +8,7 @@ export EDITOR=nvim
 
 # PATHの設定 - 一箇所にまとめてシンプル化
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
-# export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
+export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
@@ -44,6 +44,9 @@ setopt hist_expire_dups_first
 setopt hist_verify
 setopt share_history
 setopt extended_history
+
+# historyコマンドで時刻を表示
+alias history='fc -il 1'
 
 # alias
 alias vim='nvim'

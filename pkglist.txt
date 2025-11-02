@@ -13,6 +13,7 @@ fcitx5-im
 fcitx5-hazkey-bin
 brave-bin
 dolphin
+autokey-gtk
 wofi
 playerctl
 brightnessctl
@@ -74,4 +75,5 @@ swappy
 base-devel
 libevdev
 keyd
-
+timeshift
+bluez
