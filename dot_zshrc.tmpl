@@ -1,34 +1,34 @@
 # Created by newuser for 5.9
 
-# 基本的な環境変数
+# ????????
 export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
 export EDITOR=nvim
 
-
-# PATHの設定 - 一箇所にまとめてシンプル化
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
-export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
+# PATH??? - ?????????????
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+{{ if eq .chezmoi.os "linux" }}export PATH="$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+{{ end }}export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
-export PATH="$PATH:/snap/bin"
-export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+{{ if eq .chezmoi.os "linux" }}export PATH="$PATH:/snap/bin"
+{{ end }}export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 GPG_TTY=`tty`
 export GPG_TTY
 # export MISE_VERBOSE=1
 
-# 補完
+# ??
 autoload -Uz compinit
 compinit -i
 
-# 補完の設定
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # 大文字小文字を区別しない
-zstyle ':completion:*' menu select # 補完メニューを有効化
-zstyle ':completion:*' verbose yes # 補完の詳細を表示
+# ?????
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # ????????????
+zstyle ':completion:*' menu select # ??????????
+zstyle ':completion:*' verbose yes # ????????
 
-# プラグイン管理
+# ???????
 eval "$(starship init zsh)"
-# 通常のシェル: フルアクティベート
+# ??????: ?????????
 eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
@@ -36,7 +36,7 @@ eval "$(atuin init zsh)"
 # Starship
 unset PROMPT_EOL_MARK
 
-# コマンド履歴
+# ??????
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
@@ -45,23 +45,24 @@ setopt hist_verify
 setopt share_history
 setopt extended_history
 
-# historyコマンドで時刻を表示
+# history??????????
 alias history='fc -il 1'
 
 # alias
 alias vim='nvim'
 alias svim='vim ~/.note.gpg'
 
-# ghqでクローンしたリポジトリへ簡単に移動するための関数
+# ghq?????????????????????????
 cgh() { 
     local dir
     dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
 }
 
-# Cursorの実行
+{{ if eq .chezmoi.os "linux" }}
+# Cursor????Linux???
 code() {
-    # 既存のCursorプロセスをチェック
+    # ???Cursor?????????
     if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
         echo "Cursor is already running. Opening new window..."
         command /usr/bin/cursor "$@" --reuse-window
@@ -71,8 +72,21 @@ code() {
         disown
     fi
 }
+{{ else if eq .chezmoi.os "darwin" }}
+# Cursor????macOS???
+code() {
+    if pgrep -f "Cursor" > /dev/null; then
+        echo "Cursor is already running. Opening new window..."
+        command /Applications/Cursor.app/Contents/MacOS/Cursor "$@" --reuse-window
+    else
+        echo "Cursor is not running. Starting new instance..."
+        command /Applications/Cursor.app/Contents/MacOS/Cursor "$@" > /dev/null 2>&1 &
+        disown
+    fi
+}
+{{ end }}
 
-# ls系コマンドの統合
+# ls????????
 alias ls='eza --icons --color=always'
 alias ll='ls -l'
 alias la='ls -la'
@@ -82,42 +96,43 @@ alias lmt='eza --tree --git-ignore --icons=never --classify'
 alias supabase='npx supabase'
 alias cursor='code'
 
-# Distroboxコンテナ準備の共通処理
+{{ if eq .chezmoi.os "linux" }}
+# Distrobox????????????Linux???
 _ensure_kali_running() {
-    # Dockerサービスが起動しているか確認
+    # Docker??????????????
     if ! systemctl is-active --quiet docker; then
-        echo "→ Starting Docker service..."
+        echo "? Starting Docker service..."
         sudo systemctl start docker
     fi
     
-    # Kaliコンテナが存在するか確認
+    # Kali????????????
     if ! distrobox list | grep -q "^kali"; then
-        echo "→ Creating new Kali container (kali)..."
+        echo "? Creating new Kali container (kali)..."
         distrobox create --name kali --image docker.io/kalilinux/kali-rolling:latest --home ~/distrobox/kali --additional-flags "--privileged"
     fi
     
     return 0
 }
 
-# Kaliコンテナ内でコマンドを実行するヘルパー関数
+# Kali?????????????????????
 _distrobox_kali_exec() {
     _ensure_kali_running || return 1
     
-    # distroboxのenterコマンドでbashコマンドを実行
+    # distrobox?enter?????bash???????
     distrobox enter kali -- bash -c "$@"
     return $?
 }
 
-# Torを有効にしてKaliコンテナに入る（proxychains4使用）
+# Tor??????Kali????????proxychains4???
 k() {
     _ensure_kali_running || return 1
     
-    echo "→ Entering Kali container with Tor (proxychains4)..."
+    echo "? Entering Kali container with Tor (proxychains4)..."
     distrobox enter kali -- bash -c '
-        # systemd不要: ユーザーモードでTor起動（未起動なら）
+        # systemd??: ????????Tor?????????
         if ! pgrep -x tor >/dev/null 2>&1; then
             if ! command -v tor >/dev/null 2>&1; then
-                echo "[ERROR] tor が見つかりません。コンテナ内で: sudo apt-get update && sudo apt-get install -y tor proxychains4" >&2
+                echo "[ERROR] tor ???????????????: sudo apt-get update && sudo apt-get install -y tor proxychains4" >&2
                 exit 1
             fi
             mkdir -p "$HOME/.tor"
@@ -130,27 +145,31 @@ Sandbox 0
 EOF
             tor -f "$HOME/.tor/torrc-k" --RunAsDaemon 1 >/dev/null 2>&1 || { echo "[ERROR] Tor failed to start; opening normal shell (no proxy)"; exec /bin/bash --login; }
         fi
-        # 以降のシェルを proxychains4 でラップ
+        # ??????? proxychains4 ????
         exec proxychains4 -q /bin/bash --login
     '
 }
 
-# 通常ネットワークモードでKaliコンテナに入る
+# ????????????Kali???????
 k_pub() {
     _ensure_kali_running || return 1
     
-    echo "→ Entering Kali container with normal network..."
+    echo "? Entering Kali container with normal network..."
     distrobox enter kali -- bash -c '
         exec /bin/bash --login
     '
 }
 
 alias pbcopy='wl-copy'
+{{ end }}
+
 alias b='~/.local/bin/biz_start.sh '
-source /home/tsuyoshi/.config/op/plugins.sh
+{{ if eq .chezmoi.os "linux" }}[ -f "/home/{{ .chezmoi.username }}/.config/op/plugins.sh" ] && source /home/{{ .chezmoi.username }}/.config/op/plugins.sh
+{{ else if eq .chezmoi.os "darwin" }}[ -f "$HOME/.config/op/plugins.sh" ] && source "$HOME/.config/op/plugins.sh"
+{{ end }}
 
 # pnpm
-export PNPM_HOME="/home/tsuyoshi/.local/share/pnpm"
+export PNPM_HOME="{{ if eq .chezmoi.os "linux" }}/home/{{ .chezmoi.username }}{{ else }}$HOME{{ end }}/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;

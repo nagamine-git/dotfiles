@@ -1,10 +1,11 @@
 # dotfiles
 
 個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
-主にEndeavourOS（Archベース）向けに最適化されています。
+Linux（EndeavourOS/Arch）とmacOSの両方に対応しています。
 
 ## 主な設定
 
+### Linux（EndeavourOS / Arch Linux）
 - ディストリビューション: EndeavourOS / Arch Linux
 - シェル: Zsh + Starship
 - ウィンドウマネージャ: Hyprland
@@ -15,13 +16,35 @@
 - 開発ツール: Docker, lazygit, lazydocker, atuin
 - その他: git, SSH, waybar など
 
+### macOS
+- シェル: Zsh + Starship
+- エディタ: Neovim
+- パッケージ管理: Homebrew
+- 開発ツール: Docker, lazygit, lazydocker, atuin
+- その他: git, SSH など
+
 ## 使い方
 
 ### インストール
 
+#### Linux（Arch/EndeavourOS）
+
 ```bash
 # chezmoiのインストール
 paru -S chezmoi
+
+# リポジトリの取得と適用
+chezmoi init --apply nagamine-git
+```
+
+#### macOS
+
+```bash
+# Homebrewのインストール（未インストールの場合）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# chezmoiのインストール
+brew install chezmoi
 
 # リポジトリの取得と適用
 chezmoi init --apply nagamine-git
@@ -36,7 +59,8 @@ chezmoi apply -v
 
 ### パッケージ
 
-必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+- **Linux**: 必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+- **macOS**: 必要なパッケージは `Brewfile` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
 
 ### tuigreet
 /etc/greetd/config.toml
