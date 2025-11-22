@@ -77,3 +77,4 @@ libevdev
 keyd
 timeshift
 bluez
+zoxide

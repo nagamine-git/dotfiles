@@ -32,6 +32,7 @@ eval "$(starship init zsh)"
 eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
+eval "$(zoxide init zsh)"
 
 # Starship
 unset PROMPT_EOL_MARK
@@ -60,17 +61,30 @@ cgh() {
 }
 
 # Cursorの実行
+# code() {
+#     # 既存のCursorプロセスをチェック
+#     if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
+#         echo "Cursor is already running. Opening new window..."
+#         command /usr/bin/cursor "$@" --reuse-window
+#     else
+#         echo "Cursor is not running. Starting new instance..."
+#         command /usr/bin/cursor "$@" --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic > /dev/null 2>&1 &
+#         disown
+#     fi
+# }
 code() {
-    # 既存のCursorプロセスをチェック
-    if pgrep -f "cursor.*--no-sandbox" > /dev/null; then
-        echo "Cursor is already running. Opening new window..."
-        command /usr/bin/cursor "$@" --reuse-window
-    else
-        echo "Cursor is not running. Starting new instance..."
-        command /usr/bin/cursor "$@" --no-sandbox --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 --password-store=basic > /dev/null 2>&1 &
-        disown
-    fi
+  unset GTK_IM_MODULE QT_IM_MODULE
+  export XMODIFIERS="@im=fcitx"
+  command /usr/bin/cursor "$@" \
+    --no-sandbox \
+    --enable-features=UseOzonePlatform \
+    --ozone-platform=wayland \
+    --enable-wayland-ime \
+    --wayland-text-input-version=3 \
+    > /dev/null 2>&1 &
+  disown
 }
+
 
 # ls系コマンドの統合
 alias ls='eza --icons --color=always'
