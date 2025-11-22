@@ -1,0 +1,15 @@
+tap "homebrew/bundle"
+tap "homebrew/cask"
+tap "homebrew/cask-fonts"
+
+brew "git"
+brew "gh"
+brew "ghq"
+brew "tmux"
+brew "starship"
+brew "sheldon"
+
+cask "1password"
+cask "font-firge-nerd"
+cask "font-noto-sans-cjk-jp"
+cask "font-roboto"

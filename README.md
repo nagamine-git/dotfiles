@@ -1,7 +1,7 @@
 # dotfiles
 
 個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
-主にEndeavourOS（Archベース）向けに最適化されています。
+EndeavourOS（Archベース）向けに最適化しつつ、macOSでも同一手順で構築できます。
 
 ## 主な設定
 
@@ -19,9 +19,22 @@
 
 ### インストール
 
+#### EndeavourOS / Arch Linux
+
 ```bash
 # chezmoiのインストール
 paru -S chezmoi
+
+# リポジトリの取得と適用
+chezmoi init --apply nagamine-git
+```
+
+#### macOS
+
+```bash
+# chezmoiとHomebrewの導入（未導入の場合）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install chezmoi
 
 # リポジトリの取得と適用
 chezmoi init --apply nagamine-git
@@ -36,7 +49,12 @@ chezmoi apply -v
 
 ### パッケージ
 
-必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+必要なパッケージは OS ごとに管理しています。
+
+- EndeavourOS / Arch Linux: `pkglist.txt`
+- macOS: `Brewfile`
+
+どちらも `run_onchange_setup.sh` により自動適用されます。
 
 ### tuigreet
 /etc/greetd/config.toml
