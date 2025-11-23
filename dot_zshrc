@@ -34,17 +34,22 @@ eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 eval "$(zoxide init zsh)"
 
+# Atuinと競合しないようzshの履歴を無効化
+unset HISTFILE
+setopt no_share_history
+setopt no_extended_history
+
 # Starship
 unset PROMPT_EOL_MARK
 
-# コマンド履歴
-HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
-setopt hist_expire_dups_first
-setopt hist_verify
-setopt share_history
-setopt extended_history
+# コマンド履歴 (Atuin使用のため無効化)
+# HISTFILE=~/.zsh_history
+# HISTSIZE=10000
+# SAVEHIST=10000
+# setopt hist_expire_dups_first
+# setopt hist_verify
+# setopt share_history
+# setopt extended_history
 
 # historyコマンドで時刻を表示
 alias history='fc -il 1'
@@ -54,11 +59,42 @@ alias vim='nvim'
 alias svim='vim ~/.note.gpg'
 
 # ghqでクローンしたリポジトリへ簡単に移動するための関数
-cgh() { 
+cgh() {
     local dir
     dir=$(ghq list | fzf --no-multi --exit-0 --query="$*" --preview="ls -FA1 $(ghq root)/{}")
-    [ -n "$dir" ] && cd "$(ghq root)/$dir" || return 
+    [ -n "$dir" ] && cd "$(ghq root)/$dir" || return
 }
+
+# cghと同じ挙動後、tmuxウィンドウを開始（名前はウィンドウのみ）
+tgh() {
+    cgh "$@" && {
+        local parent_dir=$(basename $(dirname $PWD))
+        local current_dir=$(basename $PWD)
+        local name="${parent_dir}/${current_dir}"
+        if [ -n "$TMUX" ]; then
+            tmux new-window -n "$name" -c "$PWD"
+        else
+            tmux new-session -n "$name" -c "$PWD"
+        fi
+    }
+}
+
+# カレントディレクトリでtmuxウィンドウを開始（名前はウィンドウのみ）
+tm() {
+    local name=$(basename $PWD)
+    if [ -n "$TMUX" ]; then
+        tmux new-window -n "$name" -c "$PWD"
+    else
+        tmux new-session -n "$name" -c "$PWD"
+    fi
+}
+
+tmux_fzf_window() {
+    window_list=$(tmux list-windows -a -F '#{window_index} #{window_name}')
+    window_index=$(echo "$window_list" | fzf | awk '{ print $1 }')
+    tmux select-window -t $window_index
+}
+
 
 # Cursorの実行
 # code() {
