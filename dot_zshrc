@@ -65,34 +65,36 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return
 }
 
-# cghと同じ挙動後、tmuxウィンドウを開始（名前はウィンドウのみ）
+# cghと同じ挙動後、tmuxセッションを開始（名前はセッションのみ）
 tgh() {
     cgh "$@" && {
         local parent_dir=$(basename $(dirname $PWD))
         local current_dir=$(basename $PWD)
         local name="${parent_dir}/${current_dir}"
         if [ -n "$TMUX" ]; then
-            tmux new-window -n "$name" -c "$PWD"
+            tmux new-session -d -s "$name" -c "$PWD"
+            tmux switch-client -t "$name"
         else
-            tmux new-session -n "$name" -c "$PWD"
+            tmux new-session -s "$name" -c "$PWD"
         fi
     }
 }
 
-# カレントディレクトリでtmuxウィンドウを開始（名前はウィンドウのみ）
+# カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
     local name=$(basename $PWD)
     if [ -n "$TMUX" ]; then
-        tmux new-window -n "$name" -c "$PWD"
+        tmux new-session -d -s "$name" -c "$PWD"
+        tmux switch-client -t "$name"
     else
-        tmux new-session -n "$name" -c "$PWD"
+        tmux new-session -s "$name" -c "$PWD"
     fi
 }
 
 tmux_fzf_window() {
-    window_list=$(tmux list-windows -a -F '#{window_index} #{window_name}')
-    window_index=$(echo "$window_list" | fzf | awk '{ print $1 }')
-    tmux select-window -t $window_index
+    window_list=$(tmux list-windows -a -F '#{session_id}:#{window_index} #{session_name}:#{window_name}')
+    target_index=$(echo $window_list | fzf | awk '{ print $1 }')
+    tmux switch-client -t $target_index
 }
 
 
