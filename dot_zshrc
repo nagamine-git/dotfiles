@@ -71,11 +71,28 @@ tgh() {
         local parent_dir=$(basename $(dirname $PWD))
         local current_dir=$(basename $PWD)
         local name="${parent_dir}/${current_dir}"
+        local is_first_session=false
+        # Check if tmux server is running
+        if ! tmux list-sessions >/dev/null 2>&1; then
+            is_first_session=true
+        fi
         if [ -n "$TMUX" ]; then
             tmux new-session -d -s "$name" -c "$PWD"
             tmux switch-client -t "$name"
         else
             tmux new-session -s "$name" -c "$PWD"
+        fi
+        # If this was the first session, prompt for rename
+        if $is_first_session; then
+            echo -n "Rename session? (y/n): "
+            read -r ans
+            if [[ "$ans" =~ ^[Yy]$ ]]; then
+                echo -n "New name: "
+                read -r new_name
+                if [ -n "$new_name" ]; then
+                    tmux rename-session -t "$name" "$new_name"
+                fi
+            fi
         fi
     }
 }
@@ -83,11 +100,28 @@ tgh() {
 # カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
     local name=$(basename $PWD)
+    local is_first_session=false
+    # Check if tmux server is running
+    if ! tmux list-sessions >/dev/null 2>&1; then
+        is_first_session=true
+    fi
     if [ -n "$TMUX" ]; then
         tmux new-session -d -s "$name" -c "$PWD"
         tmux switch-client -t "$name"
     else
         tmux new-session -s "$name" -c "$PWD"
+    fi
+    # If this was the first session, prompt for rename
+    if $is_first_session; then
+        echo -n "Rename session? (y/n): "
+        read -r ans
+        if [[ "$ans" =~ ^[Yy]$ ]]; then
+            echo -n "New name: "
+            read -r new_name
+            if [ -n "$new_name" ]; then
+                tmux rename-session -t "$name" "$new_name"
+            fi
+        fi
     fi
 }
 

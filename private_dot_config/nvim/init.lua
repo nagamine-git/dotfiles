@@ -11,6 +11,21 @@ vim.opt.background = 'dark'
 vim.opt.splitright = true
 vim.opt.autoread = true
 vim.api.nvim_create_autocmd('CursorHold', { command = 'checktime' })
+-- 基本設定 ... (既存の設定)
+
+-- 外部変更の自動再読み込み設定
+vim.opt.autoread = true
+-- フォーカスが戻った時やバッファに入った時に、未保存の変更を無視して強制的に外部変更を再読み込みする
+vim.api.nvim_create_autocmd({'BufEnter', 'FocusGained'}, {
+  callback = function()
+    vim.cmd('checktime')
+    -- 未保存の変更を破棄して強制再読み込みしたい場合は、
+    -- vim.cmd(':e!') を実行することもできますが、意図しない変更破棄のリスクがあります。
+  end
+})
+-- カーソルが一定時間停止した時にもチェック
+vim.api.nvim_create_autocmd('CursorHold', { command = 'checktime' })
+
 
 -- インデント設定
 vim.opt.expandtab = true
