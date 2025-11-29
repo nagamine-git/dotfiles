@@ -1,34 +1,25 @@
 # `sheldon` configuration file
 # ----------------------------
-#
-# You can modify this file directly or you can use one of the following
-# `sheldon` commands which are provided to assist in editing the config file:
-#
-# - `sheldon add` to add a new plugin to the config file
-# - `sheldon edit` to open up the config file in the default editor
-# - `sheldon remove` to remove a plugin from the config file
-#
-# See the documentation for more https://github.com/rossmacarthur/sheldon#readme
 
 shell = "zsh"
 
-[plugins]
+# [plugins] テーブルの開始
 
-# For example:
-#
-# [plugins.base16]
-# github = "chriskempson/base16-shell"
-[plugins.zsh-syntax-highlighting]
-github = "zsh-users/zsh-syntax-highlighting"
-
-# Zshの補完システムを有効化
+# 1. zsh-completions
+# 補完機能は他のプラグインよりも前に読み込むのが一般的です
 [plugins.zsh-completions]
 github = "zsh-users/zsh-completions"
 
+# 2. zsh-autosuggestions
 [plugins.zsh-autosuggestions]
 github = "zsh-users/zsh-autosuggestions"
 
-# Oh-My-Zsh Git plugin
+# 3. Oh-My-Zsh Git plugin
+# 単一ファイルを取得する場合は remote を使い、"Raw" URLを指定します
 [plugins.omz-git]
-github = "ohmyzsh/ohmyzsh"
-use = ["plugins/git/git.plugin.zsh"]
+remote = "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/plugins/git/git.plugin.zsh"
+
+# 4. zsh-syntax-highlighting
+# ハイライト機能は、設定の不整合を防ぐため最後に読み込むのが推奨されます
+[plugins.zsh-syntax-highlighting]
+github = "zsh-users/zsh-syntax-highlighting"

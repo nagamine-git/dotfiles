@@ -85,11 +85,17 @@ sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920"
 gh extension install HikaruEgashira/gh-q
 ghq get HikaruEgashira/gh-q
 
-# tmux
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 # bluetooth
 echo "Enabling Bluetooth service..."
 sudo systemctl enable --now bluetooth
 sudo usermod -a -G bluetooth $USER
 
+# systemctl
+sudo systemctl enable --now keyd
+sudo systemctl enable --now greetd
+sudo systemctl enable --now tailscaled
+
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+
+echo 'Search and set to wallpaper = ,~/Pictures/john-towner-JgOeRuGD_Y4-unsplash.jpg'

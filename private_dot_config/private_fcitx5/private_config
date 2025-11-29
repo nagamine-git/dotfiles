@@ -1,5 +1,5 @@
 [Hotkey]
-# トリガーキーを押すたびに切り替える
+# トグルキーの修飾キーを押し続けたときは列挙
 EnumerateWithTriggerKeys=True
 # 次の入力メソッドに切り替える
 EnumerateForwardKeys=
@@ -7,13 +7,19 @@ EnumerateForwardKeys=
 EnumerateBackwardKeys=
 # 切り替え時は第1入力メソッドをスキップする
 EnumerateSkipFirst=False
-# Time limit in milliseconds for triggering modifier key shortcuts
+# 修飾キーのショートカットをトリガーするための時間制限（ミリ秒）
 ModifierOnlyKeyTimeout=250
 
 [Hotkey/TriggerKeys]
 0=Control+space
 1=Zenkaku_Hankaku
 2=Hangul
+
+[Hotkey/ActivateKeys]
+0=Hangul_Hanja
+
+[Hotkey/DeactivateKeys]
+0=Hangul_Romaja
 
 [Hotkey/AltTriggerKeys]
 0=Shift_L
@@ -23,12 +29,6 @@ ModifierOnlyKeyTimeout=250
 
 [Hotkey/EnumerateGroupBackwardKeys]
 0=Shift+Super+space
-
-[Hotkey/ActivateKeys]
-0=Hangul_Hanja
-
-[Hotkey/DeactivateKeys]
-0=Hangul_Romaja
 
 [Hotkey/PrevPage]
 0=Up
@@ -64,7 +64,7 @@ CompactInputMethodInformation=True
 ShowFirstInputMethodInformation=True
 # デフォルトのページサイズ
 DefaultPageSize=5
-# XKB オプションより優先する
+# XKB オプションの上書き
 OverrideXkbOption=False
 # カスタム XKB オプション
 CustomXkbOption=

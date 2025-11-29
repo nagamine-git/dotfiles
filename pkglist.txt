@@ -22,9 +22,6 @@ pipewire
 pipewire-pulse
 zsh
 dialog
-vulkan-radeon
-amdvlk
-vulkan-amdgpu-pro
 ttf-apple-emoji
 foot
 starship
@@ -33,13 +30,10 @@ sheldon
 docker
 docker-compose
 fzf
-neofetch
 ghq
 github-cli
 eza
 obs-studio-git
-droidcam-obs-plugin-git
-droidcam-git
 hyprpaper
 btop
 wl-clipboard
@@ -63,10 +57,7 @@ xdg-desktop-portal-wlr
 distrobox
 slack-desktop-wayland
 mtr-git
-pdfmerger
-cursor-bin
 thunar
-yazi
 nm-connection-editor
 wtype
 grim
@@ -78,3 +69,8 @@ keyd
 timeshift
 bluez
 zoxide
+fastfetch
+1password-cli
+nwg-displays
+tailscale
+mosh
