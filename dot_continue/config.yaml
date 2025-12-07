@@ -1,0 +1,43 @@
+name: Qwen3 Agent
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Qwen3-Coder
+    provider: ollama
+    model: qwen3-coder:latest
+    systemMessage: |
+      必ず日本語で答えて
+    defaultCompletionOptions:
+      temperature: 0.0
+
+  # タブ補完
+  - name: Autocomplete
+    provider: ollama
+    model: qwen2.5-coder:1.5b
+    roles:
+      - autocomplete
+    autocompleteOptions:
+      debounceDelay: 300
+      maxPromptTokens: 1024
+
+  # ベクトル検索
+  - name: Nomic Embed
+    provider: ollama
+    model: nomic-embed-text
+    roles:
+      - embed
+
+context:
+  - provider: code
+  - provider: docs
+  - provider: diff
+  - provider: terminal
+  - provider: folder
+  - provider: codebase
+
+docs:
+  - name: Continue Docs
+    startUrl: https://docs.continue.dev/intro
+
+allowAnonymousTelemetry: false

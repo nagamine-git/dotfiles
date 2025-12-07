@@ -2,7 +2,7 @@
 ruby = 'latest'
 rust = 'latest'
 go   = 'latest'
-node = 'latest'
+node = 'lts'
 python = 'latest'
 
 [settings]

@@ -133,7 +133,38 @@ require('lazy').setup({
         }
       })
     end
-  }  
+  },
+
+  {
+    "yetone/avante.nvim",
+    event = "VeryLazy",
+    lazy = false,
+    version = false,
+    opts = {
+      provider = "ollama",
+      providers = {
+        ollama = {
+          __inherited_from = "openai",
+          api_key_name = "dummy",
+          endpoint = "http://127.0.0.1:11434/v1",
+          model = "qwen3-coder:latest",
+        },
+      },
+    },
+    build = "make",
+    dependencies = {
+      "stevearc/dressing.nvim",
+      "nvim-lua/plenary.nvim",
+      "MunifTanjim/nui.nvim",
+      "hrsh7th/nvim-cmp",
+      "nvim-tree/nvim-web-devicons",
+      {
+        "MeanderingProgrammer/render-markdown.nvim",
+        opts = { file_types = { "markdown", "Avante" } },
+        ft = { "markdown", "Avante" },
+      },
+    },
+  },
 })
 
 -- カラースキーム設定

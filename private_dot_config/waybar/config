@@ -94,12 +94,13 @@
     "tooltip-format": "ディスク使用量: {}"
   },
   "temperature": {
+    "hwmon-path": "/sys/class/hwmon/hwmon3/temp1_input",
     "interval": 5,
     "format": "󰔏 {icon}",
     "format-icons": ["⡀", "⡀", "⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
-    "warning-threshold": 75,
-    "critical-threshold": 85,
-    "tooltip": true
+    "critical-threshold": 80,
+    "tooltip": true,
+    "tooltip-format": "CPU Temperature: {temperatureC}°C"
   },
 
   "network": {

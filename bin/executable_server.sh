@@ -8,6 +8,7 @@ sudo firewall-cmd --reload
 sudo systemctl enable --now xrdp
 sudo firewall-cmd --permanent --add-port=3389/tcp
 sudo firewall-cmd --permanent --add-port=60000-61000/udp
+sudo firewall-cmd --permanent --add-port=11434/tcp
 sudo firewall-cmd --reload
 sudo systemctl enable --now tailscaled
 sudo tailscale up

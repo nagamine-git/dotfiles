@@ -13,6 +13,7 @@ export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+export PATH="$HOME/.local/bin:$PATH"
 GPG_TTY=`tty`
 export GPG_TTY
 # export MISE_VERBOSE=1
@@ -197,14 +198,21 @@ _distrobox_kali_exec() {
 # Torを有効にしてKaliコンテナに入る（proxychains4使用）
 k() {
     _ensure_kali_running || return 1
-    
+
     echo "→ Entering Kali container with Tor (proxychains4)..."
     distrobox enter kali -- bash -c '
+        export _JAVA_OPTIONS="-Dsun.java2d.uiScale=1.25"
+        export _JAVA_AWT_WM_NONREPARENTING=2
         # systemd不要: ユーザーモードでTor起動（未起動なら）
         if ! pgrep -x tor >/dev/null 2>&1; then
             if ! command -v tor >/dev/null 2>&1; then
-                echo "[ERROR] tor が見つかりません。コンテナ内で: sudo apt-get update && sudo apt-get install -y tor proxychains4" >&2
-                exit 1
+                echo "torが見つかりません。自動インストールしますか？ (y/n): "
+                read -r ans
+                if [[ "$ans" =~ ^[Yy]$ ]]; then
+                    sudo apt-get update && sudo apt-get install -y tor proxychains4 || { echo "[ERROR] インストール失敗"; exit 1; }
+                else
+                    echo "[ERROR] torが必要です"; exit 1
+                fi
             fi
             mkdir -p "$HOME/.tor"
             cat > "$HOME/.tor/torrc-k" <<EOF
@@ -224,9 +232,11 @@ EOF
 # 通常ネットワークモードでKaliコンテナに入る
 k_pub() {
     _ensure_kali_running || return 1
-    
+
     echo "→ Entering Kali container with normal network..."
     distrobox enter kali -- bash -c '
+        export _JAVA_OPTIONS="-Dsun.java2d.uiScale=1.25"
+        export _JAVA_AWT_WM_NONREPARENTING=2
         exec /bin/bash --login
     '
 }
