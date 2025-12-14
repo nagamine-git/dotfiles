@@ -85,3 +85,4 @@ xorg-xwayland
 dust
 tree
 vlc
+darkman

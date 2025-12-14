@@ -1,0 +1,16 @@
+# Darkman configuration
+# Automatically switches between dark and light mode based on sunrise/sunset
+
+# Location (Tokyo, Japan as default - will be overridden by geoclue if enabled)
+lat: 35.6762
+lng: 139.6503
+
+# Use geoclue to automatically determine location
+# Disabled for now due to geoclue configuration issues
+usegeoclue: false
+
+# Expose mode via D-Bus (required for darkman CLI)
+dbusserver: true
+
+# Expose mode via XDG Desktop Portal (for application support)
+portal: true
