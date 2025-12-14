@@ -158,13 +158,13 @@ code() {
 }
 
 
-# ls系コマンドの統合
+# エイリアス
 alias ls='eza --icons --color=always'
 alias ll='ls -l'
 alias la='ls -la'
 alias l='ls -l'
-alias tree='ls --tree --git-ignore'
-alias lmt='eza --tree --git-ignore --icons=never --classify'
+alias gdm='git diff -w --no-color --ignore-blank-lines --minimal'
+alias gls='git ls-files'
 alias supabase='npx supabase'
 alias cursor='code'
 

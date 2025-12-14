@@ -84,3 +84,4 @@ bc
 xorg-xwayland
 dust
 tree
+vlc
