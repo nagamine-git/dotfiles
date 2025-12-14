@@ -5,8 +5,8 @@ GenericName=Web Browser
 Comment=Access the Internet
 StartupNotify=true
 StartupWMClass=zeed-browser
-TryExec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Default/zeed
-Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Default/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 %U
+TryExec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/zeed
+Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 %U
 Terminal=false
 Icon=zeed-desktop
 Type=Application
@@ -18,8 +18,8 @@ Actions=new-window;new-private-window;
 
 [Desktop Action new-window]
 Name=New Window
-Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Default/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1
+Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1
 
 [Desktop Action new-private-window]
 Name=New Incognito Window
-Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Default/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 --incognito
+Exec=/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/zeed --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --enable-wayland-ime --password-store=basic --disable-background-mode --pwa-flags-conf-debug=1 --incognito

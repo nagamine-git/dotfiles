@@ -10,22 +10,7 @@ vim.opt.termguicolors = true
 vim.opt.background = 'dark'
 vim.opt.splitright = true
 vim.opt.autoread = true
-vim.api.nvim_create_autocmd('CursorHold', { command = 'checktime' })
--- 基本設定 ... (既存の設定)
-
--- 外部変更の自動再読み込み設定
-vim.opt.autoread = true
--- フォーカスが戻った時やバッファに入った時に、未保存の変更を無視して強制的に外部変更を再読み込みする
-vim.api.nvim_create_autocmd({'BufEnter', 'FocusGained'}, {
-  callback = function()
-    vim.cmd('checktime')
-    -- 未保存の変更を破棄して強制再読み込みしたい場合は、
-    -- vim.cmd(':e!') を実行することもできますが、意図しない変更破棄のリスクがあります。
-  end
-})
--- カーソルが一定時間停止した時にもチェック
-vim.api.nvim_create_autocmd('CursorHold', { command = 'checktime' })
-
+vim.api.nvim_create_autocmd({'BufEnter', 'FocusGained', 'CursorHold'}, { command = 'checktime' })
 
 -- インデント設定
 vim.opt.expandtab = true
@@ -83,6 +68,9 @@ require('lazy').setup({
   -- ステータスライン
   { 'nvim-lualine/lualine.nvim', dependencies = { 'nvim-tree/nvim-web-devicons' } },
 
+  -- バッファライン（タブライン）
+  { 'akinsho/bufferline.nvim', version = "*", dependencies = { 'nvim-tree/nvim-web-devicons' } },
+
   -- Git統合
   { 'lewis6991/gitsigns.nvim' },
   { 'tpope/vim-fugitive' },
@@ -134,37 +122,6 @@ require('lazy').setup({
       })
     end
   },
-
-  {
-    "yetone/avante.nvim",
-    event = "VeryLazy",
-    lazy = false,
-    version = false,
-    opts = {
-      provider = "ollama",
-      providers = {
-        ollama = {
-          __inherited_from = "openai",
-          api_key_name = "dummy",
-          endpoint = "http://127.0.0.1:11434/v1",
-          model = "qwen3-coder:latest",
-        },
-      },
-    },
-    build = "make",
-    dependencies = {
-      "stevearc/dressing.nvim",
-      "nvim-lua/plenary.nvim",
-      "MunifTanjim/nui.nvim",
-      "hrsh7th/nvim-cmp",
-      "nvim-tree/nvim-web-devicons",
-      {
-        "MeanderingProgrammer/render-markdown.nvim",
-        opts = { file_types = { "markdown", "Avante" } },
-        ft = { "markdown", "Avante" },
-      },
-    },
-  },
 })
 
 -- カラースキーム設定
@@ -195,8 +152,18 @@ require('nvim-tree').setup({
       },
     },
   },
+  git = {
+    enable = true,
+    ignore = false,
+  },
   filters = {
     dotfiles = false,
+    custom = {
+      "^\\.git$",
+      "node_modules",
+      "build",
+      "dist",
+    },
   },
   update_focused_file = {
     enable = true,
@@ -314,12 +281,47 @@ require('Comment').setup()
 -- nvim-autopairs設定
 require('nvim-autopairs').setup()
 
--- Avanteのキーマッピング
-vim.keymap.set('n', '<leader>aa', function() require('avante').toggle() end, { desc = "avante: toggle sidebar" })
-vim.keymap.set('n', '<leader>at', function() require('avante').toggle() end, { desc = "avante: toggle sidebar" })
-vim.keymap.set('n', '<leader>ar', function() require('avante').refresh() end, { desc = "avante: refresh" })
-vim.keymap.set('n', '<leader>af', function() require('avante').focus() end, { desc = "avante: focus" })
-vim.keymap.set('n', '<leader>a?', function() require('avante').switch_provider() end, { desc = "avante: switch provider" })
-vim.keymap.set('n', '<leader>ae', function() require('avante').edit() end, { desc = "avante: edit" })
-vim.keymap.set('n', '<leader>aS', function() require('avante').stop() end, { desc = "avante: stop" })
-vim.keymap.set('n', '<leader>ah', function() require('avante').history() end, { desc = "avante: history" })
+-- bufferline設定
+require('bufferline').setup({
+  options = {
+    mode = "buffers",
+    numbers = "none",
+    close_command = "bdelete! %d",
+    right_mouse_command = "bdelete! %d",
+    left_mouse_command = "buffer %d",
+    indicator = {
+      style = 'underline',
+    },
+    buffer_close_icon = '',
+    modified_icon = '●',
+    close_icon = '',
+    left_trunc_marker = '',
+    right_trunc_marker = '',
+    diagnostics = "nvim_lsp",
+    diagnostics_indicator = function(count, level)
+      local icon = level:match("error") and " " or " "
+      return " " .. icon .. count
+    end,
+    offsets = {
+      {
+        filetype = "NvimTree",
+        text = "File Explorer",
+        text_align = "center",
+        separator = true
+      }
+    },
+    separator_style = "thin",
+    show_buffer_close_icons = true,
+    show_close_icon = false,
+    show_tab_indicators = true,
+    persist_buffer_sort = true,
+    enforce_regular_tabs = false,
+    always_show_bufferline = true,
+  },
+})
+
+-- バッファ移動のキーマッピング
+vim.keymap.set('n', '<Tab>', ':BufferLineCycleNext<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<S-Tab>', ':BufferLineCyclePrev<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bp', ':BufferLinePick<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bc', ':BufferLinePickClose<CR>', { noremap = true, silent = true })

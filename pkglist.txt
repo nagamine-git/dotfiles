@@ -83,3 +83,4 @@ bat
 bc
 xorg-xwayland
 dust
+tree

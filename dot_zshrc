@@ -85,7 +85,6 @@ tgh() {
         fi
         # If this was the first session, prompt for rename
         if $is_first_session; then
-            echo -n "Rename session? (y/n): "
             read -r ans
             if [[ "$ans" =~ ^[Yy]$ ]]; then
                 echo -n "New name: "
@@ -251,3 +250,7 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
+export PATH=/home/tsuyoshi/.local/share/pnpm:/home/tsuyoshi/src/out/Production/:/home/tsuyoshi/src/out/Production/:/home/tsuyoshi/.local/share/mise/installs/ruby/3.4.7/bin:/home/tsuyoshi/.local/share/mise/installs/go/1.25.4/bin:/home/tsuyoshi/.local/share/mise/installs/node/24.11.1/bin:/home/tsuyoshi/.local/share/mise/installs/python/3.14.0/bin:/home/tsuyoshi/.local/bin:/home/tsuyoshi/go/bin:/home/tsuyoshi/.local/bin:/home/tsuyoshi/.cargo/bin:/home/tsuyoshi/.local/share/nvim-linux-x86_64/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/tsuyoshi/.local/share/mise/installs/python/*/bin:/snap/bin:/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/
+# Added by Zeed Browser init
+export PATH="$PATH:/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/depot_tools"
