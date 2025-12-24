@@ -122,6 +122,18 @@ require('lazy').setup({
       })
     end
   },
+
+  -- Supermaven
+  {
+    "supermaven-inc/supermaven-nvim",
+    config = function()
+      require("supermaven-nvim").setup({
+        keymaps = {
+          accept_suggestion = "<M-Space>",  -- Alt+Space で補完確定
+        },
+      })
+    end,
+  },
 })
 
 -- カラースキーム設定

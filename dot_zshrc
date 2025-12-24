@@ -111,18 +111,6 @@ tm() {
     else
         tmux new-session -s "$name" -c "$PWD"
     fi
-    # If this was the first session, prompt for rename
-    if $is_first_session; then
-        echo -n "Rename session? (y/n): "
-        read -r ans
-        if [[ "$ans" =~ ^[Yy]$ ]]; then
-            echo -n "New name: "
-            read -r new_name
-            if [ -n "$new_name" ]; then
-                tmux rename-session -t "$name" "$new_name"
-            fi
-        fi
-    fi
 }
 
 tmux_fzf_window() {

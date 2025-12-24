@@ -86,3 +86,4 @@ dust
 tree
 vlc
 darkman
+hyprvoice
