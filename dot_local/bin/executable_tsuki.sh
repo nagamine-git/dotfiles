@@ -327,6 +327,63 @@ show_final_result() {
     echo ""
 }
 
+# 画面クリアしてヘッダー再描画（配列プレビュー固定用）
+redraw_screen() {
+    local level=$1
+    local correct=$2
+    local wrong=$3
+    local current_q=$4
+    local total_q=$5
+    
+    clear
+    
+    # ヘッダー部分（固定表示）
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}月配列 2-263 タイピング練習${NC}  │  レベル $level  │  正解:${GREEN}$correct${NC} ミス:${RED}$wrong${NC}  │  問題:$current_q/$total_q"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    
+    # 配列表示（コンパクト版）
+    case $level in
+        1)
+            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[使用文字]${NC}"
+            echo "    そ こ し て ょ  │  つ ん い の り ち"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}     ${YELLOW}は・か・と・た・く・う・゛・き・れ${NC}"
+            echo "    す け に な さ  │  っ る 、 。 ゜ ・     濁音: が・だ・ぐ・ば・ぎ"
+            ;;
+        2)
+            echo -e "  ${MAGENTA}[通常面]${NC}"
+            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}"
+            echo "    す け に な さ  │  っ る 、 。 ゜ ・"
+            ;;
+        3)
+            echo -e "  ${MAGENTA}[通常面]${NC}"
+            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}"
+            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・"
+            ;;
+        4)
+            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
+            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ぁ ひ ほ ふ め  │  ぬ え み や ぇ 「"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
+            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
+            ;;
+        5)
+            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
+            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
+            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
+            ;;
+        6)
+            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
+            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
+            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
+            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ${GREEN}ぅ へ せ ゅ ゃ${NC}  │  ${GREEN}む ろ ね ー ぉ${NC}"
+            ;;
+    esac
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
 # メインのタイピングゲーム
 play_round() {
     local level=$1
@@ -340,9 +397,11 @@ play_round() {
     local wrong=0
     local char_count=0
     
-    show_level_info $level
+    # 初期画面描画
+    redraw_screen $level 0 0 0 $WORDS_PER_ROUND
     
-    echo -e "${GREEN}Enterキーを押すとスタートします...${NC}"
+    echo ""
+    echo -e "  ${GREEN}Enterキーを押すとスタート...${NC}"
     read -r
     
     local start_time=$(date +%s)
@@ -352,18 +411,27 @@ play_round() {
         local word="${word_data%%:*}"
         local meaning="${word_data##*:}"
         
+        # 毎回画面を再描画（配列を固定表示）
+        redraw_screen $level $correct $wrong $((i + 1)) $WORDS_PER_ROUND
+        
         echo ""
-        echo -e "  [$(($i + 1))/$WORDS_PER_ROUND] ${BOLD}${YELLOW}$word${NC} （$meaning）"
+        echo -e "  お題: ${BOLD}${YELLOW}$word${NC} （$meaning）"
+        echo ""
         echo -n "  > "
         
         read -r input
         
         if [ "$input" = "$word" ]; then
-            echo -e "  ${GREEN}✓ 正解！${NC}"
             ((correct++))
             char_count=$((char_count + ${#word}))
         else
-            echo -e "  ${RED}✗ 不正解${NC} → 正解: $word"
+            # 不正解時は一瞬表示
+            redraw_screen $level $correct $((wrong + 1)) $((i + 1)) $WORDS_PER_ROUND
+            echo ""
+            echo -e "  ${RED}✗ 不正解${NC}  お題: ${YELLOW}$word${NC}  入力: ${RED}$input${NC}"
+            echo ""
+            echo -e "  ${CYAN}Enterで次へ...${NC}"
+            read -r
             ((wrong++))
         fi
     done
@@ -376,6 +444,8 @@ play_round() {
         wpm=$((char_count * 60 / time_taken))
     fi
     
+    # 結果画面
+    clear
     show_round_result $correct $wrong $time_taken $wpm
     
     total_correct=$((total_correct + correct))
@@ -407,9 +477,6 @@ main() {
     fi
     
     while true; do
-        clear
-        echo -e "${BOLD}月配列タイピング練習 - レベル $current_level${NC}"
-        
         play_round $current_level
         
         show_menu
