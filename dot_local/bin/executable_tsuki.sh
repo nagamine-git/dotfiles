@@ -1,521 +1,594 @@
 #!/bin/bash
 
 # ============================================
-# 月配列2-263 タイピング練習ゲーム
-# 段階的に使える文字が増えていく設計
+# 月配列2-263 タイピング練習ゲーム v2
+# 頻度順に1文字ずつ習得
 # ============================================
 
-# 色の定義
+# 色定義
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
-NC='\033[0m' # No Color
+GRAY='\033[0;90m'
+WHITE='\033[1;37m'
+NC='\033[0m'
 BOLD='\033[1m'
 
-# 各段の単語リスト（検証済み）
-# 1段目：は・か・と・た・く・う・゛・き・れ
-LEVEL1_WORDS=(
+# 文字リスト（最初の5文字はホームポジション：は・か・と・う・き）
+CHAR_ORDER=(
+    は か と う き
+    の に た い を る が し で て
+    な っ れ ら も す り こ だ ま
+    さ め く あ け ど ん え よ つ
+    や そ わ ち み せ ろ ば お じ
+    べ ず げ ほ へ び む ご ね ぶ
+    ぐ ぎ ひ ょ づ ぼ ざ ふ ゃ ぞ
+    ゆ ぜ ぬ ぱ ゅ ぴ ぽ ぷ ぺ ぁ
+    ぇ ぢ ゑ ゐ ぉ ぃ ゎ ぅ
+)
+
+# 設定
+SAVE_FILE="$HOME/.tsuki_typing_save"
+ROUND_SIZE=10
+UNLOCK_THRESHOLD=60
+
+# 状態
+declare -A CHAR_MASTERY
+unlocked_chars=5
+
+# 単語データベース（ひらがな:意味）
+WORDS=(
+    # は・か・と・う・き のみ
+    "かう:買う"
+    "とう:問う"
+    "はく:履く"
+    "かく:書く"
+    "きく:聞く"
+    "たく:炊く"
     "かた:型"
     "たか:鷹"
     "うた:歌"
     "きた:北"
-    "くう:空"
-    "かく:書く"
-    "たく:炊く"
-    "きく:聞く"
-    "はく:履く"
-    "たき:滝"
+    "いき:息"
     "かき:柿"
+    "たき:滝"
     "うき:浮き"
-    "かれ:彼"
-    "たれ:垂れ"
-    "だく:抱く"
-    "がく:学"
-    "たが:互い"
-    "かが:加賀"
-    "だれ:誰"
-    "ばか:馬鹿"
-)
-
-# 2段目：＋そ・こ・し・て・ょ・つ・ん・い・の・り・ち
-LEVEL2_WORDS=(
-    "そこ:底"
+    "はか:墓"
+    "かと:蚊と"
+    "とか:とか"
+    "きかい:機会"
+    # 基本単語
+    "の:の"
+    "に:に"
+    "た:た"
+    "たい:鯛"
+    "ない:無い"
+    "いた:板"
+    "には:庭"
+    "のに:のに"
+    "たに:谷"
+    "にた:似た"
+    "いに:往に"
+    "はい:灰"
+    "はた:旗"
+    "はな:花"
+    "いは:岩"
+    "をい:甥"
+    "とい:問い"
+    "いと:糸"
+    "とは:とは"
+    "との:との"
+    "とに:とに"
+    "たと:たと"
+    "るい:類"
+    "とる:取る"
+    "いる:居る"
+    "はる:春"
+    "なる:成る"
+    "のる:乗る"
+    "たる:樽"
+    "がい:害"
+    "がた:型"
+    "しる:知る"
+    "しに:死に"
+    "しな:品"
     "しの:篠"
-    "のり:海苔"
-    "ちり:塵"
     "いし:石"
-    "きつい:きつい"
-    "こんき:根気"
-    "しんり:心理"
-    "りんご:林檎"
-    "ことり:小鳥"
-    "しょうき:正気"
-    "こうしん:行進"
-    "きょうと:京都"
-    "りょうき:猟奇"
-    "きんこ:金庫"
-    "とんち:頓知"
-    "しんこ:新古"
-    "りょこう:旅行"
-    "こきょう:故郷"
-    "しょうりき:勝力"
-)
-
-# 3段目：＋す・け・に・な・さ・っ・る・、・。・゜
-LEVEL3_WORDS=(
+    "にし:西"
+    "はし:橋"
+    "でる:出る"
+    "では:では"
+    "いで:出で"
+    "てる:照る"
+    "して:して"
+    "なに:何"
+    "なの:なの"
+    "なが:長"
+    "かい:貝"
+    "かた:型"
+    "たか:鷹"
+    "かな:仮名"
+    "かに:蟹"
+    "いか:烏賊"
+    "しか:鹿"
+    "っと:っと"
+    "かった:勝った"
+    "いった:行った"
+    "なった:成った"
+    "れい:礼"
+    "かれ:彼"
+    "たれ:誰"
+    "これ:これ"
+    "それ:それ"
+    "られ:られ"
+    "らい:来"
+    "から:空"
+    "なら:奈良"
+    "しら:白"
+    "もの:物"
+    "もち:餅"
+    "もり:森"
+    "いも:芋"
+    "うた:歌"
+    "うに:雲丹"
+    "うし:牛"
+    "かう:買う"
+    "いう:言う"
+    "すい:粋"
     "すな:砂"
-    "けす:消す"
-    "なつ:夏"
+    "するな:するな"
+    "ます:鱒"
+    "りく:陸"
+    "のり:海苔"
+    "しり:尻"
+    "とり:鳥"
+    "くり:栗"
+    "こい:鯉"
+    "ここ:此処"
+    "こと:事"
+    "この:この"
+    "だい:台"
+    "だれ:誰"
+    "まい:舞"
+    "まち:町"
+    "いま:今"
+    "くま:熊"
+    "さい:才"
     "さる:猿"
-    "ぱん:パン"
-    "すっきり:すっきり"
-    "なっとく:納得"
-    "けっさく:傑作"
-    "にっき:日記"
-    "なつくさ:夏草"
-    "すいっち:スイッチ"
-    "けんさ:検査"
-    "にんき:人気"
-    "さっき:さっき"
-    "さっぱり:さっぱり"
-    "さんすう:算数"
-    "なんきん:南京"
-    "くっさく:掘削"
-    "けんさく:検索"
-    "にっすう:日数"
-)
-
-# 4段目：＋ぃ・を・ら・あ・よ・ま・お・も・わ・ゆ
-LEVEL4_WORDS=(
-    "あお:青"
-    "まよう:迷う"
-    "わら:藁"
-    "ゆらり:揺らり"
-    "おもい:思い"
-    "あらい:荒い"
-    "わらう:笑う"
-    "おもう:思う"
-    "ゆらゆら:ゆらゆら"
-    "あまい:甘い"
-    "おまわり:お巡り"
-    "おもいやり:思いやり"
-    "らいおん:ライオン"
-    "まいにち:毎日"
-    "ありがとう:有難う"
-    "おもしろい:面白い"
-    "わかもの:若者"
-    "まんよう:万葉"
-    "ゆういつ:唯一"
-    "あらわす:表す"
-)
-
-# 5段目：＋ぁ・ひ・ほ・ふ・め・ぬ・え・み・や・ぇ・「・」
-LEVEL5_WORDS=(
-    "ひめ:姫"
-    "ふえ:笛"
-    "やみ:闇"
-    "ぬの:布"
-    "ぬめり:滑り"
-    "ひふ:皮膚"
-    "ふみ:文"
-    "やめる:辞める"
-    "みえ:三重"
-    "えひめ:愛媛"
-    "ひやけ:日焼け"
-    "ふゆやすみ:冬休み"
-    "めんえき:免疫"
-    "ぬいもの:縫い物"
-    "ふめい:不明"
-    "ひみつ:秘密"
-    "ふうふ:夫婦"
-    "みやこ:都"
-    "ほんや:本屋"
-    "ぬくもり:温もり"
-)
-
-# 6段目：＋ぅ・へ・せ・ゅ・ゃ・む・ね・ろ・ー・ぉ
-LEVEL6_WORDS=(
-    "へや:部屋"
-    "ねる:寝る"
-    "むね:胸"
-    "へそ:臍"
-    "ねむい:眠い"
-    "へいせい:平成"
-    "せんろ:線路"
-    "むしろ:寧ろ"
-    "ねんれい:年齢"
-    "ろーま:ローマ"
-    "せいねん:青年"
-    "むりょう:無料"
-    "へんしゅう:編集"
-    "ねっしん:熱心"
+    "さか:坂"
+    "あさ:朝"
+    "きた:北"
+    "きり:霧"
+    "かき:柿"
+    "いき:息"
+    "すき:好き"
+    "めい:姪"
+    "あめ:雨"
+    "くち:口"
+    "くも:雲"
+    "くに:国"
+    "あい:愛"
+    "あか:赤"
+    "あき:秋"
+    "ある:有る"
+    "けい:刑"
+    "たけ:竹"
+    "さけ:酒"
+    "いけ:池"
+    "どこ:何処"
+    "どれ:どれ"
+    "まど:窓"
+    "かど:角"
+    "んと:んと"
+    "うんと:うんと"
+    "えき:駅"
+    "かえる:帰る"
+    "まえ:前"
+    "うえ:上"
+    "よい:良い"
+    "よる:夜"
+    "およぐ:泳ぐ"
+    "つき:月"
+    "つく:付く"
+    "いつ:何時"
+    "やま:山"
+    "やる:遣る"
+    "いや:嫌"
+    "そこ:底"
+    "その:その"
+    "そう:然う"
+    "わに:鰐"
+    "かわ:川"
+    "にわ:庭"
+    "ちり:塵"
+    "まち:町"
+    "みち:道"
+    "かち:勝ち"
+    "みる:見る"
+    "みみ:耳"
+    "うみ:海"
+    "せい:背"
     "せかい:世界"
-    "むせん:無線"
-    "ろうねん:老年"
-    "へいわ:平和"
+    "ろく:六"
+    "しろ:白"
+    "ばい:倍"
+    "ばか:馬鹿"
+    "おい:甥"
+    "おか:丘"
+    "おと:音"
+    "じる:汁"
+    "かじ:舵"
+    "べつ:別"
+    "ずる:狡"
+    "げた:下駄"
+    "ほし:星"
+    "ほか:他"
+    "へた:下手"
+    "へや:部屋"
+    "びる:びる"
+    "むし:虫"
+    "むら:村"
+    "むく:剥く"
+    "ごい:語彙"
+    "ねこ:猫"
+    "ねる:寝る"
+    "かね:金"
+    "ぶた:豚"
+    "ぐち:愚痴"
+    "ぎり:義理"
+    "ひる:昼"
+    "ひと:人"
+    "ひかり:光"
+    "きょう:今日"
+    "りょう:量"
+    "ぼく:僕"
+    "ざる:猿"
+    "ふく:服"
+    "ふね:船"
+    "ふゆ:冬"
+    "しゃく:癪"
+    "ぞう:象"
+    "ゆき:雪"
+    "ゆめ:夢"
+    "ぜに:銭"
+    "ぬの:布"
+    "ぱい:杯"
+    "しゅう:週"
+    "ぴか:ぴか"
+    "ぽい:ぽい"
+    "ぷう:ぷう"
+    "ぺた:ぺた"
+    "ありがとう:有難う"
+    "おはよう:お早う"
+    "こんにちは:今日は"
+    "さようなら:左様なら"
+    "おもしろい:面白い"
+    "たのしい:楽しい"
+    "うつくしい:美しい"
+    "あたらしい:新しい"
+    "むずかしい:難しい"
+    "やさしい:優しい"
+    "かわいい:可愛い"
+    "おいしい:美味しい"
+    "すばらしい:素晴らしい"
+    "ともだち:友達"
     "せんせい:先生"
-    "ねむりにつく:眠りにつく"
+    "がっこう:学校"
+    "びょういん:病院"
+    "としょかん:図書館"
+    "でんしゃ:電車"
+    "ひこうき:飛行機"
+    "しんかんせん:新幹線"
+    "にほん:日本"
+    "とうきょう:東京"
+    "おおさか:大阪"
+    "きょうと:京都"
+    "ほっかいどう:北海道"
+    "おきなわ:沖縄"
+    "たべる:食べる"
+    "のむ:飲む"
+    "はなす:話す"
+    "きく:聞く"
+    "よむ:読む"
+    "かく:書く"
+    "あるく:歩く"
+    "はしる:走る"
+    "つくる:作る"
+    "おしえる:教える"
+    "わかる:分かる"
+    "おぼえる:覚える"
+    "わすれる:忘れる"
+    "はじめる:始める"
+    "おわる:終わる"
+    "やすむ:休む"
+    "はたらく:働く"
+    "あそぶ:遊ぶ"
+    "うたう:歌う"
+    "わらう:笑う"
+    "なく:泣く"
 )
 
-# ゲーム設定
-WORDS_PER_ROUND=10
-current_level=1
-total_score=0
-total_correct=0
-total_wrong=0
-
-# 配列の説明を表示
-show_level_info() {
-    local level=$1
-    echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    case $level in
-        1)
-            echo -e "${BOLD}【レベル1】ホームポジション基本${NC}"
-            echo -e "使える文字: ${YELLOW}は・か・と・た・く・う・゛・き・れ${NC}"
-            echo -e "濁音: ${YELLOW}が・だ・ぐ・ば・ぎ${NC}"
-            echo ""
-            echo "  そ こ し て ょ  │  つ ん い の り ち"
-            echo -e "  ${GREEN}は か ★ と た${NC}  │  ${GREEN}く う ★ ゛ き れ${NC}"
-            echo "  す け に な さ  │  っ る 、 。 ゜ ・"
-            ;;
-        2)
-            echo -e "${BOLD}【レベル2】上段追加${NC}"
-            echo -e "追加文字: ${YELLOW}そ・こ・し・て・ょ・つ・ん・い・の・り・ち${NC}"
-            echo ""
-            echo -e "  ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
-            echo -e "  ${GREEN}は か ★ と た${NC}  │  ${GREEN}く う ★ ゛ き れ${NC}"
-            echo "  す け に な さ  │  っ る 、 。 ゜ ・"
-            ;;
-        3)
-            echo -e "${BOLD}【レベル3】下段追加${NC}"
-            echo -e "追加文字: ${YELLOW}す・け・に・な・さ・っ・る・゜${NC}"
-            echo ""
-            echo -e "  ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
-            echo -e "  ${GREEN}は か ★ と た${NC}  │  ${GREEN}く う ★ ゛ き れ${NC}"
-            echo -e "  ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る 、 。 ゜${NC} ・"
-            ;;
-        4)
-            echo -e "${BOLD}【レベル4】シフト面（左）${NC}"
-            echo -e "追加文字: ${YELLOW}ぃ・を・ら・あ・よ・ま・お・も・わ・ゆ${NC}"
-            echo ""
-            echo "  [シフト面]"
-            echo "  ぁ ひ ほ ふ め  │  ぬ え み や ぇ 「"
-            echo -e "  ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo "  ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
-            ;;
-        5)
-            echo -e "${BOLD}【レベル5】シフト面（上段）${NC}"
-            echo -e "追加文字: ${YELLOW}ぁ・ひ・ほ・ふ・め・ぬ・え・み・や・ぇ${NC}"
-            echo ""
-            echo "  [シフト面]"
-            echo -e "  ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
-            echo -e "  ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo "  ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
-            ;;
-        6)
-            echo -e "${BOLD}【レベル6】全文字解禁！${NC}"
-            echo -e "追加文字: ${YELLOW}ぅ・へ・せ・ゅ・ゃ・む・ね・ろ・ー・ぉ${NC}"
-            echo ""
-            echo "  [シフト面 - 完全版]"
-            echo -e "  ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
-            echo -e "  ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo -e "  ${GREEN}ぅ へ せ ゅ ゃ${NC}  │  ${GREEN}む ろ ね ー ぉ${NC}"
-            ;;
-    esac
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
+# 保存
+save_progress() {
+    {
+        echo "unlocked=$unlocked_chars"
+        for i in "${!CHAR_ORDER[@]}"; do
+            local char="${CHAR_ORDER[$i]}"
+            echo "m$i=${CHAR_MASTERY[$char]:-0}"
+        done
+    } > "$SAVE_FILE"
 }
 
-# レベルに応じた単語配列を取得
-get_words_for_level() {
-    local level=$1
-    case $level in
-        1) echo "${LEVEL1_WORDS[@]}" ;;
-        2) echo "${LEVEL2_WORDS[@]}" ;;
-        3) echo "${LEVEL3_WORDS[@]}" ;;
-        4) echo "${LEVEL4_WORDS[@]}" ;;
-        5) echo "${LEVEL5_WORDS[@]}" ;;
-        6) echo "${LEVEL6_WORDS[@]}" ;;
-    esac
-}
-
-# 配列をシャッフル
-shuffle_array() {
-    local array=("$@")
-    local i n temp
-    n=${#array[@]}
-    for ((i = n - 1; i > 0; i--)); do
-        j=$((RANDOM % (i + 1)))
-        temp="${array[i]}"
-        array[i]="${array[j]}"
-        array[j]="$temp"
+# 読み込み
+load_progress() {
+    for char in "${CHAR_ORDER[@]}"; do
+        CHAR_MASTERY[$char]=0
     done
-    echo "${array[@]}"
+    
+    if [ -f "$SAVE_FILE" ]; then
+        source "$SAVE_FILE"
+        for i in "${!CHAR_ORDER[@]}"; do
+            local char="${CHAR_ORDER[$i]}"
+            eval "CHAR_MASTERY[$char]=\${m$i:-0}"
+        done
+    fi
 }
 
-# タイトル画面
-show_title() {
+# 習熟度の色
+mastery_color() {
+    local m=$1
+    if [ "$m" -ge 80 ]; then echo "${GREEN}"
+    elif [ "$m" -ge 60 ]; then echo "${YELLOW}"
+    elif [ "$m" -ge 40 ]; then echo "${MAGENTA}"
+    elif [ "$m" -ge 1 ]; then echo "${RED}"
+    else echo "${GRAY}"
+    fi
+}
+
+# 習熟度バー表示
+show_mastery_bar() {
+    echo -ne "  "
+    for i in "${!CHAR_ORDER[@]}"; do
+        local char="${CHAR_ORDER[$i]}"
+        if [ "$i" -lt "$unlocked_chars" ]; then
+            local m=${CHAR_MASTERY[$char]:-0}
+            echo -ne "$(mastery_color $m)${char}${NC} "
+        else
+            echo -ne "${GRAY}□${NC} "
+        fi
+        [ $(( (i + 1) % 20 )) -eq 0 ] && echo -e "\n  "
+    done
+    echo ""
+}
+
+# 配列プレビュー
+show_layout() {
+    local avail=""
+    for ((i=0; i<unlocked_chars; i++)); do
+        avail+="${CHAR_ORDER[$i]}"
+    done
+    
+    print_key() {
+        local c=$1
+        if [[ "$avail" == *"$c"* ]]; then
+            local m=${CHAR_MASTERY[$c]:-0}
+            echo -ne "$(mastery_color $m)$c${NC} "
+        else
+            echo -ne "${GRAY}□${NC} "
+        fi
+    }
+    
+    echo -e "  ${CYAN}[通常面]${NC}                            ${CYAN}[シフト面]${NC}"
+    
+    # 上段
+    echo -n "   "
+    for c in そ こ し て ょ; do print_key "$c"; done
+    echo -n "│ "
+    for c in つ ん い の り ち; do print_key "$c"; done
+    echo -n "    "
+    for c in ぁ ひ ほ ふ め; do print_key "$c"; done
+    echo -n "│ "
+    for c in ぬ え み や ぇ; do print_key "$c"; done
+    echo ""
+    
+    # 中段
+    echo -n "   "
+    for c in は か; do print_key "$c"; done
+    echo -ne "${WHITE}★${NC} "
+    for c in と た; do print_key "$c"; done
+    echo -n "│ "
+    for c in く う; do print_key "$c"; done
+    echo -ne "${WHITE}★${NC} "
+    for c in ゛ き れ; do print_key "$c"; done
+    echo -n "    "
+    for c in ぃ を ら あ よ; do print_key "$c"; done
+    echo -n "│ "
+    for c in ま お も わ ゆ; do print_key "$c"; done
+    echo ""
+    
+    # 下段
+    echo -n "   "
+    for c in す け に な さ; do print_key "$c"; done
+    echo -n "│ "
+    for c in っ る; do print_key "$c"; done
+    echo -ne "${GRAY}、 。 ゜${NC} "
+    echo -n "    "
+    for c in ぅ へ せ ゅ ゃ; do print_key "$c"; done
+    echo -n "│ "
+    for c in む ろ ね ー ぉ; do print_key "$c"; done
+    echo ""
+}
+
+# 画面描画
+draw_screen() {
+    local correct=$1 wrong=$2 qnum=$3 total=$4
     clear
-    echo -e "${CYAN}"
-    echo "  ╔═══════════════════════════════════════════════════════════╗"
-    echo "  ║                                                           ║"
-    echo "  ║     月配列 2-263 タイピング練習ゲーム                      ║"
-    echo "  ║     Tsuki Layout Typing Practice                          ║"
-    echo "  ║                                                           ║"
-    echo "  ╚═══════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-    echo ""
-    echo "  段階的に使える文字が増えていきます。"
-    echo "  各レベルで使える文字のみで構成された単語を練習できます。"
-    echo ""
-    echo -e "  ${YELLOW}レベル1${NC}: ホームポジション（は・か・と・た・く・う・゛・き・れ）"
-    echo -e "  ${YELLOW}レベル2${NC}: ＋上段（そ・こ・し・て・ょ・つ・ん・い・の・り・ち）"
-    echo -e "  ${YELLOW}レベル3${NC}: ＋下段（す・け・に・な・さ・っ・る・゜）"
-    echo -e "  ${YELLOW}レベル4${NC}: ＋シフト中段（ぃ・を・ら・あ・よ・ま・お・も・わ・ゆ）"
-    echo -e "  ${YELLOW}レベル5${NC}: ＋シフト上段（ぁ・ひ・ほ・ふ・め・ぬ・え・み・や・ぇ）"
-    echo -e "  ${YELLOW}レベル6${NC}: ＋シフト下段（ぅ・へ・せ・ゅ・ゃ・む・ね・ろ・ー・ぉ）"
-    echo ""
-    echo -e "  ${GREEN}開始するレベルを選んでください (1-6):${NC} "
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}月配列タイピング${NC} │ 文字:${CYAN}$unlocked_chars/${#CHAR_ORDER[@]}${NC} │ 正解:${GREEN}$correct${NC} ミス:${RED}$wrong${NC} │ $qnum/$total"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    show_layout
+    echo -e "${CYAN}───────────────────────────────────────────────────────────────────────────${NC}"
+    show_mastery_bar
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-# 結果表示
-show_round_result() {
-    local correct=$1
-    local wrong=$2
-    local time_taken=$3
-    local wpm=$4
+# 使用可能な文字を取得
+get_available() {
+    local result=""
+    for ((i=0; i<unlocked_chars && i<${#CHAR_ORDER[@]}; i++)); do
+        result+="${CHAR_ORDER[$i]}"
+    done
+    echo "$result"
+}
+
+# 単語が使えるかチェック
+word_ok() {
+    local word=$1 avail=$2
+    for ((i=0; i<${#word}; i++)); do
+        [[ "$avail" != *"${word:$i:1}"* ]] && return 1
+    done
+    return 0
+}
+
+# 使える単語を取得
+get_words() {
+    local avail=$(get_available)
+    local result=()
+    for entry in "${WORDS[@]}"; do
+        local word="${entry%%:*}"
+        word_ok "$word" "$avail" && result+=("$entry")
+    done
+    echo "${result[@]}"
+}
+
+# 習熟度更新
+update_mastery() {
+    local word=$1 correct=$2
+    for ((i=0; i<${#word}; i++)); do
+        local c="${word:$i:1}"
+        local m=${CHAR_MASTERY[$c]:-0}
+        if [ "$correct" -eq 1 ]; then
+            m=$((m + 10))
+            [ $m -gt 100 ] && m=100
+        else
+            m=$((m - 15))
+            [ $m -lt 0 ] && m=0
+        fi
+        CHAR_MASTERY[$c]=$m
+    done
+}
+
+# アンロックチェック
+check_unlock() {
+    [ "$unlocked_chars" -ge "${#CHAR_ORDER[@]}" ] && return
     
-    echo ""
-    echo -e "${CYAN}━━━━━━━━━━ ラウンド結果 ━━━━━━━━━━${NC}"
-    echo -e "  正解: ${GREEN}$correct${NC} 問"
-    echo -e "  ミス: ${RED}$wrong${NC} 問"
-    echo -e "  時間: ${YELLOW}${time_taken}秒${NC}"
-    if [ "$wpm" -gt 0 ]; then
-        echo -e "  速度: ${MAGENTA}約${wpm}文字/分${NC}"
+    local total=0
+    for ((i=0; i<unlocked_chars; i++)); do
+        total=$((total + ${CHAR_MASTERY[${CHAR_ORDER[$i]}]:-0}))
+    done
+    local avg=$((total / unlocked_chars))
+    
+    if [ $avg -ge $UNLOCK_THRESHOLD ]; then
+        ((unlocked_chars++))
+        echo -e "\n  ${GREEN}★ 新文字アンロック: ${YELLOW}${CHAR_ORDER[$((unlocked_chars-1))]}${NC}"
+        sleep 1
     fi
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-# 最終結果表示
-show_final_result() {
-    echo ""
-    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}                    ${BOLD}最終結果${NC}                              ${CYAN}║${NC}"
-    echo -e "${CYAN}╠═══════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  総正解数: ${GREEN}$total_correct${NC} 問                                    ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  総ミス数: ${RED}$total_wrong${NC} 問                                     ${CYAN}║${NC}"
-    
-    if [ $((total_correct + total_wrong)) -gt 0 ]; then
-        local accuracy=$((total_correct * 100 / (total_correct + total_wrong)))
-        echo -e "${CYAN}║${NC}  正解率:   ${YELLOW}${accuracy}%${NC}                                       ${CYAN}║${NC}"
-    fi
-    
-    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    if [ $total_correct -ge 50 ]; then
-        echo -e "  ${GREEN}素晴らしい！月配列マスターへの道を歩んでいます！${NC}"
-    elif [ $total_correct -ge 30 ]; then
-        echo -e "  ${YELLOW}良い調子です！継続は力なり！${NC}"
-    else
-        echo -e "  ${CYAN}練習を続けましょう！毎日少しずつが大切です。${NC}"
-    fi
-    echo ""
+# シャッフル
+shuffle() {
+    local arr=("$@")
+    for ((i=${#arr[@]}-1; i>0; i--)); do
+        local j=$((RANDOM % (i+1)))
+        local tmp="${arr[$i]}"
+        arr[$i]="${arr[$j]}"
+        arr[$j]="$tmp"
+    done
+    echo "${arr[@]}"
 }
 
-# 画面クリアしてヘッダー再描画（配列プレビュー固定用）
-redraw_screen() {
-    local level=$1
-    local correct=$2
-    local wrong=$3
-    local current_q=$4
-    local total_q=$5
-    
-    clear
-    
-    # ヘッダー部分（固定表示）
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}月配列 2-263 タイピング練習${NC}  │  レベル $level  │  正解:${GREEN}$correct${NC} ミス:${RED}$wrong${NC}  │  問題:$current_q/$total_q"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    
-    # 配列表示（コンパクト版）
-    case $level in
-        1)
-            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[使用文字]${NC}"
-            echo "    そ こ し て ょ  │  つ ん い の り ち"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}     ${YELLOW}は・か・と・た・く・う・゛・き・れ${NC}"
-            echo "    す け に な さ  │  っ る 、 。 ゜ ・     濁音: が・だ・ぐ・ば・ぎ"
-            ;;
-        2)
-            echo -e "  ${MAGENTA}[通常面]${NC}"
-            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}"
-            echo "    す け に な さ  │  っ る 、 。 ゜ ・"
-            ;;
-        3)
-            echo -e "  ${MAGENTA}[通常面]${NC}"
-            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}"
-            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・"
-            ;;
-        4)
-            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
-            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ぁ ひ ほ ふ め  │  ぬ え み や ぇ 「"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
-            ;;
-        5)
-            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
-            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ぅ へ せ ゅ ゃ  │  む ろ ね ー ぉ"
-            ;;
-        6)
-            echo -e "  ${MAGENTA}[通常面]${NC}                              ${MAGENTA}[シフト面]${NC}"
-            echo -e "    ${GREEN}そ こ し て ょ${NC}  │  ${GREEN}つ ん い の り ち${NC}      ${GREEN}ぁ ひ ほ ふ め${NC}  │  ${GREEN}ぬ え み や ぇ${NC} 「"
-            echo -e "    ${GREEN}は か${NC} ★ ${GREEN}と た${NC}  │  ${GREEN}く う${NC} ★ ${GREEN}゛ き れ${NC}      ${GREEN}ぃ を ら あ よ${NC}  │  ${GREEN}ま お も わ ゆ${NC} 」"
-            echo -e "    ${GREEN}す け に な さ${NC}  │  ${GREEN}っ る${NC} 、 。 ${GREEN}゜${NC} ・      ${GREEN}ぅ へ せ ゅ ゃ${NC}  │  ${GREEN}む ろ ね ー ぉ${NC}"
-            ;;
-    esac
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
-
-# メインのタイピングゲーム
+# ラウンド実行
 play_round() {
-    local level=$1
-    local words_string=$(get_words_for_level $level)
-    local words=($words_string)
+    local words_str=$(get_words)
+    local words=($words_str)
     
-    # シャッフル
-    local shuffled=($(shuffle_array "${words[@]}"))
+    if [ ${#words[@]} -lt 3 ]; then
+        echo -e "${YELLOW}単語が少ないです。練習を続けて文字を増やしましょう。${NC}"
+        read -r
+        return
+    fi
     
-    local correct=0
-    local wrong=0
-    local char_count=0
+    local shuffled=($(shuffle "${words[@]}"))
+    local size=$ROUND_SIZE
+    [ ${#shuffled[@]} -lt $size ] && size=${#shuffled[@]}
     
-    # 初期画面描画
-    redraw_screen $level 0 0 0 $WORDS_PER_ROUND
+    local correct=0 wrong=0
     
-    echo ""
-    echo -e "  ${GREEN}Enterキーを押すとスタート...${NC}"
+    draw_screen 0 0 0 $size
+    echo -e "\n  ${GREEN}Enter で開始${NC}"
     read -r
     
-    local start_time=$(date +%s)
-    
-    for ((i = 0; i < WORDS_PER_ROUND && i < ${#shuffled[@]}; i++)); do
-        local word_data="${shuffled[$i]}"
-        local word="${word_data%%:*}"
-        local meaning="${word_data##*:}"
+    for ((q=0; q<size; q++)); do
+        local entry="${shuffled[$q]}"
+        local word="${entry%%:*}"
+        local meaning="${entry##*:}"
         
-        # 毎回画面を再描画（配列を固定表示）
-        redraw_screen $level $correct $wrong $((i + 1)) $WORDS_PER_ROUND
-        
-        echo ""
-        echo -e "  お題: ${BOLD}${YELLOW}$word${NC} （$meaning）"
-        echo ""
+        draw_screen $correct $wrong $((q+1)) $size
+        echo -e "\n  お題: ${BOLD}${YELLOW}$word${NC}（$meaning）\n"
         echo -n "  > "
-        
-        read -r input
+        read -e -r input
         
         if [ "$input" = "$word" ]; then
             ((correct++))
-            char_count=$((char_count + ${#word}))
+            update_mastery "$word" 1
         else
-            # 不正解時は一瞬表示
-            redraw_screen $level $correct $((wrong + 1)) $((i + 1)) $WORDS_PER_ROUND
-            echo ""
-            echo -e "  ${RED}✗ 不正解${NC}  お題: ${YELLOW}$word${NC}  入力: ${RED}$input${NC}"
-            echo ""
-            echo -e "  ${CYAN}Enterで次へ...${NC}"
-            read -r
             ((wrong++))
+            update_mastery "$word" 0
+            draw_screen $correct $wrong $((q+1)) $size
+            echo -e "\n  ${RED}✗${NC} 正解: ${YELLOW}$word${NC}  入力: ${RED}$input${NC}"
+            echo -e "  ${GRAY}Enter で次へ${NC}"
+            read -r
         fi
+        
+        check_unlock
     done
     
-    local end_time=$(date +%s)
-    local time_taken=$((end_time - start_time))
+    save_progress
     
-    local wpm=0
-    if [ $time_taken -gt 0 ]; then
-        wpm=$((char_count * 60 / time_taken))
-    fi
-    
-    # 結果画面
-    clear
-    show_round_result $correct $wrong $time_taken $wpm
-    
-    total_correct=$((total_correct + correct))
-    total_wrong=$((total_wrong + wrong))
-    
-    return $correct
-}
-
-# メニュー
-show_menu() {
+    # 結果
+    draw_screen $correct $wrong $size $size
     echo ""
-    echo -e "${CYAN}━━━━━━━━━━ メニュー ━━━━━━━━━━${NC}"
-    echo "  1) 同じレベルをもう一度"
-    echo "  2) 次のレベルへ進む"
-    echo "  3) レベルを選び直す"
-    echo "  4) 終了"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -n "  選択 (1-4): "
+    echo -e "  ${BOLD}結果${NC}: 正解 ${GREEN}$correct${NC} / ミス ${RED}$wrong${NC}"
+    [ $((correct+wrong)) -gt 0 ] && echo -e "  正解率: ${CYAN}$((correct*100/(correct+wrong)))%${NC}"
 }
 
-# メイン処理
+# メイン
 main() {
-    show_title
-    read -r current_level
-    
-    # 入力チェック
-    if ! [[ "$current_level" =~ ^[1-6]$ ]]; then
-        current_level=1
-    fi
+    load_progress
     
     while true; do
-        play_round $current_level
+        play_round
         
-        show_menu
+        echo ""
+        echo -e "  ${CYAN}1)続ける 2)リセット 3)終了${NC}"
+        echo -n "  > "
         read -r choice
         
         case $choice in
-            1)
-                # 同じレベルをもう一度
-                ;;
             2)
-                # 次のレベルへ
-                if [ $current_level -lt 6 ]; then
-                    ((current_level++))
-                    echo -e "${GREEN}レベル $current_level に進みます！${NC}"
-                    sleep 1
-                else
-                    echo -e "${YELLOW}最高レベルに到達しています！${NC}"
-                    sleep 1
-                fi
+                echo -n "  リセット? (y/n): "
+                read -r yn
+                [ "$yn" = "y" ] && rm -f "$SAVE_FILE" && unlocked_chars=5 && load_progress
                 ;;
             3)
-                # レベル選択
-                echo -n "  レベルを入力 (1-6): "
-                read -r new_level
-                if [[ "$new_level" =~ ^[1-6]$ ]]; then
-                    current_level=$new_level
-                fi
-                ;;
-            4)
-                # 終了
-                show_final_result
-                echo -e "${CYAN}お疲れ様でした！また練習しましょう！${NC}"
+                save_progress
+                echo -e "  ${CYAN}お疲れ様！${NC}"
                 exit 0
-                ;;
-            *)
                 ;;
         esac
     done
 }
 
-# 実行
 main
