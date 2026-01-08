@@ -70,7 +70,7 @@ cgh() {
 tgh() {
     cgh "$@" && {
         local parent_dir=$(basename $(dirname $PWD))
-        local current_dir=$(basename $PWD)
+        local current_dir=$(basename $PWD | tr '.:' '_')
         local name="${parent_dir}/${current_dir}"
         local is_first_session=false
         # Check if tmux server is running
@@ -99,7 +99,7 @@ tgh() {
 
 # カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
-    local name=$(basename $PWD)
+    local name=$(basename $PWD | tr '.:' '_')
     local is_first_session=false
     # Check if tmux server is running
     if ! tmux list-sessions >/dev/null 2>&1; then
