@@ -3,6 +3,9 @@
 # Stop on error
 set -eu
 
+# Windowsと時刻が合わないので、システム時刻をUTCに変更する
+timedatectl set-local-rtc 1 --adjust-system-clock
+
 # 汎用インストール関数
 install_if_missing() {
   local cmd=$1
