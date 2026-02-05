@@ -96,6 +96,8 @@ tgh() {
         fi
     }
 }
+alias ghd='gh dash'
+alias lg='lazygit'
 
 # カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
