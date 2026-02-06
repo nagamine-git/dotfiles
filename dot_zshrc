@@ -8,14 +8,11 @@ export EDITOR=nvim
 
 # PATHの設定 - 一箇所にまとめてシンプル化
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
-export PATH="$PATH:$HOME/.local/share/mise/installs/python/*/bin"
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
-export PATH="$HOME/.local/bin:$PATH"
-GPG_TTY=`tty`
-export GPG_TTY
+export GPG_TTY=$(tty)
 # export MISE_VERBOSE=1
 
 # 補完
@@ -28,8 +25,9 @@ zstyle ':completion:*' menu select # 補完メニューを有効化
 zstyle ':completion:*' verbose yes # 補完の詳細を表示
 
 # プラグイン管理
+# NOTE: 5つのevalが順次実行されるため起動時間に影響
+# 改善案: キャッシュ化または遅延ロードを検討
 eval "$(starship init zsh)"
-# 通常のシェル: フルアクティベート
 eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
@@ -42,15 +40,6 @@ setopt no_extended_history
 
 # Starship
 unset PROMPT_EOL_MARK
-
-# コマンド履歴 (Atuin使用のため無効化)
-# HISTFILE=~/.zsh_history
-# HISTSIZE=10000
-# SAVEHIST=10000
-# setopt hist_expire_dups_first
-# setopt hist_verify
-# setopt share_history
-# setopt extended_history
 
 # historyコマンドで時刻を表示
 alias history='fc -il 1'
@@ -120,7 +109,6 @@ tmux_fzf_window() {
     target_index=$(echo $window_list | fzf | awk '{ print $1 }')
     tmux switch-client -t $target_index
 }
-
 
 # Cursorの実行
 # code() {
@@ -204,14 +192,7 @@ k() {
                 fi
             fi
             mkdir -p "$HOME/.tor"
-            cat > "$HOME/.tor/torrc-k" <<EOF
-ClientOnly 1
-SocksPort 127.0.0.1:9050
-DataDirectory $HOME/.tor
-Log notice file $HOME/.tor/tor.log
-Sandbox 0
-EOF
-            tor -f "$HOME/.tor/torrc-k" --RunAsDaemon 1 >/dev/null 2>&1 || { echo "[ERROR] Tor failed to start; opening normal shell (no proxy)"; exec /bin/bash --login; }
+            tor -f "$HOME/.config/tor/torrc-k" --RunAsDaemon 1 >/dev/null 2>&1 || { echo "[ERROR] Tor failed to start; opening normal shell (no proxy)"; exec /bin/bash --login; }
         fi
         # 以降のシェルを proxychains4 でラップ
         exec proxychains4 -q /bin/bash --login
@@ -234,13 +215,11 @@ alias pbcopy='wl-copy'
 alias b='~/.local/bin/biz_start.sh '
 
 # pnpm
-export PNPM_HOME="/home/tsuyoshi/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
-# pnpm end
 
-export PATH=/home/tsuyoshi/.local/share/pnpm:/home/tsuyoshi/src/out/Production/:/home/tsuyoshi/src/out/Production/:/home/tsuyoshi/.local/share/mise/installs/ruby/3.4.7/bin:/home/tsuyoshi/.local/share/mise/installs/go/1.25.4/bin:/home/tsuyoshi/.local/share/mise/installs/node/24.11.1/bin:/home/tsuyoshi/.local/share/mise/installs/python/3.14.0/bin:/home/tsuyoshi/.local/bin:/home/tsuyoshi/go/bin:/home/tsuyoshi/.local/bin:/home/tsuyoshi/.cargo/bin:/home/tsuyoshi/.local/share/nvim-linux-x86_64/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/tsuyoshi/.local/share/mise/installs/python/*/bin:/snap/bin:/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/
-# Added by Zeed Browser init
-export PATH="$PATH:/home/tsuyoshi/ghq/github.com/efg-technologies/zeed-browser/depot_tools"
+# Zeed Browser depot_tools
+export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools"

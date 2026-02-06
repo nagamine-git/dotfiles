@@ -1,0 +1,5 @@
+ClientOnly 1
+SocksPort 127.0.0.1:9050
+DataDirectory ~/.tor
+Log notice file ~/.tor/tor.log
+Sandbox 0
