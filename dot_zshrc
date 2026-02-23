@@ -87,6 +87,7 @@ tgh() {
 }
 alias ghd='gh dash'
 alias lg='lazygit'
+alias ld='lazydocker'
 
 # カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
