@@ -35,6 +35,9 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # Install packages
 paru -S --needed --noconfirm - < ~/pkglist.txt || echo "Some packages failed to install"
 
+# pipx managed tools (Python version independent)
+pipx install hyprshade 2>/dev/null || pipx upgrade hyprshade
+
 # フォント設定
 sudo mkdir -p /usr/share/fonts
 

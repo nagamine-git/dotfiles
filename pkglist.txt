@@ -77,7 +77,7 @@ fastfetch
 nwg-displays
 tailscale
 mosh
-hyprshade
+python-pipx
 lm_sensors
 bat
 bc
