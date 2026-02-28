@@ -100,18 +100,8 @@ sudo systemctl enable --now keyd
 sudo systemctl enable --now greetd
 sudo systemctl enable --now tailscaled
 
-# suspend-then-hibernate: サスペンド後一定時間でハイバネートに移行
-# （以前は全sleep targetをmaskしていたが、バッテリー急減の原因だったため解除）
 sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
-
-# logind / sleep 設定を配置
-sudo mkdir -p /etc/systemd/logind.conf.d /etc/systemd/sleep.conf.d
+sudo mkdir -p /etc/systemd/logind.conf.d
 sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
-sudo cp etc/systemd/sleep.conf.d/suspend-then-hibernate.conf /etc/systemd/sleep.conf.d/suspend-then-hibernate.conf
-
-# AMD s2idle 最適化（ThinkPad E14 Gen6 Ryzen向け）
-sudo cp etc/systemd/system/amd-s2idle-optimize.service /etc/systemd/system/amd-s2idle-optimize.service
-sudo systemctl daemon-reload
-sudo systemctl enable amd-s2idle-optimize.service
 
 echo 'Search and set to wallpaper = ,~/Pictures/john-towner-JgOeRuGD_Y4-unsplash.jpg'
