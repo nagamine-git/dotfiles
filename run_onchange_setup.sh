@@ -103,6 +103,8 @@ sudo systemctl enable --now keyd
 sudo systemctl enable --now greetd
 sudo systemctl enable --now tailscaled
 
-sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
 
 echo 'Search and set to wallpaper = ,~/Pictures/john-towner-JgOeRuGD_Y4-unsplash.jpg'
