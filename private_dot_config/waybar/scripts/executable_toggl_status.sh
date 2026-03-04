@@ -23,9 +23,15 @@ if [[ -z "$response" || "$response" == "null" ]]; then
 fi
 
 description=$(echo "$response" | jq -r '.description // "No description"')
-start_utc=$(echo "$response" | jq -r '.start')
-# epoch seconds
-start_epoch=$(date -d "$start_utc" +%s)
+start_utc=$(echo "$response" | jq -r '.start // empty')
+if [[ -z "$start_utc" || "$start_utc" == "null" ]]; then
+  printf '{"text":"⚠️⚠️⚠️TOGGL IDLE⚠️⚠️⚠️","tooltip":"No running entry"}\n'
+  exit 0
+fi
+start_epoch=$(date -d "$start_utc" +%s 2>/dev/null) || {
+  printf '{"text":"⚠️ TOGGL ERR","tooltip":"Invalid start time: %s"}\n' "$start_utc"
+  exit 0
+}
 now_epoch=$(date +%s)
 
 elapsed=$((now_epoch - start_epoch))
