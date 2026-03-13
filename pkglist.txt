@@ -87,3 +87,4 @@ tree
 vlc
 darkman
 hyprvoice-bin
+google-cloud-sdk

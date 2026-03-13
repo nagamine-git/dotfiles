@@ -224,3 +224,67 @@ esac
 
 # Zeed Browser depot_tools
 export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools"
+
+# free-claude-code: Claude Code → NVIDIA NIM プロキシ
+_CCNIM_DIR="$HOME/.local/share/free-claude-code"
+
+ccnim-setup() {
+    if [ ! -d "$_CCNIM_DIR" ]; then
+        git clone https://github.com/Alishahryar1/free-claude-code.git "$_CCNIM_DIR" || return 1
+    fi
+    local api_key
+    api_key=$(op item get bp5xubxlrozmvxb25b4nrdak3y --reveal --fields password) || return 1
+    cat > "$_CCNIM_DIR/.env" <<EOF
+NVIDIA_NIM_API_KEY=${api_key}
+MODEL=nvidia_nim/z-ai/glm5
+MODEL_OPUS=nvidia_nim/z-ai/glm5
+MODEL_SONNET=nvidia_nim/z-ai/glm4.7
+MODEL_HAIKU=nvidia_nim/z-ai/glm4.7flash
+EOF
+    echo "Setup complete: $_CCNIM_DIR/.env created"
+}
+
+ccnim-proxy() {
+    if [ ! -f "$_CCNIM_DIR/.env" ]; then
+        echo "Run ccnim-setup first"
+        return 1
+    fi
+    (cd "$_CCNIM_DIR" && uv run uvicorn server:app --host 0.0.0.0 --port 8082)
+}
+
+alias ccnim='ANTHROPIC_AUTH_TOKEN=freecc ANTHROPIC_BASE_URL=http://localhost:8082 claude'
+
+# フォールバック付きClaudeランチャー
+# 優先順位: Claude Pro(sonnet) → Ollama glm-5:cloud → Ollama glm-4.7-flash-24k local
+_CC_LOCAL_MODEL="glm-4.7-flash-24k"
+
+_cc_is_pro_available() {
+    # claude auth status のJSON出力からsubscriptionTypeを確認
+    local auth
+    auth=$(claude auth status 2>/dev/null) || return 1
+    echo "$auth" | grep -q '"subscriptionType":\s*"pro"'
+}
+
+_cc_is_ollama_model_available() {
+    # ollamaにモデルが存在するか確認
+    ollama list 2>/dev/null | grep -q "^${1}[: ]"
+}
+
+cc() {
+    if _cc_is_pro_available; then
+        echo "→ Claude Pro (sonnet)" >&2
+        claude --model sonnet "$@"
+    elif _cc_is_ollama_model_available "glm-5"; then
+        echo "→ Ollama: glm-5:cloud" >&2
+        ollama launch claude --model glm-5:cloud "$@"
+    elif _cc_is_ollama_model_available "$_CC_LOCAL_MODEL"; then
+        echo "→ Ollama local: $_CC_LOCAL_MODEL" >&2
+        ollama launch claude --model "$_CC_LOCAL_MODEL" "$@"
+    else
+        echo "[cc] 利用可能なバックエンドが見つかりません:" >&2
+        echo "  1. Claude Pro: claude auth login" >&2
+        echo "  2. Ollama cloud: ollama pull glm-5" >&2
+        echo "  3. Ollama local: ollama pull glm-4.7-flash && ollama create $_CC_LOCAL_MODEL" >&2
+        return 1
+    fi
+}
