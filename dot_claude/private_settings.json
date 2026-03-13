@@ -1,0 +1,12 @@
+{
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "language": "japanese",
+  "effortLevel": "medium",
+  "voiceEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "allowCommandExecution": true,
+  "autoExecuteCommands": true,
+  "model": "sonnet"
+}
