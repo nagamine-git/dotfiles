@@ -1,0 +1,56 @@
+#!/bin/bash
+# Claude使用量リセット通知デーモン
+# claude-usageの出力から残り時間をパースし、リセット時に通知を送る
+
+ICON="☁"
+SLEEP_ON_ERROR=300  # エラー時は5分後に再試行
+
+notify() {
+    notify-send "${ICON} Claude" "$1" --urgency=normal 2>/dev/null \
+        || echo "[claude-usage-notify] $1"
+}
+
+parse_remaining_seconds() {
+    local output="$1"
+    # (Xh) or (XhYm) or (Xm) 形式をパース
+    local hm
+    hm=$(echo "$output" | grep -oP '\(\K[^)]+(?=\))')
+    [ -z "$hm" ] && echo 0 && return
+
+    local hours=0 mins=0
+    hours=$(echo "$hm" | grep -oP '\d+(?=h)' || echo 0)
+    mins=$(echo  "$hm" | grep -oP '\d+(?=m)' || echo 0)
+    echo $(( hours * 3600 + mins * 60 ))
+}
+
+while true; do
+    output=$(claude-usage 2>/dev/null)
+
+    if [ -z "$output" ]; then
+        sleep "$SLEEP_ON_ERROR"
+        continue
+    fi
+
+    secs=$(parse_remaining_seconds "$output")
+
+    if [ "$secs" -le 0 ]; then
+        sleep "$SLEEP_ON_ERROR"
+        continue
+    fi
+
+    # リセット時刻まで待機
+    sleep "$secs"
+
+    # 念のため少し待ってから確認
+    sleep 30
+    new_output=$(claude-usage --refresh 2>/dev/null)
+    pct=$(echo "$new_output" | grep -oP '5h:\K[0-9]+')
+
+    if [ -n "$pct" ] && [ "$pct" -lt 20 ]; then
+        notify "5時間制限がリセットされました！ 現在の使用率: ${pct}%"
+    else
+        notify "5時間制限がリセットされました！"
+    fi
+
+    sleep 60
+done
