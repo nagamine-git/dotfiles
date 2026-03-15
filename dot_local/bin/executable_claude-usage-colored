@@ -1,0 +1,24 @@
+#!/bin/bash
+# claude-usage wrapper with color highlighting based on utilization
+
+output=$(claude-usage 2>/dev/null)
+[ -z "$output" ] && exit 0
+
+# 5h utilization を抽出
+pct=$(echo "$output" | grep -oP '5h:\K[0-9]+')
+
+if [ -z "$pct" ]; then
+    echo "$output"
+    exit 0
+fi
+
+if [ "$pct" -ge 90 ]; then
+    # 赤・bold（危険域）
+    echo "#[fg=colour1,bold]$output#[default]"
+elif [ "$pct" -ge 75 ]; then
+    # 黄・bold（警告域）
+    echo "#[fg=colour3,bold]$output#[default]"
+else
+    # 通常（緑）
+    echo "#[fg=colour2,bold]$output#[default]"
+fi
