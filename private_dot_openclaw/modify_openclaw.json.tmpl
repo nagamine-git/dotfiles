@@ -24,7 +24,8 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
     }
   },
   "env": {
-    "GEMINI_API_KEY": "{{ onepasswordRead "op://Personal/den3wtt53sbqwopknjd2qgcgle/password" }}"
+    "GEMINI_API_KEY": "{{ onepasswordRead "op://Personal/den3wtt53sbqwopknjd2qgcgle/password" }}",
+    "READWISE_API_KEY": "{{ onepasswordRead "op://Personal/yh7cbeowamrzlo2uq2pbfxxpwq/AccessToken" }}"
   },
   "models": {
     "providers": {
@@ -33,10 +34,12 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
         "apiKey": "{{ onepasswordRead "op://Personal/OpenRouter API KEY/password" }}",
         "api": "openai-completions",
         "models": [
+          {"id": "xiaomi/mimo-v2-pro", "name": "Mimo V2 Pro"},
           {"id": "z-ai/glm-5-turbo", "name": "GLM-5 Turbo"},
           {"id": "z-ai/glm-5", "name": "GLM-5 (Standard)"},
           {"id": "z-ai/glm-4.7", "name": "GLM-4.7"},
-          {"id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite"}
+          {"id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite"},
+          {"id": "stepfun/step-3.5-flash:free", "name": "Step 3.5 Flash Free"}
         ]
       }
     }
@@ -45,7 +48,7 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
     "defaults": {
       "model": {
         "primary": "openrouter/z-ai/glm-5",
-        "fallbacks": ["openrouter/z-ai/glm-5-turbo"]
+        "fallbacks": ["stepfun/step-3.5-flash:free"]
       },
       "memorySearch": {
         "enabled": true,
@@ -113,11 +116,8 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
       "mode": "serve"
     },
     "auth": {
-      "mode": "trusted-proxy",
-      "allowTailscale": true,
-      "trustedProxy": {
-        "userHeader": "Tailscale-User-Login"
-      }
+      "mode": "token",
+      "token": "{{ onepasswordRead "op://Personal/ppk7whyfveayfwwss55oob5rx4/password" }}"
     }
   }
 }
