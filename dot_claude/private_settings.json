@@ -1,6 +1,28 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/tsuyoshi/.local/bin/claude-usage --refresh >/dev/null 2>&1"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  },
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--browser", "chromium", "--executable-path", "/opt/google/chrome/google-chrome"]
+    }
+  },
+  "env": {
+    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "/opt/google/chrome/google-chrome"
   },
   "language": "japanese",
   "effortLevel": "medium",

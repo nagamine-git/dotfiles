@@ -1,0 +1,126 @@
+#!/bin/bash
+# OpenClawが動的に追加するフィールド（meta, wizard等）を保持しつつ
+# chezmoi管理フィールドをdeep mergeする
+set -euo pipefail
+
+existing=$(cat)
+[ -z "$existing" ] && existing='{}'
+
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT
+
+cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
+{
+  "browser": {
+    "enabled": true,
+    "executablePath": "/opt/google/chrome/google-chrome",
+    "noSandbox": true,
+    "profiles": {
+      "user": {
+        "cdpPort": 9222,
+        "attachOnly": true,
+        "color": "4488FF"
+      }
+    }
+  },
+  "env": {
+    "GEMINI_API_KEY": "{{ onepasswordRead "op://Personal/den3wtt53sbqwopknjd2qgcgle/password" }}"
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "{{ onepasswordRead "op://Personal/OpenRouter API KEY/password" }}",
+        "api": "openai-completions",
+        "models": [
+          {"id": "z-ai/glm-5-turbo", "name": "GLM-5 Turbo"},
+          {"id": "z-ai/glm-5", "name": "GLM-5 (Standard)"},
+          {"id": "z-ai/glm-4.7", "name": "GLM-4.7"},
+          {"id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite"}
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openrouter/z-ai/glm-5",
+        "fallbacks": ["openrouter/z-ai/glm-5-turbo"]
+      },
+      "memorySearch": {
+        "enabled": true,
+        "provider": "openai",
+        "remote": {
+          "baseUrl": "https://openrouter.ai/api/v1",
+          "apiKey": "{{ onepasswordRead "op://Personal/OpenRouter API KEY/password" }}"
+        },
+        "model": "text-embedding-3-small",
+        "sync": {
+          "onSessionStart": true,
+          "watch": true,
+          "watchDebounceMs": 1500
+        }
+      },
+      "compaction": {
+        "mode": "safeguard",
+        "model": "openrouter/z-ai/glm-4.7",
+        "memoryFlush": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "tools": {
+    "media": {
+      "models": [
+        {
+          "type": "provider",
+          "provider": "openrouter",
+          "model": "google/gemini-2.5-flash-lite",
+          "capabilities": ["image", "audio", "video"]
+        }
+      ]
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "allowFrom": ["8657353436"],
+      "groupPolicy": "allowlist",
+      "streaming": "partial"
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "enabled": true,
+      "allowedOrigins": [
+        "https://am5-itx.tailcda87f.ts.net",
+        "http://127.0.0.1:18789"
+      ]
+    },
+    "trustedProxies": ["127.0.0.1", "::1"],
+    "tailscale": {
+      "mode": "serve"
+    },
+    "auth": {
+      "mode": "trusted-proxy",
+      "allowTailscale": true,
+      "trustedProxy": {
+        "userHeader": "Tailscale-User-Login"
+      }
+    }
+  }
+}
+__CHEZMOI_MANAGED__
+
+echo "$existing" | jq -s '.[0] * .[1]' - "$tmpfile"

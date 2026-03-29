@@ -288,3 +288,6 @@ cc() {
         return 1
     fi
 }
+
+# OpenClaw Completion
+source "/home/tsuyoshi/.openclaw/completions/openclaw.zsh"

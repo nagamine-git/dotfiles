@@ -81,6 +81,7 @@ fi
 # アプリケーションのインストール
 install_if_missing starship starship "curl -sS https://starship.rs/install.sh | sh"
 install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin --force"
+install_if_missing openclaw openclaw "npm i -g openclaw"
 
 # droidcam
 sudo dkms autoinstall
