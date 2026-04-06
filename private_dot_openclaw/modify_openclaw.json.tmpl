@@ -25,7 +25,9 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
   },
   "env": {
     "GEMINI_API_KEY": "{{ onepasswordRead "op://Personal/den3wtt53sbqwopknjd2qgcgle/password" }}",
-    "READWISE_API_KEY": "{{ onepasswordRead "op://Personal/yh7cbeowamrzlo2uq2pbfxxpwq/AccessToken" }}"
+    "READWISE_API_KEY": "{{ onepasswordRead "op://Personal/yh7cbeowamrzlo2uq2pbfxxpwq/AccessToken" }}",
+    "GOG_KEYRING_PASSWORD" : "{{ onepasswordRead "op://Personal/i3q7ggud6odaxy6o5wcbsah6vi/password" }}",
+    "TOGGL_API_KEY": "{{ onepasswordRead "op://Personal/nqlyxbo3nnvc2kzg675tijwhiu/APITOKEN" }}"
   },
   "models": {
     "providers": {
@@ -38,8 +40,16 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
           {"id": "z-ai/glm-5-turbo", "name": "GLM-5 Turbo"},
           {"id": "z-ai/glm-5", "name": "GLM-5 (Standard)"},
           {"id": "z-ai/glm-4.7", "name": "GLM-4.7"},
-          {"id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite"},
-          {"id": "stepfun/step-3.5-flash:free", "name": "Step 3.5 Flash Free"}
+          {"id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite"}
+        ]
+      },
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "apiKey": "{{ onepasswordRead "op://Personal/den3wtt53sbqwopknjd2qgcgle/password" }}",
+        "api": "google-generative-ai",
+        "models": [
+          {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash"},
+          {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash"}
         ]
       }
     }
@@ -47,12 +57,11 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
   "agents": {
     "defaults": {
       "model": {
-        "primary": "openrouter/z-ai/glm-5",
-        "fallbacks": ["stepfun/step-3.5-flash:free"]
+        "primary": "openrouter/qwen/qwen3.6-plus:free",
+        "fallbacks": ["openrouter/auto"]
       },
       "memorySearch": {
         "enabled": true,
-        "provider": "openai",
         "remote": {
           "baseUrl": "https://openrouter.ai/api/v1",
           "apiKey": "{{ onepasswordRead "op://Personal/OpenRouter API KEY/password" }}"
@@ -66,7 +75,7 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
       },
       "compaction": {
         "mode": "safeguard",
-        "model": "openrouter/z-ai/glm-4.7",
+        "model": "google/gemini-3-flash-preview",
         "memoryFlush": {
           "enabled": true
         }
@@ -74,12 +83,15 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
     }
   },
   "tools": {
+    "exec": {
+      "security": "full",
+      "ask": "off"
+    },
     "media": {
       "models": [
         {
           "type": "provider",
-          "provider": "openrouter",
-          "model": "google/gemini-2.5-flash-lite",
+          "model": "google/gemini-3-flash-preview",
           "capabilities": ["image", "audio", "video"]
         }
       ]
@@ -95,7 +107,7 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
     "telegram": {
       "enabled": true,
       "dmPolicy": "allowlist",
-      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "botToken": "{{ onepasswordRead "op://Personal/47bfd53mjlkzodfpqlmsxt7rsq/password" }}",
       "allowFrom": ["8657353436"],
       "groupPolicy": "allowlist",
       "streaming": "partial"
@@ -108,7 +120,8 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
       "enabled": true,
       "allowedOrigins": [
         "https://am5-itx.tailcda87f.ts.net",
-        "http://127.0.0.1:18789"
+        "http://127.0.0.1:18789",
+        "http://localhost:18789"
       ]
     },
     "trustedProxies": ["127.0.0.1", "::1"],
@@ -123,4 +136,4 @@ cat > "$tmpfile" << '__CHEZMOI_MANAGED__'
 }
 __CHEZMOI_MANAGED__
 
-echo "$existing" | jq -s '.[0] * .[1]' - "$tmpfile"
+echo "$existing" | jq -s '.[0] * .[1] | del(.agents.defaults.compaction.provider)' - "$tmpfile"

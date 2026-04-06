@@ -9,6 +9,7 @@
 #waybar {
   padding: 4px;
   background-color: rgba(0, 0, 0, 0.01);
+  border-radius: 8px;
 }
 
 /* Common module styling */

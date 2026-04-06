@@ -111,6 +111,9 @@ tmux_fzf_window() {
     tmux switch-client -t $target_index
 }
 
+# tmux attachのエイリアス
+alias ta='tmux attach'
+
 # Cursorの実行
 # code() {
 #     # 既存のCursorプロセスをチェック
