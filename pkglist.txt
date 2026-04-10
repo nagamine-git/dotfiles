@@ -24,7 +24,7 @@ pipewire-pulse
 zsh
 dialog
 ttf-apple-emoji
-foot
+ghostty
 starship
 mise
 sheldon

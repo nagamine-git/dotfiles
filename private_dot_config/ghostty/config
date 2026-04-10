@@ -11,5 +11,5 @@ gtk-tabs-location = hidden
 
 # Performance & Aesthetics
 confirm-close-surface = false
-background-opacity = 0.95
+background-opacity = 0.99
 mouse-hide-while-typing = true

@@ -8,7 +8,7 @@
 - ディストリビューション: EndeavourOS / Arch Linux
 - シェル: Zsh + Starship
 - ウィンドウマネージャ: Hyprland
-- ターミナル: foot
+- ターミナル: Ghostty
 - エディタ: Neovim
 - 入力メソッド: fcitx5
 - システム最適化: irqbalance, powertop
