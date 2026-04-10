@@ -11,7 +11,7 @@ install_if_missing() {
   local cmd=$1
   local name=${2:-$1}
   local install_cmd=$3
-  
+ 
   if ! command -v "$cmd" &> /dev/null; then
     echo "Installing $name..."
     eval "$install_cmd"

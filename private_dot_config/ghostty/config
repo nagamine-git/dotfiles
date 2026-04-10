@@ -1,0 +1,15 @@
+# Font Settings
+font-family = "UDEV Gothic 35NFLG"
+font-size = 12
+#theme=TokyoNight Night
+theme = Monokai Remastered
+
+# Hyprland Optimization (Minimal & Clean)
+window-decoration = false
+gtk-titlebar = false
+gtk-tabs-location = hidden
+
+# Performance & Aesthetics
+confirm-close-surface = false
+background-opacity = 0.95
+mouse-hide-while-typing = true

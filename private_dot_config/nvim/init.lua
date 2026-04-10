@@ -60,7 +60,17 @@ vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup({
   -- カラースキーム
-  { 'folke/tokyonight.nvim' },
+  {
+    'polirritmico/monokai-nightasty.nvim',
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require('monokai-nightasty').setup({
+        dark_style_background = '#0C0C0C',
+      })
+      vim.cmd('colorscheme monokai-nightasty')
+    end,
+  },
 
   -- ファイルエクスプローラー
   { 'nvim-tree/nvim-tree.lua', dependencies = { 'nvim-tree/nvim-web-devicons' } },
@@ -89,7 +99,7 @@ require('lazy').setup({
   { 'saadparwaiz1/cmp_luasnip' },
 
   -- シンタックスハイライト
-  { 'nvim-treesitter/nvim-treesitter', build = ':TSUpdate' },
+  { 'nvim-treesitter/nvim-treesitter', branch = 'main', build = ':TSUpdate' },
 
   -- コメントアウト
   { 'numToStr/Comment.nvim' },
@@ -136,8 +146,6 @@ require('lazy').setup({
   },
 })
 
--- カラースキーム設定
-vim.cmd('colorscheme tokyonight-night')
 
 -- lualine設定
 require('lualine').setup({
@@ -211,7 +219,7 @@ end
 set_base_diff_colors()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = set_base_diff_colors })
 
-vim.keymap.set('n', '<C-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<M-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent = true })
 
 -- LSP設定
@@ -276,13 +284,7 @@ cmp.setup({
   },
 })
 
--- Treesitter設定
-require('nvim-treesitter.configs').setup({
-  ensure_installed = { 'c', 'cpp', 'python', 'javascript', 'typescript', 'lua' },
-  highlight = {
-    enable = true,
-  },
-})
+-- Treesitter: Neovim 0.12+ は自動でハイライト有効化。パーサーは :TSInstall で管理。
 
 -- indent-blankline設定
 require('ibl').setup()
