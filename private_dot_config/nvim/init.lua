@@ -278,7 +278,7 @@ cmp.setup({
 
 -- Treesitter設定
 require('nvim-treesitter.configs').setup({
-  ensure_installed = { 'c', 'cpp', 'python', 'javascript', 'typescript', 'lua' },
+  ensure_installed = { 'c', 'cpp', 'python', 'javascript', 'typescript', 'lua', 'rust', 'go' },
   highlight = {
     enable = true,
   },
