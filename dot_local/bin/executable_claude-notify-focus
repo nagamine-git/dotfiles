@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+session="${1:-}"
+window="${2:-}"
+pane="${3:-}"
+
+[ -z "$session" ] && exit 1
+[ -z "$window" ] && exit 1
+[ -z "$pane" ] && exit 1
+
+if tmux has-session -t "$session" 2>/dev/null; then
+  tmux switch-client -t "${session}:${window}" 2>/dev/null || true
+  tmux select-window -t "${session}:${window}" 2>/dev/null || true
+  tmux select-pane -t "${session}:${window}.${pane}" 2>/dev/null || true
+fi
+
+if command -v hyprctl >/dev/null 2>&1; then
+  target_addr=$(hyprctl clients -j 2>/dev/null | jq -r --arg session "$session" '
+    map(select((.class // "") | ascii_downcase == "ghostty"))
+    | map(select((.title // "") | contains($session)))
+    | .[0].address // empty
+  ')
+
+  if [ -z "$target_addr" ]; then
+    target_addr=$(hyprctl clients -j 2>/dev/null | jq -r '
+      map(select((.class // "") | ascii_downcase == "ghostty"))
+      | .[0].address // empty
+    ')
+  fi
+
+  if [ -n "$target_addr" ]; then
+    hyprctl dispatch focuswindow "address:${target_addr}" >/dev/null 2>&1 || true
+  fi
+fi

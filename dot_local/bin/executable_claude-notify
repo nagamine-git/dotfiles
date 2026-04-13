@@ -1,0 +1,68 @@
+#!/bin/bash
+set -euo pipefail
+
+mode="${1:-stop}"
+summary_arg="${2:-}"
+body_arg="${3:-}"
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify"
+mkdir -p "$runtime_dir"
+
+session=""
+window=""
+pane=""
+pane_target=""
+cwd="${PWD:-}"
+
+if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
+  session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
+  window="$(tmux display-message -p '#{window_index}' 2>/dev/null || true)"
+  pane="$(tmux display-message -p '#{pane_index}' 2>/dev/null || true)"
+  pane_target="$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || true)"
+fi
+
+if [ -z "$pane_target" ]; then
+  pane_target="no-tmux"
+fi
+
+summary="Claude Code"
+body=""
+
+case "$mode" in
+  stop)
+    summary="Claude Code: 完了"
+    body="${summary_arg:-作業が完了しました}"
+    ;;
+  idle30)
+    summary="Claude Code: 30秒入力待ち"
+    body="${summary_arg:-入力待ちが30秒続いています}"
+    ;;
+  *)
+    summary="Claude Code"
+    body="${summary_arg:-通知}"
+    ;;
+esac
+
+if [ -n "$body_arg" ]; then
+  body="$body_arg"
+fi
+
+meta="target: ${pane_target}"
+if [ -n "$cwd" ]; then
+  meta="$meta\ncwd: $cwd"
+fi
+full_body="$body\n$meta"
+
+echo "$session" > "$runtime_dir/last_session"
+echo "$window" > "$runtime_dir/last_window"
+echo "$pane" > "$runtime_dir/last_pane"
+printf '%b\n' "$full_body" > "$runtime_dir/last_body"
+
+if notify-send -A focus=Focus --app-name="Claude Code" --icon=dialog-information --expire-time=15000 --wait "$summary" "$full_body" >/tmp/claude-notify-action 2>/dev/null; then
+  action="$(cat /tmp/claude-notify-action 2>/dev/null || true)"
+  if [ "$action" = "focus" ] && [ -n "$session" ] && [ -n "$window" ] && [ -n "$pane" ]; then
+    /home/tsuyoshi/.local/bin/claude-notify-focus "$session" "$window" "$pane" >/dev/null 2>&1 || true
+  fi
+else
+  notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
+fi

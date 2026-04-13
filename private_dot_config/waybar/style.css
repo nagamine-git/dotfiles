@@ -2,13 +2,13 @@
   margin: 0;
   padding: 0;
   font-size: 14px;
-  color: #eceff4;
+  color: #b7bcba;
   background-color: transparent;
 }
 
 #waybar {
   padding: 4px;
-  background-color: rgba(0, 0, 0, 0.01);
+  background-color: rgba(22, 23, 25, 0.88);
   border-radius: 8px;
 }
 
@@ -23,12 +23,12 @@
 
 /* Battery states */
 .warning {
-  color: #ebcb8b;
+  color: #e4b55e;
   font-weight: bold;
 }
 
 .critical {
-  color: #ef616a;
+  color: #b84d51;
   font-weight: bold;
 }
 
@@ -39,7 +39,7 @@
 }
 
 #workspaces button {
-  color: #cccccc;
+  color: #5a626a;
   background: transparent;
   margin: 0;
   font-size: 14px;
@@ -49,24 +49,24 @@
 
 #workspaces button.active,
 #workspaces button.focused {
-  color: #aaaaaa;
+  color: #7fbfb4;
   font-weight: bold;
 }
 
 /* Context menu styling */
 tooltip {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(30, 31, 34, 0.96);
   border-radius: 6px;
-  border: 1px solid rgba(100, 100, 100, 0.8);
+  border: 1px solid rgba(110, 144, 176, 0.8);
 }
 
 tooltip label {
-  color: #eceff4;
+  color: #b7bcba;
   padding: 6px 12px;
 }
 
 menu {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(30, 31, 34, 0.96);
   border-radius: 6px;
 }
 menuitem {
@@ -74,11 +74,11 @@ menuitem {
   margin: 2px 0;
 }
 menuitem:hover {
-  background-color: rgba(0, 0, 0, 1);
+  background-color: rgba(67, 69, 72, 1);
 }
 
-#custom-pomodoro.warning { color: #ef616a; }
-#custom-pomodoro.break   { color: #a3be8c; }
+#custom-pomodoro.warning { color: #b84d51; }
+#custom-pomodoro.break   { color: #b3bf5a; }
 #custom-pomodoro { font-family: "FirgeNerd Console", monospace; }
 
 /* Blink animation used by pomodoro script */

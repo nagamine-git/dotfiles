@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "/home/tsuyoshi/.local/bin/claude-usage --refresh >/dev/null 2>&1"
+          },
+          {
+            "type": "command",
+            "command": "/home/tsuyoshi/.local/bin/claude-notify stop \"作業が完了しました\" >/dev/null 2>&1"
           }
         ]
       }

@@ -2,7 +2,7 @@
 font-family = "UDEV Gothic 35NFLG"
 font-size = 12
 #theme=TokyoNight Night
-theme = Monokai Remastered
+theme = Hybrid
 
 # Hyprland Optimization (Minimal & Clean)
 window-decoration = false

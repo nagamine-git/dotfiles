@@ -228,34 +228,9 @@ esac
 # Zeed Browser depot_tools
 export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools"
 
-# free-claude-code: Claude Code → NVIDIA NIM プロキシ
-_CCNIM_DIR="$HOME/.local/share/free-claude-code"
-
-ccnim-setup() {
-    if [ ! -d "$_CCNIM_DIR" ]; then
-        git clone https://github.com/Alishahryar1/free-claude-code.git "$_CCNIM_DIR" || return 1
-    fi
-    local api_key
-    api_key=$(op item get bp5xubxlrozmvxb25b4nrdak3y --reveal --fields password) || return 1
-    cat > "$_CCNIM_DIR/.env" <<EOF
-NVIDIA_NIM_API_KEY=${api_key}
-MODEL=nvidia_nim/z-ai/glm5
-MODEL_OPUS=nvidia_nim/z-ai/glm5
-MODEL_SONNET=nvidia_nim/z-ai/glm4.7
-MODEL_HAIKU=nvidia_nim/z-ai/glm4.7flash
-EOF
-    echo "Setup complete: $_CCNIM_DIR/.env created"
-}
-
-ccnim-proxy() {
-    if [ ! -f "$_CCNIM_DIR/.env" ]; then
-        echo "Run ccnim-setup first"
-        return 1
-    fi
-    (cd "$_CCNIM_DIR" && uv run uvicorn server:app --host 0.0.0.0 --port 8082)
-}
-
 alias ccnim='ANTHROPIC_AUTH_TOKEN=freecc ANTHROPIC_BASE_URL=http://localhost:8082 claude'
+alias ccr-code='~/.local/bin/ccr-start.sh'
+alias ccrc='ccr-code'
 
 # フォールバック付きClaudeランチャー
 # 優先順位: Claude Pro(sonnet) → Ollama glm-5:cloud → Ollama glm-4.7-flash-24k local
@@ -273,7 +248,39 @@ _cc_is_ollama_model_available() {
     ollama list 2>/dev/null | grep -q "^${1}[: ]"
 }
 
+_claude_notify_idle_watch() {
+    [ -z "${TMUX_PANE:-}" ] && return 0
+
+    local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify"
+    mkdir -p "$runtime_dir"
+    local key session window pane prompt_file pid_file
+    session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
+    window="$(tmux display-message -p '#{window_index}' 2>/dev/null || true)"
+    pane="$(tmux display-message -p '#{pane_index}' 2>/dev/null || true)"
+    key="${session}_${window}_${pane}"
+    prompt_file="$runtime_dir/${key}.prompt"
+    pid_file="$runtime_dir/${key}.idle.pid"
+
+    tmux capture-pane -p -S -20 > "$prompt_file" 2>/dev/null || true
+
+    (
+      sleep 30
+      current="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
+      before="$(cat "$prompt_file" 2>/dev/null || true)"
+      if [ "$current" = "$before" ]; then
+        /home/tsuyoshi/.local/bin/claude-notify idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
+      fi
+      rm -f "$prompt_file" "$pid_file"
+    ) &!
+    echo $! > "$pid_file"
+}
+
 cc() {
+    if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
+        tmux rename-window "claude" 2>/dev/null || true
+        printf '\033]0;%s\007' "claude:$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || echo unknown)"
+    fi
+
     if _cc_is_pro_available; then
         echo "→ Claude Pro (sonnet)" >&2
         claude --model sonnet "$@"
@@ -290,6 +297,8 @@ cc() {
         echo "  3. Ollama local: ollama pull glm-4.7-flash && ollama create $_CC_LOCAL_MODEL" >&2
         return 1
     fi
+
+    _claude_notify_idle_watch
 }
 
 # OpenClaw Completion

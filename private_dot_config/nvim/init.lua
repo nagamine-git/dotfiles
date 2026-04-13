@@ -22,6 +22,7 @@ vim.opt.smartindent = true
 -- 表示設定
 vim.opt.list = true
 vim.opt.listchars = { tab = '»-', trail = '-', eol = '↲', extends = '»', precedes = '«', nbsp = '%' }
+vim.opt.fillchars:append({ eob = ' ' })
 vim.opt.diffopt:append('iwhite,iwhiteall,iblank')
 vim.opt.laststatus = 3 -- Global statusline (recommended for avante.nvim)
 vim.opt.showcmd = true
@@ -29,6 +30,8 @@ vim.opt.wildmenu = true
 vim.opt.ruler = true
 vim.opt.showmode = false
 vim.opt.cmdheight = 1
+vim.opt.conceallevel = 2
+vim.opt.concealcursor = 'nc'
 
 -- 検索設定
 vim.opt.ignorecase = true
@@ -61,14 +64,11 @@ vim.opt.rtp:prepend(lazypath)
 require('lazy').setup({
   -- カラースキーム
   {
-    'polirritmico/monokai-nightasty.nvim',
+    'w0ng/vim-hybrid',
     lazy = false,
     priority = 1000,
     config = function()
-      require('monokai-nightasty').setup({
-        dark_style_background = '#0C0C0C',
-      })
-      vim.cmd('colorscheme monokai-nightasty')
+      vim.cmd('colorscheme hybrid')
     end,
   },
 
@@ -100,6 +100,16 @@ require('lazy').setup({
 
   -- シンタックスハイライト
   { 'nvim-treesitter/nvim-treesitter', branch = 'main', build = ':TSUpdate' },
+  { 'nvim-mini/mini.nvim' },
+  {
+    'MeanderingProgrammer/render-markdown.nvim',
+    ft = { 'markdown' },
+    dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-mini/mini.nvim' },
+    opts = {
+      render_modes = true,
+      completions = { lsp = { enabled = true } },
+    },
+  },
 
   -- コメントアウト
   { 'numToStr/Comment.nvim' },
@@ -150,7 +160,7 @@ require('lazy').setup({
 -- lualine設定
 require('lualine').setup({
   options = {
-    theme = 'nord',
+    theme = 'auto',
     icons_enabled = true,
     globalstatus = true,
   },
@@ -210,10 +220,10 @@ require('diffview').setup({
 
 -- 通常のvim diff用のカスタム色設定
 local function set_base_diff_colors()
-  vim.api.nvim_set_hl(0, 'DiffAdd', { bg = '#003800', fg = '#ffffff' })
-  vim.api.nvim_set_hl(0, 'DiffDelete', { bg = '#880000', fg = '#ffffff' })
-  vim.api.nvim_set_hl(0, 'DiffText', { bg = '#003800', fg = '#ffffff' })
-  vim.api.nvim_set_hl(0, 'DiffChange', { bg = '#880000', fg = '#ffffff' })
+  vim.api.nvim_set_hl(0, 'DiffAdd', { bg = '#2f3720', fg = '#b7bcba' })
+  vim.api.nvim_set_hl(0, 'DiffDelete', { bg = '#4a2328', fg = '#b7bcba' })
+  vim.api.nvim_set_hl(0, 'DiffText', { bg = '#4b6b88', fg = '#161719' })
+  vim.api.nvim_set_hl(0, 'DiffChange', { bg = '#2d3440', fg = '#b7bcba' })
 end
 
 set_base_diff_colors()

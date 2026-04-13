@@ -1,14 +1,14 @@
 * {
-  font-family: "Roboto + Noto Sans JP", sans-serif;
+  font-family: "IBM Plex Sans JP", sans-serif;
   font-size: 13px;
   scrollbar-width: none; /* Firefox */
 }
 
 window {
   margin: 0px;
-  background-color: rgba(20, 20, 20, 0.8);
+  background-color: rgba(22, 23, 25, 0.92);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(110, 144, 176, 0.25);
 }
 
 #input {
@@ -16,15 +16,15 @@ window {
   padding: 8px 12px;
   border-radius: 12px;
   border: none;
-  color: #eceff4;
-  background-color: rgba(30, 30, 30, 0.7);
+  color: #b7bcba;
+  background-color: rgba(30, 31, 34, 0.85);
   transition: background-color 0.2s ease;
 }
 
 #input:focus {
   border: none;
   outline: none;
-  background-color: rgba(40, 40, 40, 0.7);
+  background-color: rgba(42, 46, 51, 0.9);
 }
 
 #inner-box {
@@ -46,16 +46,16 @@ window {
 }
 
 #entry:selected {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(110, 144, 176, 0.3);
 }
 
 #text {
-  color: #eceff4;
+  color: #b7bcba;
   margin-left: 8px;
 }
 
 #text:selected {
-  color: #ffffff;
+  color: #7fbfb4;
   font-weight: bold;
 }
 

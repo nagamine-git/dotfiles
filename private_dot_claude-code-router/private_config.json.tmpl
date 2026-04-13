@@ -1,0 +1,19 @@
+{
+  "HOST": "127.0.0.1",
+  "PORT": 3456,
+  "Providers": [
+    {
+      "name": "openrouter",
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "{{ onepasswordRead "op://Personal/OpenRouter API KEY/password" }}",
+      "models": ["z-ai/glm-5.1", "z-ai/glm-4.7", "z-ai/glm-4.7:online", "google/gemini-2.5-flash-image", "openai/gpt-5.4"],
+      "transformer": { "use": ["openrouter"] }
+    }
+  ],
+  "Router": {
+    "default": "openrouter,z-ai/glm-4.7",
+    "background": "openrouter,z-ai/glm-4.7",
+    "think": "openrouter,z-ai/glm-5.1",
+    "longContext": "openrouter,openai/gpt-5.4",
+  }
+}

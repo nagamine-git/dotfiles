@@ -26,10 +26,12 @@
   side-by-side = true
   line-numbers = true
   syntax-theme = base16
-  plus-style = "syntax #003800"
-  minus-style = "syntax #3f0001"
-  plus-emph-style = "syntax #006000"
-  minus-emph-style = "syntax #600020"
+  plus-style = "syntax #2f3720"
+  minus-style = "syntax #3a2025"
+  plus-emph-style = "syntax #46512b"
+  minus-emph-style = "syntax #4a2328"
+  hunk-header-style = "syntax #6e90b0"
+  file-style = "syntax #7fbfb4"
   ignore-whitespace = true
 
 [color]
