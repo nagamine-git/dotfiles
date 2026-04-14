@@ -1,4 +1,3 @@
 #!/bin/sh
-# Disable hyprshade filter in light mode
-
-hyprshade off
+# Disable blue-light-filter in light mode
+pkill -x hyprsunset 2>/dev/null || true

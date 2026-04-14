@@ -1,21 +1,20 @@
 #!/bin/bash
+# Visual blink effect for pomodoro notifications using hyprsunset
 
 COUNT=5
 INTERVAL=0.01
 
 for i in $(seq 1 $COUNT); do
-  hyprshade on vibrance
-  PID=$!
+  hyprsunset -t 10000 &
   sleep "$INTERVAL"
+  pkill -x hyprsunset 2>/dev/null || true
 
-  hyprshade on blue-light-filter
-  PID=$!
+  hyprsunset -t 3000 &
   sleep "$INTERVAL"
+  pkill -x hyprsunset 2>/dev/null || true
 done
 
-# 最後にリセット（オプション）
+# Restore: re-apply night filter if in rest/dark mode
 if [[ "$1" == "--rest" ]]; then
-  hyprshade on blue-light-filter
-else
-  hyprshade auto
+  hyprsunset -t 3000 &
 fi

@@ -53,7 +53,7 @@ powertop
 corectrl
 lazydocker
 wavemon
-tokyonight-gtk-theme-git
+hyprsunset
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-wlr

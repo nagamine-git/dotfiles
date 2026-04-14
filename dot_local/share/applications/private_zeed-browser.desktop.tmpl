@@ -1,0 +1,26 @@
+{{- $bf := .browser_flags -}}
+{{- $zeed := print .chezmoi.homeDir "/ghq/github.com/efg-technologies/zeed-browser/src/out/Production/zeed" -}}
+[Desktop Entry]
+Version=1.0
+Name=Zeed
+GenericName=Web Browser
+Comment=Access the Internet
+StartupNotify=true
+StartupWMClass=zeed-browser
+TryExec={{ $zeed }}
+Exec={{ $zeed }} {{ $bf }} %U
+Terminal=false
+Icon=zeed-desktop
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/mailto;application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;
+
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec={{ $zeed }} {{ $bf }}
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Exec={{ $zeed }} {{ $bf }} --incognito

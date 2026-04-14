@@ -1,3 +1,5 @@
+{{- $c := .theme.colors -}}
+{{- $f := .theme.fonts -}}
 # #######################################################################################
 # Hyprland Configuration File
 # #######################################################################################
@@ -26,7 +28,6 @@ $browser = zeed
 ### AUTOSTART ###
 #################
 
-exec-once = setxkbmap -layout us -variant colemak
 exec-once = fcitx5 -d --replace
 exec-once = hyprvoice serve &
 exec-once = waybar &
@@ -44,7 +45,7 @@ exec-once = ~/.local/bin/hypr_auto_perfmonitor.sh start &
 exec-once = ~/.local/bin/claude-usage-notify &
 exec-once = ~/.local/bin/droidcam.sh &
 exec-once = ~/.local/bin/executable_sleep_backup.sh &
-exec-once = way-thumbsense --exclude-left=10 --exclude-right=10 --debug > /tmp/way-thumbsense.log 2>&1 & 
+exec-once = way-thumbsense --exclude-left=10 --exclude-right=10 & 
 
 # Float these instances on special workspaces
 windowrule {
@@ -61,30 +62,29 @@ windowrule {
   match:workspace = name:special:notes
 }
 
-windowrule = border_color rgb(E4B55E) rgb(E58A50), match:fullscreen 1
-# Bordercolor for floating windows removed - not compatible with new syntax
+windowrule = border_color rgb({{ upper $c.warning.hex }}) rgb({{ upper $c.warning_alt.hex }}), match:fullscreen 1
 
 windowrule {
   name = magic-workspace-border
-  border_color = rgb(7FBFB4) rgb(6E90B0)
+  border_color = rgb({{ upper $c.accent.hex }}) rgb({{ upper $c.primary.hex }})
   match:workspace = name:special:magic
 }
 
 windowrule {
   name = term-workspace-border
-  border_color = rgb(7FBFB4) rgb(6E90B0)
+  border_color = rgb({{ upper $c.accent.hex }}) rgb({{ upper $c.primary.hex }})
   match:workspace = name:special:term
 }
 
 windowrule {
   name = notes-workspace-border
-  border_color = rgb(7FBFB4) rgb(6E90B0)
+  border_color = rgb({{ upper $c.accent.hex }}) rgb({{ upper $c.primary.hex }})
   match:workspace = name:special:notes
 }
 
 windowrule {
   name = desktop-workspace-border
-  border_color = rgb(7FBFB4) rgb(6E90B0)
+  border_color = rgb({{ upper $c.accent.hex }}) rgb({{ upper $c.primary.hex }})
   match:workspace = name:special:desktop
 }
 
@@ -110,6 +110,7 @@ env = XDG_SESSION_TYPE,wayland
 env = XDG_SESSION_DESKTOP,Hyprland
 
 # Input method settings (fcitx5)
+env = GTK_IM_MODULE,fcitx
 env = QT_IM_MODULE,fcitx
 env = XMODIFIERS,@im=fcitx
 
@@ -144,7 +145,6 @@ env = QT_SCALE_FACTOR,1
 # Java AWT fix
 env = _JAVA_AWT_WM_NONREPARENTING,1
 
-env = HYPR_HYPRLAND_CONF_DEBUG,1
 
 # GPU crash prevention - disable hardware cursors
 env = WLR_NO_HARDWARE_CURSORS,1
@@ -167,8 +167,8 @@ general {
     gaps_in = 5
     gaps_out = 5
     border_size = 1
-    col.inactive_border = rgba(43454866)
-    col.active_border = rgba(6e90b0cc)
+    col.inactive_border = rgba({{ $c.surface.hex }}66)
+    col.active_border = rgba({{ $c.primary.hex }}cc)
     resize_on_border = true
     allow_tearing = true
     layout = dwindle
@@ -203,14 +203,14 @@ decoration {
 group {
     groupbar {
         enabled = true
-        font_family = IBM Plex Sans JP
+        font_family = {{ $f.ui }}
         font_size = 11
         gradients = true
         height = 20
         priority = 4
         render_titles = true
         scrolling = true
-        text_color = rgba(b7bcbaff)
+        text_color = rgba({{ $c.text.hex }}ff)
         indicator_gap = 2
         indicator_height = 0
         rounding = 6
@@ -220,10 +220,10 @@ group {
         gaps_in = 2
         gaps_out = 2
         keep_upper_gap = false
-        col.active = rgba(1e1f22ff)
-        col.inactive = rgba(2a2e33cc)
-        col.locked_active = rgba(6e90b0ff)
-        col.locked_inactive = rgba(434548cc)
+        col.active = rgba({{ $c.bg_medium.hex }}ff)
+        col.inactive = rgba({{ $c.bg_light.hex }}cc)
+        col.locked_active = rgba({{ $c.primary.hex }}ff)
+        col.locked_inactive = rgba({{ $c.surface.hex }}cc)
     }
     
     col.border_active = rgba(00000000)

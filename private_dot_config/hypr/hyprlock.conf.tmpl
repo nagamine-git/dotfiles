@@ -1,3 +1,5 @@
+{{- $c := .theme.colors -}}
+{{- $f := .theme.fonts -}}
 general {
     # キーボード入力の問題を修正
     hide_cursor = false
@@ -33,21 +35,21 @@ input-field {
     outline_thickness = 1
     dots_size = 0.33
     dots_spacing = 0.15
-    outer_color = rgba(183, 188, 186, 0.45)
-    inner_color = rgba(30, 31, 34, 0.92)
-    font_color = rgba(183, 188, 186, 1.0)
-    font_family = IBM Plex Sans JP
+    outer_color = rgba({{ $c.text.rgb }}, 0.45)
+    inner_color = rgba({{ $c.bg_medium.rgb }}, 0.92)
+    font_color = rgba({{ $c.text.rgb }}, 1.0)
+    font_family = {{ $f.ui }}
     fade_on_empty = false
     fade_timeout = 0
     hide_input = false
     rounding = 4
-    check_color = rgba(127, 191, 180, 1.0)
-    fail_color = rgba(184, 77, 81, 1.0)
-    capslock_color = rgba(228, 181, 94, 1.0)
-    placeholder_text = <span foreground="##b7bcbaaa">パスワードを入力</span>
+    check_color = rgba({{ $c.accent.rgb }}, 1.0)
+    fail_color = rgba({{ $c.error.rgb }}, 1.0)
+    capslock_color = rgba({{ $c.warning.rgb }}, 1.0)
+    placeholder_text = <span foreground="##{{ $c.text.hex }}aa">パスワードを入力</span>
     # デバッグ用：失敗時の詳細表示
     fail_text = <i>認証失敗 <b>($ATTEMPTS)</b> - $FAIL</i>
-    
+
     position = 0, -20
     halign = center
     valign = center
@@ -56,9 +58,9 @@ input-field {
 label {
     monitor =
     text = cmd[update:1000] echo "<span>$(date "+%H:%M:%S")</span>"
-    color = rgba(183, 188, 186, 0.85)
+    color = rgba({{ $c.text.rgb }}, 0.85)
     font_size = 28
-    font_family = IBM Plex Sans JP
+    font_family = {{ $f.ui }}
     position = 0, 80
     halign = center
     valign = center
@@ -67,9 +69,9 @@ label {
 label {
     monitor =
     text = cmd[update:30000] echo "<span>$(date "+%Y年%m月%d日 (%a)")</span>"
-    color = rgba(183, 188, 186, 0.65)
+    color = rgba({{ $c.text.rgb }}, 0.65)
     font_size = 16
-    font_family = IBM Plex Sans JP
+    font_family = {{ $f.ui }}
     position = 0, 40
     halign = center
     valign = center

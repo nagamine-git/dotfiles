@@ -21,21 +21,3 @@ scrollbar * {
   opacity: 0;
   background: transparent;
 }
-
-/* 代替案: スクロールバーを見えなくするが機能は残す */
-/*
-scrollbar {
-  background: transparent;
-}
-
-scrollbar slider {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-scrollbar trough {
-  background: transparent;
-  border: none;
-}
-*/ 
