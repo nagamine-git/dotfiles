@@ -51,3 +51,16 @@ set -ag status-right "#[fg=#{{ $c.accent.hex }},bg=#{{ $c.primary.hex }}]#[fg=#{
 
 # Override tmux-tilit's extrakto binding (extrakto not installed)
 bind-key -n M-f run "tmux split-window -l 12 'zsh -ci tmux_fzf_window'"
+
+# Alt+Enter: main-vertical レイアウトでサイドに追加（メイン60%）
+set -g main-pane-width "60%"
+bind-key -n M-Enter split-window -h -c "#{pane_current_path}" \; set-window-option @layout_mode main-vertical \; select-layout main-vertical
+
+# main-vertical フラグが立っているウィンドウでは、ペイン変化後にレイアウトを再適用
+set-hook -g after-split-window 'if-shell -F "#{==:#{@layout_mode},main-vertical}" "select-layout main-vertical"'
+set-hook -g pane-exited        'if-shell -F "#{==:#{@layout_mode},main-vertical}" "select-layout main-vertical"'
+set-hook -g after-kill-pane    'if-shell -F "#{==:#{@layout_mode},main-vertical}" "select-layout main-vertical"'
+set-hook -g client-resized     'if-shell -F "#{==:#{@layout_mode},main-vertical}" "select-layout main-vertical"'
+
+# レイアウト解除（元の自由配置に戻したい時）
+bind-key M-Enter set-window-option -u @layout_mode
