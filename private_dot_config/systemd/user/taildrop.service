@@ -1,0 +1,14 @@
+[Unit]
+Description=Taildrop auto-receiver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/mkdir -p %h/Downloads/Taildrop
+ExecStart=/usr/bin/tailscale file get --loop --verbose --conflict=rename %h/Downloads/Taildrop
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

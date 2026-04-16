@@ -75,6 +75,13 @@ sudo systemctl enable --now keyd
 sudo systemctl enable --now greetd
 sudo systemctl enable --now tailscaled
 
+# tailscale operator設定（sudo無しでtailscale CLI/taildropを使えるように）
+sudo tailscale set --operator="$USER" 2>/dev/null || true
+
+# taildrop auto-receiver (systemd user service)
+systemctl --user daemon-reload
+systemctl --user enable --now taildrop.service 2>/dev/null || true
+
 sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
 sudo mkdir -p /etc/systemd/logind.conf.d
 sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf

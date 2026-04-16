@@ -9,7 +9,7 @@
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock", "custom/pomodoro", "custom/toggl"],
-  "modules-right": ["tray", "temperature", "cpu", "custom/gpu", "memory", "custom/disk", "network", "pulseaudio"],
+  "modules-right": ["tray", "temperature", "cpu", "custom/gpu", "memory", "custom/disk", "network", "custom/tailscale", "pulseaudio"],
 
 "custom/pomodoro": {
   "exec": "~/.config/waybar/scripts/pomodoro.sh",
@@ -142,5 +142,14 @@
     "interval": 360,
     "return-type": "json",
     "tooltip": true
+  },
+
+  "custom/tailscale": {
+    "exec": "~/.config/waybar/scripts/tailscale_status.sh",
+    "interval": 10,
+    "return-type": "json",
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/tailscale_exit_picker.sh",
+    "on-click-right": "xdg-open https://login.tailscale.com/admin/settings/general"
   }
 }
