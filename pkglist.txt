@@ -13,6 +13,7 @@ fcitx5-im
 fcitx5-hazkey-bin
 hazkey-zenzai-vulkan
 brave-bin
+zeed-bin
 dolphin
 autokey-gtk
 wofi
