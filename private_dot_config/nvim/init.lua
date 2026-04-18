@@ -111,6 +111,23 @@ require('lazy').setup({
     },
   },
 
+  -- mermaidインライン画像プレビュー（Ghostty kitty graphics protocol）
+  {
+    '3rd/image.nvim',
+    ft = { 'markdown' },
+    opts = { backend = 'kitty', processor = 'magick_cli' },
+  },
+  {
+    '3rd/diagram.nvim',
+    ft = { 'markdown' },
+    dependencies = { '3rd/image.nvim' },
+    opts = {
+      renderer_options = {
+        mermaid = { background = 'transparent', theme = 'dark', scale = 2 },
+      },
+    },
+  },
+
   -- コメントアウト
   { 'numToStr/Comment.nvim' },
 
