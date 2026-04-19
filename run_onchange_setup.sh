@@ -78,6 +78,13 @@ sudo systemctl enable --now tailscaled
 # tailscale operator設定（sudo無しでtailscale CLI/taildropを使えるように）
 sudo tailscale set --operator="$USER" 2>/dev/null || true
 
+# firewalld を使っている場合 tailscale0 を trusted zone に入れる
+# (WireGuardで既に認証済みなので全通信を許可)
+if systemctl is-active --quiet firewalld; then
+  sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0 2>/dev/null || true
+  sudo firewall-cmd --reload 2>/dev/null || true
+fi
+
 # taildrop auto-receiver (systemd user service)
 systemctl --user daemon-reload
 systemctl --user enable --now taildrop.service 2>/dev/null || true
