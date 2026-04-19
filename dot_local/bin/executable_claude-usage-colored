@@ -4,21 +4,24 @@
 output=$(claude-usage 2>/dev/null)
 [ -z "$output" ] && exit 0
 
-# 5h utilization を抽出
-pct=$(echo "$output" | grep -oP '5h:\K[0-9]+')
+# 5h / 7d utilization を抽出し、高い方で状態判定
+pct5=$(echo "$output" | grep -oP '5h:\K[0-9]+')
+pct7=$(echo "$output" | grep -oP '7d:\K[0-9]+')
+max=$(printf '%s\n%s\n' "${pct5:-0}" "${pct7:-0}" | sort -n | tail -1)
 
-if [ -z "$pct" ]; then
+if [ -z "$pct5" ] && [ -z "$pct7" ]; then
     echo "$output"
     exit 0
 fi
 
-if [ "$pct" -ge 90 ]; then
-    # 赤・bold（危険域）
-    echo "#[fg=colour1,bold]$output#[default]"
-elif [ "$pct" -ge 75 ]; then
-    # 黄・bold（警告域）
-    echo "#[fg=colour3,bold]$output#[default]"
+# powerline segment（accent背景）上で読みやすくするため fg=黒固定
+# 70%未満なら細字、以上ならbold。警告域は bg 色でシグナル
+if [ "$max" -ge 90 ]; then
+    echo "#[fg=#161719,bg=#b84d51,bold]$output#[default]"
+elif [ "$max" -ge 75 ]; then
+    echo "#[fg=#161719,bg=#e4b55e,bold]$output#[default]"
+elif [ "$max" -ge 70 ]; then
+    echo "#[fg=#161719,bold]$output#[default]"
 else
-    # 通常（緑）
-    echo "#[fg=colour2,bold]$output#[default]"
+    echo "#[fg=#161719,nobold]$output#[default]"
 fi

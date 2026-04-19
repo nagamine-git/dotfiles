@@ -115,7 +115,29 @@ require('lazy').setup({
   {
     '3rd/image.nvim',
     ft = { 'markdown' },
-    opts = { backend = 'kitty', processor = 'magick_cli' },
+    opts = {
+      backend = 'kitty',
+      processor = 'magick_cli',
+      -- tmux で他ウィンドウに切り替え時に残像が残らないように
+      tmux_show_only_in_active_window = true,
+      editor_only_render_when_focused = true,
+    },
+    init = function()
+      -- tmuxの他ウィンドウに切り替えた時だけ残像を消す
+      -- tmux側で `focus-events on` が必要
+      vim.api.nvim_create_autocmd({ 'FocusLost', 'VimSuspend', 'VimLeave' }, {
+        callback = function()
+          local ok, img = pcall(require, 'image')
+          if ok then img.clear() end
+        end,
+      })
+      -- 戻ってきたら再描画
+      vim.api.nvim_create_autocmd({ 'FocusGained', 'VimResume' }, {
+        callback = function()
+          vim.schedule(function() vim.cmd('silent! redraw!') end)
+        end,
+      })
+    end,
   },
   {
     '3rd/diagram.nvim',
@@ -123,7 +145,7 @@ require('lazy').setup({
     dependencies = { '3rd/image.nvim' },
     opts = {
       renderer_options = {
-        mermaid = { background = 'transparent', theme = 'dark', scale = 2 },
+        mermaid = { background = '#161719', theme = 'dark', scale = 2 },
       },
     },
   },

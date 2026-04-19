@@ -1,6 +1,12 @@
 {{- $c := .theme.colors -}}
 set -g mouse on
 
+# kitty graphics protocol（image.nvim / diagram.nvim で mermaid 等の画像表示）
+set -g allow-passthrough all
+set -g focus-events on
+set -ga update-environment TERM
+set -ga update-environment TERM_PROGRAM
+
 setw -g mode-keys vi
 bind -T copy-mode-vi v send -X begin-selection
 bind -T copy-mode-vi y send -X copy-selection-and-cancel
