@@ -91,3 +91,4 @@ darkman
 hyprvoice-bin
 google-cloud-sdk
 mermaid-cli
+sunshine

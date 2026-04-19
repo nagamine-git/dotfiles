@@ -65,6 +65,42 @@ user = "tsuyoshi"
 
 <!-- TODO: 調子悪い -->
 
+## iPhone から Hyprland に RDP（Sunshine + Moonlight over Tailscale）
+
+Hyprland は Wayland(wlroots) なので従来の xrdp は使えません。代わりに低遅延ストリーミング
+（Sunshine ホスト + Moonlight クライアント）を Tailscale 経由で使います。
+
+### 構成
+
+- ホスト: `sunshine` (pkglist に含む、systemd user service で常駐)
+- 設定: `~/.config/sunshine/{sunshine.conf,apps.json}` を chezmoi で配布
+- キャプチャ方式: KMS (`cap_sys_admin` は `run_onchange_setup.sh` で付与)
+- ネットワーク: Tailscale IP に直接バインド。追加のポート開放は不要
+- 仮想ディスプレイ: `~/.local/bin/sunshine-virtual-display.sh` が Hyprland の
+  `HEADLESS-*` 出力を生成/破棄（ノート PC の蓋を閉じた状態でも接続可）
+
+### 初回セットアップ
+
+1. `chezmoi apply -v` で設定を反映（`sunshine.service` が有効化される）
+2. Tailscale IP を確認: `tailscale ip -4`
+3. ブラウザで `https://<tailscale-ip>:47990` を開き、管理者アカウントを作成
+4. iPhone に [Moonlight](https://apps.apple.com/app/moonlight-game-streaming/id1000551566) をインストール
+5. Moonlight で「Add Host Manually」→ Tailscale IP (または MagicDNS 名) を入力
+6. Sunshine Web UI の PIN を Moonlight から入力してペアリング
+
+### 使い方
+
+- `Desktop`: 既存の Hyprland セッションをそのままミラー
+- `Hyprland (virtual display)`: 仮想ディスプレイを生やしてから接続（蓋閉じ・外出中向け）
+- `Terminal (ghostty)`: ghostty だけを起動して接続
+
+### トラブルシュート
+
+- 接続できない: `tailscale status` と `systemctl --user status sunshine` を確認
+- 画面が真っ黒: `setcap` が失敗している可能性。`getcap $(which sunshine)` で
+  `cap_sys_admin+p` が付いているか確認
+- 音が出ない: `sunshine.conf` の `audio_sink` を `pactl list short sinks` の出力に合わせる
+
 # Kali
 
 ## 初期セットアップ

@@ -1,0 +1,26 @@
+{
+  "env": {
+    "PATH": "$(PATH):$(HOME)/.local/bin"
+  },
+  "apps": [
+    {
+      "name": "Desktop",
+      "image-path": "desktop.png"
+    },
+    {
+      "name": "Hyprland (virtual display)",
+      "prep-cmd": [
+        {
+          "do": "/home/tsuyoshi/.local/bin/sunshine-virtual-display.sh on",
+          "undo": "/home/tsuyoshi/.local/bin/sunshine-virtual-display.sh off"
+        }
+      ],
+      "image-path": "desktop.png"
+    },
+    {
+      "name": "Terminal (ghostty)",
+      "detached": ["ghostty"],
+      "image-path": "terminal.png"
+    }
+  ]
+}

@@ -82,6 +82,13 @@ sudo tailscale set --operator="$USER" 2>/dev/null || true
 systemctl --user daemon-reload
 systemctl --user enable --now taildrop.service 2>/dev/null || true
 
+# Sunshine (iPhone / Moonlight RDP over Tailscale)
+# KMS キャプチャに必要な権限を付与し、ユーザ単位の常駐を有効化
+if command -v sunshine &> /dev/null; then
+  sudo setcap cap_sys_admin+p "$(command -v sunshine)" 2>/dev/null || true
+  systemctl --user enable --now sunshine.service 2>/dev/null || true
+fi
+
 sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
 sudo mkdir -p /etc/systemd/logind.conf.d
 sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
