@@ -26,6 +26,7 @@ zsh
 dialog
 ttf-apple-emoji
 ghostty
+foot
 starship
 mise
 sheldon

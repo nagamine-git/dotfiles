@@ -1,0 +1,71 @@
+{{- $c := .theme.colors -}}
+{{- $f := .theme.fonts -}}
+# foot - CPUレンダリングのWaylandネイティブ端末。
+# 低GPU機のGhostty代替。テーマ/フォントは data.yaml から同期。
+# 切替: hyprland.conf.tmpl の $terminal を foot に差し替える。
+
+font={{ $f.terminal }}:size=11
+pad=8x8 center
+dpi-aware=yes
+initial-window-size-chars=120x32
+resize-by-cells=no
+
+[scrollback]
+lines=10000
+multiplier=3.0
+
+[url]
+launch=xdg-open ${url}
+label-letters=sadfjklewcmpgh
+
+[cursor]
+style=beam
+blink=no
+color={{ $c.bg_dark.hex }} {{ $c.text.hex }}
+
+[mouse]
+hide-when-typing=yes
+
+[colors]
+alpha=1.0
+background={{ $c.bg_dark.hex }}
+foreground={{ $c.text.hex }}
+selection-background={{ $c.bg_light.hex }}
+selection-foreground={{ $c.text.hex }}
+
+## 16色パレット(hybrid系に寄せる)
+regular0={{ $c.bg_medium.hex }}
+regular1={{ $c.error.hex }}
+regular2={{ $c.success.hex }}
+regular3={{ $c.warning.hex }}
+regular4={{ $c.primary.hex }}
+regular5={{ $c.warning_alt.hex }}
+regular6={{ $c.accent.hex }}
+regular7={{ $c.text.hex }}
+
+bright0={{ $c.surface.hex }}
+bright1={{ $c.error.hex }}
+bright2={{ $c.success.hex }}
+bright3={{ $c.warning.hex }}
+bright4={{ $c.primary.hex }}
+bright5={{ $c.warning_alt.hex }}
+bright6={{ $c.accent.hex }}
+bright7={{ $c.text.hex }}
+
+[key-bindings]
+scrollback-up-page=Shift+Page_Up
+scrollback-down-page=Shift+Page_Down
+clipboard-copy=Control+Shift+c XF86Copy
+clipboard-paste=Control+Shift+v XF86Paste
+search-start=Control+Shift+f
+font-increase=Control+plus Control+equal Control+KP_Add
+font-decrease=Control+minus Control+KP_Subtract
+font-reset=Control+0 Control+KP_0
+spawn-new-terminal=Control+Shift+n
+show-urls-launch=Control+Shift+o
+
+[mouse-bindings]
+selection-override-modifiers=Shift
+primary-paste=BTN_MIDDLE
+select-begin=BTN_LEFT
+select-extend=BTN_RIGHT
