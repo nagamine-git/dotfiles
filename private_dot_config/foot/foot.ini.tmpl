@@ -6,7 +6,6 @@
 
 font={{ $f.terminal }}:size=11
 pad=8x8 center
-dpi-aware=yes
 initial-window-size-chars=120x32
 resize-by-cells=no
 
@@ -21,17 +20,17 @@ label-letters=sadfjklewcmpgh
 [cursor]
 style=beam
 blink=no
-color={{ $c.bg_dark.hex }} {{ $c.text.hex }}
 
 [mouse]
 hide-when-typing=yes
 
-[colors]
+[colors-dark]
 alpha=1.0
 background={{ $c.bg_dark.hex }}
 foreground={{ $c.text.hex }}
 selection-background={{ $c.bg_light.hex }}
 selection-foreground={{ $c.text.hex }}
+cursor={{ $c.bg_dark.hex }} {{ $c.text.hex }}
 
 ## 16色パレット(hybrid系に寄せる)
 regular0={{ $c.bg_medium.hex }}
@@ -41,7 +40,7 @@ regular3={{ $c.warning.hex }}
 regular4={{ $c.primary.hex }}
 regular5={{ $c.warning_alt.hex }}
 regular6={{ $c.accent.hex }}
-regular7={{ $c.text.hex }}
+regular7={{ $c.text_dim.hex }}
 
 bright0={{ $c.surface.hex }}
 bright1={{ $c.error.hex }}
@@ -61,7 +60,7 @@ search-start=Control+Shift+f
 font-increase=Control+plus Control+equal Control+KP_Add
 font-decrease=Control+minus Control+KP_Subtract
 font-reset=Control+0 Control+KP_0
-spawn-new-terminal=Control+Shift+n
+spawn-terminal=Control+Shift+n
 show-urls-launch=Control+Shift+o
 
 [mouse-bindings]
