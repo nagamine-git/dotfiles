@@ -1,0 +1,89 @@
+#!/bin/bash
+# claude-usage powerline display for tmux
+{{- if eq .chezmoi.os "darwin" }}
+#
+# macOS: ccusage based 5h-window usage percentage.
+# Claude.ai subscription plans (provider: other) cannot query rate limits
+# via API, so we estimate against a configurable token budget per 5h block.
+#
+# Env: CLAUDE_5H_BUDGET_TOKENS (default: 70000000 ~ Max 20x tier)
+set -euo pipefail
+
+CACHE_FILE="${HOME}/.claude/ccusage-cache.json"
+CACHE_TTL=60
+BUDGET_TOKENS_5H="${CLAUDE_5H_BUDGET_TOKENS:-70000000}"
+
+ACCENT_FG="#{{ .theme.colors_darwin.bg_dark.hex }}"
+WARN_BG="#{{ .theme.colors_darwin.warning_alt.hex }}"
+ALERT_BG="#{{ .theme.colors_darwin.warning.hex }}"
+CRIT_BG="#{{ .theme.colors_darwin.error.hex }}"
+
+if ! command -v ccusage >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
+json=""
+if [ -f "$CACHE_FILE" ]; then
+  mtime=$(stat -f %m "$CACHE_FILE" 2>/dev/null || echo 0)
+  if [ $(( $(date +%s) - mtime )) -lt "$CACHE_TTL" ]; then
+    json=$(cat "$CACHE_FILE")
+  fi
+fi
+
+if [ -z "$json" ]; then
+  json=$(ccusage blocks --json --active 2>/dev/null || true)
+  [ -n "$json" ] && printf '%s' "$json" > "$CACHE_FILE"
+fi
+
+if [ -z "$json" ] || [ "$(printf '%s' "$json" | jq -r '.blocks | length')" = "0" ]; then
+  exit 0
+fi
+
+read -r cur proj rem <<<"$(printf '%s' "$json" | jq -r '.blocks[0] | "\(.totalTokens // 0) \(.projection.totalTokens // 0) \(.projection.remainingMinutes // 0)"')"
+
+pct_now=$(( cur * 100 / BUDGET_TOKENS_5H ))
+pct_proj=$(( proj * 100 / BUDGET_TOKENS_5H ))
+
+rm_h=$(( rem / 60 ))
+rm_m=$(( rem % 60 ))
+if [ "$rm_h" -gt 0 ]; then
+  rem_str="${rm_h}h${rm_m}m"
+else
+  rem_str="${rm_m}m"
+fi
+
+text=$(printf '%d%%→%d%% %s' "$pct_now" "$pct_proj" "$rem_str")
+
+if [ "$pct_proj" -ge 100 ]; then
+  printf '#[fg=%s,bg=%s,bold]%s#[default]' "$ACCENT_FG" "$CRIT_BG" "$text"
+elif [ "$pct_proj" -ge 80 ]; then
+  printf '#[fg=%s,bg=%s,bold]%s#[default]' "$ACCENT_FG" "$ALERT_BG" "$text"
+elif [ "$pct_proj" -ge 50 ]; then
+  printf '#[fg=%s,bg=%s]%s#[default]' "$ACCENT_FG" "$WARN_BG" "$text"
+else
+  printf '#[fg=%s,nobold]%s#[default]' "$ACCENT_FG" "$text"
+fi
+{{- else }}
+# Linux: claude-usage wrapper (requires GNU grep with -P for percent parsing)
+output=$(claude-usage 2>/dev/null)
+[ -z "$output" ] && exit 0
+
+pct5=$(echo "$output" | grep -oP '5h:\K[0-9]+')
+pct7=$(echo "$output" | grep -oP '7d:\K[0-9]+')
+max=$(printf '%s\n%s\n' "${pct5:-0}" "${pct7:-0}" | sort -n | tail -1)
+
+if [ -z "$pct5" ] && [ -z "$pct7" ]; then
+    echo "$output"
+    exit 0
+fi
+
+if [ "$max" -ge 90 ]; then
+    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bg=#{{ .theme.colors.error.hex }},bold]$output#[default]"
+elif [ "$max" -ge 75 ]; then
+    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bg=#{{ .theme.colors.warning.hex }},bold]$output#[default]"
+elif [ "$max" -ge 70 ]; then
+    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bold]$output#[default]"
+else
+    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},nobold]$output#[default]"
+fi
+{{- end }}

@@ -3,7 +3,11 @@ font-family = "{{ .theme.fonts.terminal }}"
 font-size = 12
 font-feature = -liga
 font-feature = -calt
+{{- if eq .chezmoi.os "darwin" }}
+theme = Gruvbox Material
+{{- else }}
 theme = Hybrid
+{{- end }}
 
 # Hyprland Optimization (Minimal & Clean)
 window-decoration = false

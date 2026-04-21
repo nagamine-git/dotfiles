@@ -36,6 +36,44 @@ theme:
     warning_alt:
       hex: "e58a50"
       rgb: "229, 138, 80"
+  # Gruvbox Material (medium background, material foreground) - used on darwin
+  colors_darwin:
+    primary:
+      hex: "7daea3"
+      rgb: "125, 174, 163"
+    accent:
+      hex: "89b482"
+      rgb: "137, 180, 130"
+    bg_dark:
+      hex: "282828"
+      rgb: "40, 40, 40"
+    bg_medium:
+      hex: "32302f"
+      rgb: "50, 48, 47"
+    bg_light:
+      hex: "45403d"
+      rgb: "69, 64, 61"
+    surface:
+      hex: "5a524c"
+      rgb: "90, 82, 76"
+    text_dim:
+      hex: "928374"
+      rgb: "146, 131, 116"
+    text:
+      hex: "d4be98"
+      rgb: "212, 190, 152"
+    warning:
+      hex: "d8a657"
+      rgb: "216, 166, 87"
+    error:
+      hex: "ea6962"
+      rgb: "234, 105, 98"
+    success:
+      hex: "a9b665"
+      rgb: "169, 182, 101"
+    warning_alt:
+      hex: "e78a4e"
+      rgb: "231, 138, 78"
   fonts:
     ui: "IBM Plex Sans JP"
     terminal: "UDEV Gothic 35NFLG"

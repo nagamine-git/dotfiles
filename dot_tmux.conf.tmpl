@@ -1,4 +1,7 @@
 {{- $c := .theme.colors -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{- $c = .theme.colors_darwin -}}
+{{- end -}}
 set -g mouse on
 
 # kitty graphics protocol（image.nvim / diagram.nvim で mermaid 等の画像表示）
@@ -30,7 +33,6 @@ bind-key -n M-Down resize-pane -D 3
 bind-key -n M-Tab switch-client -l
 
 set -g @plugin 'tmux-plugins/tpm'
-# Hybrid theme palette for tmux-power
 set -g @tmux_power_theme '#{{ $c.primary.hex }}'
 set -g @tmux_power_g0 "#{{ $c.bg_dark.hex }}"
 set -g @tmux_power_g1 "#{{ $c.bg_medium.hex }}"
