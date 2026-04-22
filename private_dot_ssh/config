@@ -1,2 +1,6 @@
+Host mac mbp14-m1pro
+  HostName mbp14-m1pro
+  User tsuyoshi.nagamine
+
 Host *
   IdentityAgent ~/.1password/agent.sock
