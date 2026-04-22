@@ -4,6 +4,16 @@
 {{- end -}}
 set -g mouse on
 
+# ghostty/foot 向けの端末能力宣言
+set -g default-terminal "tmux-256color"
+set -as terminal-features ',*:RGB'
+set -as terminal-features ',*:usstyle'
+set -as terminal-features ',*:clipboard'
+set -as terminal-features ',*:extkeys'
+set -s extended-keys on
+set -s escape-time 10
+set -g history-limit 50000
+
 # kitty graphics protocol（image.nvim / diagram.nvim で mermaid 等の画像表示）
 set -g allow-passthrough all
 set -g focus-events on
