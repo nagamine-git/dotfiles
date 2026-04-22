@@ -1,5 +1,11 @@
 inline_height = 10
 enter_accept = true
 
+history_filter = [
+  "^\\s",
+  "(?i)(TOKEN|SECRET|API_?KEY|PASSWORD)=",
+  "(?i)Bearer\\s",
+]
+
 [sync]
 records = true
