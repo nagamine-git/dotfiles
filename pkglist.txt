@@ -14,8 +14,6 @@ fcitx5-hazkey-bin
 hazkey-zenzai-vulkan
 brave-bin
 zeed-bin
-dolphin
-autokey-gtk
 wofi
 playerctl
 brightnessctl
@@ -36,8 +34,11 @@ fzf
 ghq
 github-cli
 jq
+yq
+ripgrep
+fd
 eza
-obs-studio-git
+obs-studio
 hyprpaper
 btop
 wl-clipboard
@@ -58,10 +59,9 @@ wavemon
 hyprsunset
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
-xdg-desktop-portal-wlr
 distrobox
 slack-desktop-wayland
-mtr-git
+mtr
 thunar
 nm-connection-editor
 wtype
