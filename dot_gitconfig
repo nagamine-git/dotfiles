@@ -17,6 +17,17 @@
 
 [core]
   pager = delta
+  excludesfile = ~/.gitignore_global
+
+[merge]
+  conflictStyle = zdiff3
+
+[rebase]
+  autoStash = true
+  autoSquash = true
+
+[pull]
+  rebase = true
 
 [interactive]
   diffFilter = delta --color-only
