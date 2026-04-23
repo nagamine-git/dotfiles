@@ -1,2 +1,6 @@
 export OPENCLAW_GATEWAY_TOKEN="{{ onepasswordRead "op://Personal/ppk7whyfveayfwwss55oob5rx4/password" }}"
 export ZEED_TELEMETRY_READ_TOKEN="{{ onepasswordRead "op://Personal/Zeed Telemetry Read Token/credential" }}"
+
+# Expo dev server: bind Metro to the Tailscale IP so iPhone (on tailnet)
+# reaches it without --tunnel. Empty if Tailscale is absent → falls back to LAN.
+export REACT_NATIVE_PACKAGER_HOSTNAME="$(command -v tailscale >/dev/null 2>&1 && tailscale ip -4 2>/dev/null | head -n1)"
