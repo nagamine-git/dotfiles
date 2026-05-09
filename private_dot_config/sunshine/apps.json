@@ -5,11 +5,21 @@
   "apps": [
     {
       "name": "Desktop",
+      "prep-cmd": [
+        {
+          "do": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh on",
+          "undo": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh off"
+        }
+      ],
       "image-path": "desktop.png"
     },
     {
       "name": "Hyprland (virtual display)",
       "prep-cmd": [
+        {
+          "do": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh on",
+          "undo": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh off"
+        },
         {
           "do": "/home/tsuyoshi/.local/bin/sunshine-virtual-display.sh on",
           "undo": "/home/tsuyoshi/.local/bin/sunshine-virtual-display.sh off"
@@ -19,6 +29,12 @@
     },
     {
       "name": "Terminal (ghostty)",
+      "prep-cmd": [
+        {
+          "do": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh on",
+          "undo": "/home/tsuyoshi/.local/bin/sunshine-stream-hooks.sh off"
+        }
+      ],
       "detached": ["ghostty"],
       "image-path": "terminal.png"
     }

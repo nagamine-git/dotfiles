@@ -44,6 +44,7 @@ exec-once = autokey-gtk --hide &
 exec-once = hypridle &
 exec-once = sudo keyd &
 exec-once = systemctl --user start darkman.service &
+exec-once = systemctl --user start sunshine.service &
 exec-once = ~/.local/bin/hypr_auto_perfmonitor.sh start &
 exec-once = ~/.local/bin/claude-usage-notify &
 exec-once = ~/.local/bin/droidcam.sh &
@@ -288,6 +289,10 @@ misc {
     animate_manual_resizes = false
     enable_swallow = true
     swallow_regex = ^(Alacritty|kitty|ghostty|footclient)$
+    # ロックスクリーンが死んだ場合に同じ session-lock を新しい hyprlock で
+    # 復元できるようにする (default: false)。万一クラッシュしても safety screen
+    # から `hyprctl dispatch exec hyprlock` で復帰可能になる。
+    allow_session_lock_restore = true
 }
 
 #############
