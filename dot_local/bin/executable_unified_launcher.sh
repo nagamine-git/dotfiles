@@ -146,6 +146,54 @@ list_workspaces() {
   hyprctl workspaces -j | jq -r '.[] | "[WS] \(.id) || hyprctl dispatch workspace \(.id)"'
 }
 
+# Google Calendar の直近イベントから Meet リンク付きを抽出してランチャー先頭に出す。
+# - 速度のため短い TTL でキャッシュ (UNIFIED_LAUNCHER_MEETS_TTL 秒, default 90)
+# - gog 未認証 / API 失敗時は静かに 0 行を返す (ランチャー全体は壊さない)
+# - 認証は `gog login <email>` を一度だけユーザー側で実行する想定
+list_meets() {
+  have_cmd gog || return 0
+  have_cmd jq || return 0
+
+  local cache_file="$HOME/.cache/unified_launcher.meets"
+  local ttl="${UNIFIED_LAUNCHER_MEETS_TTL:-90}"
+  mkdir -p "$HOME/.cache"
+
+  if [ -f "$cache_file" ]; then
+    local now mtime age
+    now=$(date +%s)
+    mtime=$(date +%s -r "$cache_file" 2>/dev/null || echo 0)
+    age=$(( now - mtime ))
+    if [ "$age" -lt "$ttl" ]; then
+      cat "$cache_file"
+      return 0
+    fi
+  fi
+
+  local raw
+  raw=$(timeout 3s gog cal events --days=2 --max 8 -j --results-only 2>/dev/null) || raw=""
+  if [ -n "$raw" ]; then
+    printf '%s' "$raw" | jq -r '
+      (if type=="array" then .
+       elif type=="object" and has("items") then .items
+       elif type=="object" and has("events") then .events
+       else [] end)
+      | .[]?
+      | . as $e
+      | ((.hangoutLink // "")) as $hl
+      | (([.conferenceData?.entryPoints[]? | select(.entryPointType=="video") | .uri] | first) // "") as $cl
+      | (if $hl != "" then $hl elif $cl != "" then $cl else "" end) as $url
+      | select($url != "")
+      | ((.start.dateTime // .start.date // "")) as $start
+      | (if ($start|test("T")) then ($start | split("T")[1] | .[0:5]) else "終日" end) as $hm
+      | ((.summary // "(無題)") | gsub("[\\r\\n\\t]"; " ")) as $title
+      | "[MEET] \($hm) \($title) || xdg-open \"\($url)\""
+    ' 2>/dev/null > "$cache_file" || : > "$cache_file"
+  else
+    : > "$cache_file"
+  fi
+  cat "$cache_file" 2>/dev/null
+}
+
 # Cache app list to speed up repeated opens (optional)
 cache_apps_list() {
   local cache_file="$HOME/.cache/unified_launcher.apps"
@@ -244,6 +292,8 @@ main() {
   tmp=$(mktemp)
   tmp2=$(mktemp)
   {
+    log_debug "Gathering meets"
+    list_meets || true
     log_debug "Gathering windows"
     list_windows || true
     log_debug "Gathering workspaces"
