@@ -73,18 +73,23 @@ bind-key -n M-f run "tmux split-window -l 12 'zsh -ci tmux_fzf_window'"
 # main-vertical を使うときの幅。4K (3840px) で main/side = 1920/1920px ≒ 160chars 等分。
 set -g main-pane-width "50%"
 
-# Alt+Enter: 純粋な split のみ。レイアウトには触らない (= 既存配置を上書きしない)。
-bind-key -n M-Enter split-window -h -c "#{pane_current_path}"
+# 動的レイアウトモード: デフォ ON。pane 数で main-vertical (≤3) / tiled (≥4) を自動切替。
+#   N≤3: main-vertical (Baudisch CHI 2002 — focus+context は等価より 21-36% 高速)
+#   N≥4: tiled         (Cowan 2001 — STM ~4 chunks 超で focus+context が破綻、格子の方が認知負荷低)
+set-option -g @layout_mode "on"
+
+# Alt+Enter: 純粋な split。direction は気にしない (どうせ hook が再配置する)。
+bind-key -n M-Enter split-window -v -c "#{pane_current_path}"
 
 # 動的レイアウトモードのトグル (prefix C-t → M-Enter)。
-#   on:  @layout_mode を main-vertical にして即適用 → 以降 hook が pane 数で切替
-#   off: フラグ解除して tmux 自由配置に戻す
+#   on  → off: hook 抑止 → tmux 自由配置で固定
+#   off → on : 即 pane 数に応じて再配置 + 以降 hook で切替
 bind-key M-Enter run-shell '\
-  if [ "$(tmux show-window-option -v @layout_mode 2>/dev/null)" = "main-vertical" ]; then \
-    tmux set-window-option -u @layout_mode; \
-    tmux display-message "layout-mode: off"; \
+  if [ "$(tmux display-message -p "#{@layout_mode}")" = "on" ]; then \
+    tmux set-window-option @layout_mode "off"; \
+    tmux display-message "layout-mode: off (free)"; \
   else \
-    tmux set-window-option @layout_mode main-vertical; \
+    tmux set-window-option @layout_mode "on"; \
     if [ "$(tmux display-message -p "#{window_panes}")" -le 3 ]; then \
       tmux select-layout main-vertical; \
     else \
@@ -94,10 +99,7 @@ bind-key M-Enter run-shell '\
   fi \
 '
 
-# レイアウトモード ON 中だけ pane 数で動的切替:
-#   N≤3: main-vertical (Baudisch CHI 2002 — focus+context は等価より 21-36% 高速)
-#   N≥4: tiled        (Cowan 2001 — STM ~4 chunks 超で focus+context が破綻、格子の方が認知負荷低)
-set-hook -g after-split-window 'if-shell -F "#{==:#{@layout_mode},main-vertical}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
-set-hook -g pane-exited        'if-shell -F "#{==:#{@layout_mode},main-vertical}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
-set-hook -g after-kill-pane    'if-shell -F "#{==:#{@layout_mode},main-vertical}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
-set-hook -g client-resized     'if-shell -F "#{==:#{@layout_mode},main-vertical}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
+set-hook -g after-split-window 'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
+set-hook -g pane-exited        'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
+set-hook -g after-kill-pane    'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
+set-hook -g client-resized     'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
