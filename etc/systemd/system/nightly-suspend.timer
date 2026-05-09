@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger nightly suspend at 02:00 (JST)
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+# Persistent=false: 起動時に過去の miss を補填しない (寝てた時間に走られても困る)
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

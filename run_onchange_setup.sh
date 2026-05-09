@@ -23,6 +23,19 @@ install_if_missing() {
 # keyboard layout
 sudo cp etc/keyd/default.conf /etc/keyd/default.conf
 
+# nightly suspend (02:00 JST -> rtcwake 06:30) — atuin/Claude ログで「100% 寝てる」帯
+sudo install -m 755 etc/usr-local-sbin/nightly-suspend.sh /usr/local/sbin/nightly-suspend.sh
+sudo install -m 644 etc/systemd/system/nightly-suspend.service /etc/systemd/system/nightly-suspend.service
+sudo install -m 644 etc/systemd/system/nightly-suspend.timer /etc/systemd/system/nightly-suspend.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now nightly-suspend.timer
+
+# Wake-on-LAN (enp9s0) — 後で起こせる前提のスリープ用。LAN 内からは wakeonlan で起こせる。
+sudo install -m 644 etc/systemd/system/wol-enable.service /etc/systemd/system/wol-enable.service
+sudo install -m 755 etc/usr-lib-systemd-system-sleep/wol-rearm.sh /usr/lib/systemd/system-sleep/wol-rearm.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now wol-enable.service
+
 # bbr
 # Enable BBR congestion control algorithm
 echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf

@@ -1,0 +1,11 @@
+[Unit]
+Description=Enable Wake-on-LAN (magic packet) on enp9s0
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ethtool -s enp9s0 wol g
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

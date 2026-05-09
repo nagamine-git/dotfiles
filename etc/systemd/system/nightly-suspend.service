@@ -1,0 +1,7 @@
+[Unit]
+Description=Nightly suspend with RTC wake (data-driven 02:00 -> 06:30 JST)
+Documentation=man:rtcwake(8) man:systemd-suspend.service(8)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/nightly-suspend.sh
