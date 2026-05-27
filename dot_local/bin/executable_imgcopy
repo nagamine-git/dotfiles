@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# imgcopy — 画像ファイルを Wayland クリップボードに「画像データ」として載せる。
+# 他アプリ（チャット/ブラウザ/画像エディタ等）にそのまま貼り付け可能。
+# yazi の <C-y>（keymap で `shell --orphan` 経由）からもシェルからも同一動作。
+#   使い方: imgcopy <image-file>
+set -uo pipefail
+
+f="${1:-}"
+if [ -z "$f" ] || [ ! -f "$f" ]; then
+  notify-send -u critical "imgcopy" "ファイルが見つかりません: ${f:-(none)}" 2>/dev/null || true
+  echo "usage: imgcopy <image-file>" >&2
+  exit 1
+fi
+
+mime=$(file -b --mime-type -- "$f")
+case "$mime" in
+  image/*)
+    # wl-copy は自前でバックグラウンド常駐しクリップボードを提供する。
+    # yazi 側は keymap で `shell --orphan` を使い、この常駐プロセスを追跡/kill しないので
+    # 「unfinished tasks」警告も出ず、yazi を閉じてもクリップボードが残る。
+    wl-copy --type "$mime" <"$f"
+    notify-send "imgcopy" "コピー: $(basename -- "$f") ($mime)" 2>/dev/null || true
+    ;;
+  *)
+    notify-send -u critical "imgcopy" "画像ではありません ($mime): $(basename -- "$f")" 2>/dev/null || true
+    echo "imgcopy: not an image ($mime): $f" >&2
+    exit 1
+    ;;
+esac

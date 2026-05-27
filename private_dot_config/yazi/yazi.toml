@@ -29,6 +29,6 @@ archive = [
 [open]
 # File associations
 rules = [
-    { name = "*.{md,txt,json,toml,yml,yaml,conf}", use = "edit" },
-    { name = "*.{zip,tar,gz,bz2,xz,7z}", use = "archive" },
+    { url = "*.{md,txt,json,toml,yml,yaml,conf}", use = "edit" },
+    { url = "*.{zip,tar,gz,bz2,xz,7z}", use = "archive" },
 ]

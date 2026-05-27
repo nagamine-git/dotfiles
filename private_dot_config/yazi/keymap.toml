@@ -21,6 +21,11 @@ prepend_keymap = [
     { on = ["g", "e"], run = "cd /etc", desc = "Go to /etc" },
     { on = ["g", "i"], run = "cd /", desc = "Go to root directory" },
     
+    # Copy image DATA to clipboard (paste into other apps) — シェルの `imgcopy` と同一動作
+    # --orphan: wl-copy は常駐デーモンなので yazi に追跡させない。これが無いと
+    # 「unfinished tasks」警告が出て、強制終了時に wl-copy を道連れ kill しクリップボードが消える。
+    { on = "<C-y>", run = "shell --orphan -- imgcopy %h", desc = "Copy image to clipboard as image data" },
+
     # Disable original vim keys to avoid conflicts
     { on = "j", run = "noop" },
     { on = "k", run = "noop" },

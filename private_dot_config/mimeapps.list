@@ -1,0 +1,11 @@
+[Default Applications]
+x-scheme-handler/http=zeed-browser.desktop
+x-scheme-handler/https=zeed-browser.desktop
+text/html=zeed-browser.desktop
+application/octet-stream=brave-browser.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/claude=claude.desktop
+inode/directory=thunar.desktop
+
+[Added Associations]
+application/octet-stream=brave-browser.desktop;
