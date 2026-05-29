@@ -1,0 +1,15 @@
+// Allow the wolow-companion system daemon (running as root) to power off,
+// reboot, and suspend while ignoring inhibitor locks. This is required on
+// distributions (e.g. Fedora, Nobara) whose default polkit policy does not
+// grant root this permission without authentication.
+polkit.addRule(function(action, subject) {
+    var ignoreInhibitActions = [
+        "org.freedesktop.login1.power-off-ignore-inhibit",
+        "org.freedesktop.login1.reboot-ignore-inhibit",
+        "org.freedesktop.login1.suspend-ignore-inhibit",
+        "org.freedesktop.login1.hibernate-ignore-inhibit"
+    ];
+    if (ignoreInhibitActions.indexOf(action.id) !== -1 && subject.user === "root") {
+        return polkit.Result.YES;
+    }
+});

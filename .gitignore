@@ -20,3 +20,10 @@ Thumbs.db
 .aider*
 
 private*token
+
+# macOS metadata (AppleDouble etc.) — 2026-05-29 に混入していたため追加
+._*
+.AppleDouble
+
+# Claude Code per-checkout local state (権限許可など。APIキー混入の恐れがあり追跡しない)
+.claude/

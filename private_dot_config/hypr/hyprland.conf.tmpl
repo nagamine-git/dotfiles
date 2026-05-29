@@ -42,7 +42,10 @@ exec-once = cliphist &
 exec-once = wl-paste --type text --watch cliphist store &
 exec-once = wl-paste --type image --watch cliphist store &
 exec-once = autokey-gtk --hide &
-exec-once = hypridle &
+# hypridle は dpms off を撃った直後に落ちると on-resume が二度と発火せず
+# 画面が黒いまま戻らなくなる (2026-05-29 調査)。exec-once は自動復活しないため
+# self-healing ループで起動し、落ちても 3 秒後に復活させる。
+exec-once = bash -c 'while true; do hypridle; logger -t hypridle "respawned (exit=$?)"; sleep 3; done' &
 exec-once = sudo keyd &
 exec-once = systemctl --user start darkman.service &
 exec-once = systemctl --user start sunshine.service &
