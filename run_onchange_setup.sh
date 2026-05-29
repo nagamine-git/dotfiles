@@ -3,6 +3,11 @@
 # Stop on error
 set -eu
 
+# chezmoi の run_ スクリプトは CWD = $HOME で実行されるので、
+# `etc/...` のような相対パスでソース内のファイルを参照するには
+# まず chezmoi の source dir に移動する必要がある。
+cd "${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+
 # Windowsと時刻が合わないので、システム時刻をUTCに変更する
 timedatectl set-local-rtc 1 --adjust-system-clock
 

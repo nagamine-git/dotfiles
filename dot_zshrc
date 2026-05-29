@@ -89,6 +89,24 @@ alias ghd='gh dash'
 alias lg='lazygit'
 alias ld='lazydocker'
 
+# sesh: tmux/zoxide/ghq/設定済 を横断する fzf セッションランチャー
+# tm/tgh/cgh より広い検索範囲を 1 コマンドで。新規シェルでも tmux 内でも動く。
+s() {
+    local session
+    session=$(sesh list --icons 2>/dev/null | \
+        fzf-tmux -p 60%,60% --no-sort --ansi \
+            --border-label ' sesh ' --prompt '⚡ ' \
+            --header '^a all  ^t tmux  ^g configs  ^x zoxide  ^d tmux-kill' \
+            --bind 'tab:down,btab:up' \
+            --bind 'ctrl-a:change-prompt(⚡ )+reload(sesh list --icons)' \
+            --bind 'ctrl-t:change-prompt(🪟 )+reload(sesh list -t --icons)' \
+            --bind 'ctrl-g:change-prompt(⚙  )+reload(sesh list -c --icons)' \
+            --bind 'ctrl-x:change-prompt(📁 )+reload(sesh list -z --icons)' \
+            --bind 'ctrl-d:execute(tmux kill-session -t {2..})+change-prompt(⚡ )+reload(sesh list --icons)')
+    [ -z "$session" ] && return
+    sesh connect "$session"
+}
+
 # カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
 tm() {
     local name=$(basename $PWD | tr '.:' '_')
@@ -206,6 +224,84 @@ k_pub() {
 
 alias pbcopy='wl-copy'
 alias b='~/.local/bin/biz_start.sh '
+
+# WoL を有効化して suspend。Wolow アプリ登録用の情報を表示し Enter で実行
+wsuspend() {
+    local iface="${1:-enp9s0}"
+    local port="${2:-9}"
+
+    if ! ip link show "$iface" >/dev/null 2>&1; then
+        echo "エラー: インターフェース $iface が存在しません" >&2
+        return 1
+    fi
+
+    local device_name mac_addr ip_addr broadcast
+    device_name="$(hostnamectl --static 2>/dev/null || hostname)"
+    mac_addr="$(cat "/sys/class/net/$iface/address" 2>/dev/null)"
+    ip_addr="$(ip -4 -o addr show "$iface" 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1)"
+    broadcast="$(ip -4 -o addr show "$iface" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="brd"){print $(i+1); exit}}')"
+
+    local mac_nocolon
+    mac_nocolon="$(printf '%s' "$mac_addr" | tr -d ':' | tr 'A-F' 'a-f')"
+
+    # WoL は MAC で対象を識別するので unicast IP は本質的に不要。
+    # broadcast 2 つ (subnet + limited) で十分なので unicast 行は削った。
+    # → これで DHCP IP が変わっても wake コマンドは永久に有効。
+    local wake_oneliner
+    wake_oneliner="python3 -c \"import socket as S;m=bytes.fromhex('$mac_nocolon');p=b'\\xff'*6+m*16;s=S.socket(S.AF_INET,S.SOCK_DGRAM);s.setsockopt(S.SOL_SOCKET,S.SO_BROADCAST,1);[s.sendto(p,(d,$port)) for d in ('$broadcast','255.255.255.255')];print('wake sent to $device_name')\""
+
+    # ホスト名ベースの確認 (DHCP IP の変動に左右されない)
+    local ts_host="${device_name}.tailcda87f.ts.net"
+    local mdns_host="${device_name}.local"
+
+    local body
+    body="$(
+      cat <<EOF
+=== Wolow 登録情報 ($iface) ===
+  Device name              : $device_name
+  MAC address              : $mac_addr      ← Wolow に登録するのはコレ
+  IP address (broadcast)   : $broadcast    ← Wolow の "IP" 欄にはコレを入れる (固定)
+  Port number              : $port
+  (参考) target IP (DHCP)  : $ip_addr       ← 毎回変わるので Wolow 登録には使わない
+================================
+
+=== iPhone / iSH からのウェイクアップ (同一 Wi-Fi 上) ===
+  # 初回のみ:  apk add python3
+  # ↓ MAC のみで対象判定、broadcast で送信。DHCP 変動に影響されない。
+  $wake_oneliner
+
+  # 生死確認 (ホスト名なので IP 変動 OK):
+  ping -c 2 -W 2 $ts_host >/dev/null 2>&1 && echo UP || echo DOWN
+  # 家 LAN 内なら mDNS でも可: ping -c 2 -W 2 $mdns_host
+================================
+EOF
+    )"
+    printf '%s\n' "$body"
+
+    # Telegram 通知 (openclaw 経由)。送信先は WSUSPEND_TG_TARGET (env) で指定。
+    # 例:  export WSUSPEND_TG_TARGET=@my_personal_alerts_bot
+    #      export WSUSPEND_TG_TARGET=123456789
+    # 未設定なら静かにスキップ。
+    if [[ -n "${WSUSPEND_TG_TARGET:-}" ]] && command -v openclaw >/dev/null 2>&1; then
+        # コードブロック化して iPhone で長押しコピーしやすくする
+        local tg_message=$'```\n'"$body"$'\n```'
+        if openclaw message send \
+              --channel telegram \
+              --target "$WSUSPEND_TG_TARGET" \
+              -m "$tg_message" >/dev/null 2>&1; then
+            echo "✓ Telegram に通知済み ($WSUSPEND_TG_TARGET)"
+        else
+            echo "⚠ Telegram 送信失敗 (target=$WSUSPEND_TG_TARGET)" >&2
+        fi
+    fi
+
+    sudo -v || return 1
+    printf 'Enter で WoL を有効化して suspend (Ctrl-C で中止) ... '
+    read -r _ || return 1
+
+    sudo ethtool -s "$iface" wol g && sudo bash -c "sleep 1 && systemctl suspend" &
+    disown 2>/dev/null || true
+}
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"

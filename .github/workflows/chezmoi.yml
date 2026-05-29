@@ -1,0 +1,66 @@
+name: chezmoi
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  template-check:
+    name: Template & syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+
+      - name: Stub 1Password CLI (op)
+        run: |
+          sudo tee /usr/local/bin/op >/dev/null <<'EOF'
+          #!/bin/bash
+          # Stub for CI — return dummy value (no newline) for any onepasswordRead lookup
+          printf 'STUB_SECRET_VALUE'
+          EOF
+          sudo chmod +x /usr/local/bin/op
+
+      - name: Verify chezmoi source state
+        run: |
+          chezmoi --source="$GITHUB_WORKSPACE" doctor || true
+          chezmoi --source="$GITHUB_WORKSPACE" execute-template '{{ "ok" }}'
+
+      - name: Dry-run apply (template rendering)
+        run: |
+          mkdir -p /tmp/chezmoi-dest
+          chezmoi --source="$GITHUB_WORKSPACE" \
+                  --destination=/tmp/chezmoi-dest \
+                  apply --dry-run --verbose 2>&1 | tail -50 || \
+            (echo "::error::chezmoi apply dry-run failed" && exit 1)
+
+  gitleaks:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -e SC1091,SC2016,SC2155
+        with:
+          ignore_paths: >-
+            etc
+            scaphandre
+          scandir: .

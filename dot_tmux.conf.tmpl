@@ -70,6 +70,9 @@ set -ag status-right "#[fg=#{{ $c.accent.hex }},bg=#{{ $c.primary.hex }}]#[fg=#{
 # Override tmux-tilit's extrakto binding (extrakto not installed)
 bind-key -n M-f run "tmux split-window -l 12 'zsh -ci tmux_fzf_window'"
 
+# Override tmux-tilit's M-m (main-vertical layout) → アクティブ pane の最大化トグル
+bind-key -n M-m resize-pane -Z \; display-message "zoom: #{?window_zoomed_flag,on,off}"
+
 # main-vertical を使うときの幅。4K (3840px) で main/side = 1920/1920px ≒ 160chars 等分。
 set -g main-pane-width "50%"
 

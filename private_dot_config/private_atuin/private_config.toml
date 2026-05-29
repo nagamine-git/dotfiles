@@ -9,3 +9,6 @@ history_filter = [
 
 [sync]
 records = true
+
+[ai]
+enabled = true

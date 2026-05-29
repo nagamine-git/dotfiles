@@ -1,4 +1,25 @@
 {
+  "env": {
+    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "/opt/google/chrome/google-chrome"
+  },
+  "permissions": {
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard origin/main*)",
+      "Bash(git reset --hard origin/master*)",
+      "Bash(git rebase * --root*)",
+      "Bash(gh repo create*)",
+      "Bash(gh repo delete*)",
+      "Bash(npm publish*)",
+      "Bash(yarn publish*)",
+      "Bash(pnpm publish*)",
+      "Bash(cargo publish*)"
+    ]
+  },
   "hooks": {
     "Stop": [
       {
@@ -17,22 +38,28 @@
   },
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "slack@claude-plugins-official": true
   },
+  "language": "japanese",
+  "effortLevel": "xhigh",
+  "skipDangerousModePermissionPrompt": true,
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true,
   "mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest", "--browser", "chromium", "--executable-path", "/opt/google/chrome/google-chrome"]
+      "args": [
+        "@playwright/mcp@latest",
+        "--browser",
+        "chromium",
+        "--executable-path",
+        "/opt/google/chrome/google-chrome"
+      ]
     }
   },
-  "env": {
-    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "/opt/google/chrome/google-chrome"
-  },
-  "language": "japanese",
-  "effortLevel": "medium",
-  "voiceEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
   "allowCommandExecution": true,
-  "autoExecuteCommands": true,
-  "model": "sonnet"
+  "autoExecuteCommands": true
 }

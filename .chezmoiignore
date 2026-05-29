@@ -1,0 +1,15 @@
+README.md
+AGENTS.md
+pkglist.txt
+.editorconfig
+.gitattributes
+.gitignore
+.pre-commit-config.yaml
+.github
+.github/**
+etc
+etc/**
+bin
+bin/**
+scaphandre
+scaphandre/**

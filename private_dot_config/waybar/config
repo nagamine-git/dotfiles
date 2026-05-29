@@ -8,15 +8,15 @@
   "font": "'IBM Plex Sans JP', 'UDEV Gothic 35NFLG', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["clock", "custom/pomodoro", "custom/toggl"],
+  "modules-center": ["clock", "custom/toggl"],
   "modules-right": ["tray", "temperature", "cpu", "custom/gpu", "memory", "custom/disk", "network", "custom/tailscale", "pulseaudio"],
 
-"custom/pomodoro": {
+/* "custom/pomodoro": {
   "exec": "~/.config/waybar/scripts/pomodoro.sh",
   "interval": 1,
   "return-type": "json",
   "tooltip": true
-},
+},*/
 
   "hyprland/workspaces": {
     "format": "{icon}",
@@ -136,7 +136,7 @@
     "tooltip": true,
     "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
   },
-  
+
   "custom/toggl": {
     "exec": "~/.config/waybar/scripts/toggl_status.sh",
     "interval": 360,

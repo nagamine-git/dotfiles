@@ -208,6 +208,42 @@ require('lazy').setup({
       })
     end,
   },
+
+  -- フォーマッタ統合 (LSP に依らず stylua/shfmt/prettier/ruff を呼ぶ)
+  {
+    'stevearc/conform.nvim',
+    event = { 'BufWritePre' },
+    cmd = { 'ConformInfo' },
+    opts = {
+      formatters_by_ft = {
+        lua = { 'stylua' },
+        sh = { 'shfmt' },
+        bash = { 'shfmt' },
+        zsh = { 'shfmt' },
+        python = { 'ruff_format' },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        json = { 'prettierd', 'prettier', stop_after_first = true },
+        jsonc = { 'prettierd', 'prettier', stop_after_first = true },
+        yaml = { 'prettierd', 'prettier', stop_after_first = true },
+        markdown = { 'prettierd', 'prettier', stop_after_first = true },
+        go = { 'gofmt' },
+      },
+      format_on_save = {
+        timeout_ms = 1000,
+        lsp_format = 'fallback',
+      },
+    },
+  },
+
+  -- keymap discoverability (prefix 待機中にチートシート表示)
+  {
+    'folke/which-key.nvim',
+    event = 'VeryLazy',
+    opts = { preset = 'modern' },
+  },
 })
 
 
