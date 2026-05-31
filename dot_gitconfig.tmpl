@@ -1,17 +1,17 @@
 [user]
     name = nagamine-git
     email = tsuyoshi.nagamine@efg-technologies.com
-
+{{ if ne .chezmoi.os "darwin" }}
 [url "git@github.com:"]
     insteadOf = https://github.com/
-
+{{ end }}
 [credential "https://github.com"]
        helper = 
-       helper = !/usr/bin/gh auth git-credential
+       helper = !{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/gh{{ else }}/usr/bin/gh{{ end }} auth git-credential
 
 [credential "https://gist.github.com"]
        helper = 
-       helper = !/usr/bin/gh auth git-credential
+       helper = !{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/gh{{ else }}/usr/bin/gh{{ end }} auth git-credential
 [push]
        default = current
 
