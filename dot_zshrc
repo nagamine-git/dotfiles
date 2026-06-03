@@ -13,6 +13,13 @@ export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 export GPG_TTY=$(tty)
+
+# 1Password CLI: SSH 経由は Touch ID 等のバイオメトリックが使えないので
+# パスワード認証へフォールバックし、session token を eval しておく
+if [[ -n $SSH_TTY || -n $SSH_CONNECTION ]] && command -v op >/dev/null 2>&1; then
+  export OP_BIOMETRIC_UNLOCK_ENABLED=false
+  eval "$(op signin)"
+fi
 # export MISE_VERBOSE=1
 
 # 補完
