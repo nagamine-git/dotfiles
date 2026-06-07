@@ -13,3 +13,78 @@ bin
 bin/**
 scaphandre
 scaphandre/**
+
+{{- /*
+   macOS 用に Linux 専用の設定を無視する。
+   Linux では空になるので元の挙動は一切変わらない。
+   パターンは target (ホーム配下) のパス。
+*/ -}}
+{{- if eq .chezmoi.os "darwin" }}
+run_onchange_setup.sh
+setup.sh
+uninstall.sh
+wolow-companion
+
+.zshenv
+.claude-code-router
+.claude-code-router/**
+.openclaw
+.openclaw/**
+
+.config/hypr
+.config/hypr/**
+.config/waybar
+.config/waybar/**
+.config/wofi
+.config/wofi/**
+.config/swaync
+.config/swaync/**
+.config/xdg-desktop-portal
+.config/xdg-desktop-portal/**
+.config/sunshine
+.config/sunshine/**
+.config/foot
+.config/foot/**
+.config/autokey
+.config/autokey/**
+.config/darkman
+.config/darkman/**
+.config/fcitx5
+.config/fcitx5/**
+.config/hazkey
+.config/hazkey/**
+.config/systemd
+.config/systemd/**
+.config/tor
+.config/tor/**
+.config/fontconfig
+.config/fontconfig/**
+.config/gtk-3.0
+.config/gtk-3.0/**
+.config/cursor-flags.conf
+.config/electron-flags.conf
+.config/electron27-flags.conf
+.config/brave-browser.desktop
+
+.local/share/applications
+.local/share/applications/**
+.local/share/dark-mode.d
+.local/share/dark-mode.d/**
+.local/share/light-mode.d
+.local/share/light-mode.d/**
+
+.local/bin/hypr_auto_perfmonitor.sh
+.local/bin/hypr_perfmodeswitch.sh
+.local/bin/hyprvoice_ptt.sh
+.local/bin/lib_hypr_perfmode.sh
+.local/bin/droidcam.sh
+.local/bin/sunshine-virtual-display.sh
+.local/bin/idle-sleep.sh
+.local/bin/sleep_backup.sh
+.local/bin/setup_sleep_backup.sh
+.local/bin/integrate-appimage.sh
+.local/bin/uninstall-appimage.sh
+.local/bin/fix-brave-pwa.sh
+.local/bin/swaync_launcher.sh
+.local/bin/unified_launcher.sh
+{{- end }}

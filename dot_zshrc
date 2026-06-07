@@ -11,7 +11,13 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$PATH:/snap/bin"
-export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+if [[ "$OSTYPE" == darwin* ]]; then
+  # macOS: Homebrew shellenv と 1Password CLI SSH agent の位置が Linux と異なる
+  [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
+  export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+else
+  export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+fi
 export GPG_TTY=$(tty)
 
 # 1Password CLI: SSH 経由は Touch ID 等のバイオメトリックが使えないので
@@ -141,16 +147,22 @@ alias ta='tmux attach'
 
 # Cursorの実行
 code() {
-  unset GTK_IM_MODULE QT_IM_MODULE
-  export XMODIFIERS="@im=fcitx"
-  command /usr/bin/cursor "$@" \
-    --no-sandbox \
-    --enable-features=UseOzonePlatform \
-    --ozone-platform=wayland \
-    --enable-wayland-ime \
-    --wayland-text-input-version=3 \
-    > /dev/null 2>&1 &
-  disown
+  if [[ "$OSTYPE" == darwin* ]]; then
+    # macOS: cursor は PATH 経由（"Install 'cursor' command" でインストールされる）
+    command cursor "$@" > /dev/null 2>&1 &
+    disown
+  else
+    unset GTK_IM_MODULE QT_IM_MODULE
+    export XMODIFIERS="@im=fcitx"
+    command /usr/bin/cursor "$@" \
+      --no-sandbox \
+      --enable-features=UseOzonePlatform \
+      --ozone-platform=wayland \
+      --enable-wayland-ime \
+      --wayland-text-input-version=3 \
+      > /dev/null 2>&1 &
+    disown
+  fi
 }
 
 
@@ -229,7 +241,10 @@ k_pub() {
     '
 }
 
-alias pbcopy='wl-copy'
+if [[ "$OSTYPE" != darwin* ]]; then
+  # macOS はネイティブの pbcopy を持っているので上書きしない
+  alias pbcopy='wl-copy'
+fi
 alias b='~/.local/bin/biz_start.sh '
 
 # WoL を有効化して suspend。Wolow アプリ登録用の情報を表示し Enter で実行
@@ -360,7 +375,7 @@ _claude_notify_idle_watch() {
       current="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
       before="$(cat "$prompt_file" 2>/dev/null || true)"
       if [ "$current" = "$before" ]; then
-        /home/tsuyoshi/.local/bin/claude-notify idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
+        "$HOME/.local/bin/claude-notify" idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
       fi
       rm -f "$prompt_file" "$pid_file"
     ) &!
@@ -394,4 +409,9 @@ cc() {
 }
 
 # OpenClaw Completion
-source "/home/tsuyoshi/.openclaw/completions/openclaw.zsh"
+[ -f "$HOME/.openclaw/completions/openclaw.zsh" ] && source "$HOME/.openclaw/completions/openclaw.zsh"
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  # Tailscale は App Store 版でコマンドが PATH に入らないため
+  alias tailscale='/Applications/Tailscale.app/Contents/MacOS/Tailscale'
+fi
