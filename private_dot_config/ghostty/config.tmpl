@@ -5,6 +5,8 @@ font-feature = -liga
 font-feature = -calt
 {{- if eq .chezmoi.os "darwin" }}
 theme = Gruvbox Material
+# Option キーを Alt として送信 (tmux の M-m 最大化トグル等の M- バインドに必須)
+macos-option-as-alt = true
 {{- else }}
 theme = Hybrid
 {{- end }}
