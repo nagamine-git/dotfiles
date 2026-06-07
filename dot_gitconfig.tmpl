@@ -1,10 +1,13 @@
 [user]
     name = nagamine-git
     email = tsuyoshi.nagamine@efg-technologies.com
-{{ if ne .chezmoi.os "darwin" }}
+{{- if eq .chezmoi.os "darwin" }}
+    signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILUtKCSijZaipCWPdagKKGDtCMuIL1XPVSgwiCD+lK8J
+{{- end }}
+
 [url "git@github.com:"]
     insteadOf = https://github.com/
-{{ end }}
+
 [credential "https://github.com"]
        helper = 
        helper = !{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/gh{{ else }}/usr/bin/gh{{ end }} auth git-credential
@@ -46,4 +49,13 @@
   ignore-whitespace = true
 
 [color]
-  ui = auto 
+  ui = auto
+{{- if eq .chezmoi.os "darwin" }}
+# 1Password による SSH コミット署名 (mac のみ)
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[commit]
+	gpgsign = true
+{{- end }}
