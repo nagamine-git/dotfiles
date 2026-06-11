@@ -3,7 +3,6 @@
     "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}"
   },
   "permissions": {
-    "defaultMode": "auto",
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
@@ -18,8 +17,12 @@
       "Bash(yarn publish*)",
       "Bash(pnpm publish*)",
       "Bash(cargo publish*)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
+{{- if eq .chezmoi.os "darwin" }}
+  "model": "claude-fable-5[1m]",
+{{- end }}
   "hooks": {
     "Stop": [
       {
@@ -52,12 +55,13 @@
     }
   },
   "language": "japanese",
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
   "theme": "auto",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
@@ -74,6 +78,15 @@
         "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}"
       ]
     },
+    "zeed-browser": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--browserUrl",
+        "http://127.0.0.1:9222"
+      ]
+    },
     "slack": {
       "type": "http",
       "url": "https://mcp.slack.com/mcp",
@@ -84,6 +97,5 @@
     }
   },
   "allowCommandExecution": true,
-  "autoExecuteCommands": true,
-  "skipWorkflowUsageWarning": true
+  "autoExecuteCommands": true
 }
