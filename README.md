@@ -38,6 +38,25 @@ chezmoi apply -v
 
 必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
 
+### claude-pace (Claude Max 残量計)
+
+`~/.local/bin/claude-pace` は ccusage の active 5h block を読み、loop 司令塔が
+配車数を動的調整するための JSON を 1 行出力します (要: jq, ccusage):
+
+```bash
+$ claude-pace
+{"pct":33,"output_tokens":231220,"budget":700000,"recommend":"scale-up","block_end":"2026-06-11T18:00:00.000Z","remaining_min":184}
+```
+
+- `recommend`: scale-up (<60%) / hold (60-80%) / throttle (80-95%、軽作業のみ) / pause (>95%)
+- 予算は `~/.config/zeed/claude-budget.json` の `output_budget_5h` (無ければ 700k output tokens / 5h)。
+  limit hit 時に司令塔が実測 outputTokens を `hits` 配列へ追記して自動較正します
+  (このファイルは司令塔が書き換える mutable state なので chezmoi 管理外)
+- Cockpit 可視化は新 endpoint 不要 — 司令塔が wake ごとに
+  `https://telemetry.zeed.run/v1/agent-status` へ POST します
+  (`agent_id: local:claude-usage`, `kind: background`, `state: running`,
+  detail 例「窓 38% (out 270k/700k) · scale-up」)。詳細はスクリプト先頭のコメント参照。
+
 ### tuigreet
 /etc/greetd/config.toml
 ```bash
