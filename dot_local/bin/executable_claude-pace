@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# claude-pace — Claude Max 5h-window pacing gauge for the loop dispatcher
+#
+# Reads the active ccusage 5h block and prints one line of pacing JSON:
+#   {"pct":33,"output_tokens":231220,"budget":700000,"recommend":"scale-up",
+#    "block_end":"2026-06-11T18:00:00.000Z","remaining_min":184}
+#
+# recommend: scale-up (<60%) / hold (60-80%) / throttle (80-95%, light tasks
+#            only) / pause (>=95%)
+#
+# Budget file: ~/.config/zeed/claude-budget.json (override: CLAUDE_BUDGET_FILE)
+# Intentionally NOT chezmoi-managed — the dispatcher rewrites it to
+# self-calibrate. Format:
+#   {
+#     "output_budget_5h": 700000,        // active budget (outputTokens / 5h)
+#     "warn_pct": 80,
+#     "hits": [574000, 479000, 872000],  // outputTokens of limit-hit blocks
+#     "no_hit_max": 740000,              // largest block seen without a hit
+#     "updated": "2026-06-11"
+#   }
+# Self-calibration: on a limit hit the dispatcher appends the block's observed
+# outputTokens to "hits" and recomputes "output_budget_5h" (e.g. median).
+# Budget resolution order: output_budget_5h -> median(hits) -> 700000.
+#
+# Calibration notes (2026-06-11): limit hits observed at ~574k / ~479k / ~872k
+# outputTokens; one no-hit block at ~740k. cacheRead is irrelevant (hundreds of
+# millions of tokens without a hit). Observed rolling resets 13:10 / 21:40 /
+# 2:40 JST — offset from ccusage block edges, so treat block_end as approximate.
+#
+# Cockpit visibility (no new endpoint needed): each wake the dispatcher POSTs
+# this gauge to the existing agent-status endpoint:
+#   curl -s -X POST https://telemetry.zeed.run/v1/agent-status \
+#     -H "Authorization: Bearer $ZEED_TELEMETRY_READ_TOKEN" \
+#     -H 'content-type: application/json' \
+#     -d '{"agent_id":"local:claude-usage","kind":"background",
+#          "label":"Claude 残量計","state":"running",
+#          "detail":"窓 33% (out 231k/700k) · scale-up"}'
+set -euo pipefail
+
+BUDGET_FILE="${CLAUDE_BUDGET_FILE:-$HOME/.config/zeed/claude-budget.json}"
+DEFAULT_BUDGET=700000
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo '{"error":"jq not found"}'
+  exit 1
+fi
+
+if command -v ccusage >/dev/null 2>&1; then
+  blocks=$(ccusage blocks --json --active 2>/dev/null || true)
+else
+  blocks=$(npx --yes ccusage@latest blocks --json --active 2>/dev/null || true)
+fi
+
+budget="$DEFAULT_BUDGET"
+if [ -f "$BUDGET_FILE" ]; then
+  budget=$(jq -r --argjson def "$DEFAULT_BUDGET" '
+    if .output_budget_5h != null then .output_budget_5h
+    elif ((.hits // []) | length) > 0 then
+      ((.hits | sort) as $h | $h[(($h | length) / 2 | floor)])
+    else $def end' "$BUDGET_FILE" 2>/dev/null || echo "$DEFAULT_BUDGET")
+fi
+case "$budget" in
+  ''|*[!0-9]*) budget="$DEFAULT_BUDGET" ;;
+esac
+
+out=0
+block_end="null"
+remaining_min=0
+if [ -n "$blocks" ] && [ "$(printf '%s' "$blocks" | jq -r '.blocks | length' 2>/dev/null || echo 0)" != "0" ]; then
+  read -r out block_end remaining_min <<<"$(printf '%s' "$blocks" | jq -r '
+    .blocks[0]
+    | "\(.tokenCounts.outputTokens // 0) \(.endTime // "null") \(.projection.remainingMinutes // 0)"')"
+fi
+
+pct=$(( out * 100 / budget ))
+if [ "$pct" -lt 60 ]; then
+  recommend="scale-up"
+elif [ "$pct" -lt 80 ]; then
+  recommend="hold"
+elif [ "$pct" -lt 95 ]; then
+  recommend="throttle"
+else
+  recommend="pause"
+fi
+
+jq -cn \
+  --argjson pct "$pct" \
+  --argjson out "$out" \
+  --argjson budget "$budget" \
+  --arg recommend "$recommend" \
+  --arg block_end "$block_end" \
+  --argjson remaining_min "$remaining_min" \
+  '{pct: $pct, output_tokens: $out, budget: $budget, recommend: $recommend,
+    block_end: (if $block_end == "null" then null else $block_end end),
+    remaining_min: $remaining_min}'

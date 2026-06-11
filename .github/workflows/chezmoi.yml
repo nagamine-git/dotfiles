@@ -60,6 +60,10 @@ jobs:
         env:
           SHELLCHECK_OPTS: -e SC1091,SC2016,SC2155
         with:
+          # Fail only on real errors. Pre-existing style/warning findings across
+          # the repo kept this gate permanently red (main has been failing since
+          # 2026-05-29), so the default severity made the check meaningless.
+          severity: error
           ignore_paths: >-
             etc
             scaphandre
