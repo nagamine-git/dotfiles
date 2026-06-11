@@ -322,8 +322,26 @@ vim.api.nvim_create_autocmd('ColorScheme', { callback = set_base_diff_colors })
 vim.keymap.set('n', '<M-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent = true })
 
--- LSP設定
-local lspconfig = require('lspconfig')
+-- LSP設定 (Neovim 0.12 標準の vim.lsp.config / vim.lsp.enable 方式)
+-- nvim-lspconfig はサーバ定義データとして利用。バイナリが入っているサーバだけ有効化するので
+-- 未インストール環境でもエラーにならず、後からサーバを入れれば自動で有効になる。
+vim.lsp.config('*', {
+  capabilities = require('cmp_nvim_lsp').default_capabilities(),
+})
+local lsp_servers = {
+  lua_ls = 'lua-language-server',
+  gopls = 'gopls',
+  rust_analyzer = 'rust-analyzer',
+  pyright = 'pyright-langserver',
+  ruff = 'ruff',
+  ts_ls = 'typescript-language-server',
+  bashls = 'bash-language-server',
+}
+for server, bin in pairs(lsp_servers) do
+  if vim.fn.executable(bin) == 1 then
+    vim.lsp.enable(server)
+  end
+end
 
 -- 自動補完の設定
 local cmp = require('cmp')
