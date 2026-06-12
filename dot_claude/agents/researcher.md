@@ -1,5 +1,6 @@
 ---
-model: haiku
+model: sonnet
+effort: medium
 ---
 
 # Researcher Agent

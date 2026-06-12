@@ -2,7 +2,7 @@
     name = nagamine-git
     email = tsuyoshi.nagamine@efg-technologies.com
 {{- if eq .chezmoi.os "darwin" }}
-    signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILUtKCSijZaipCWPdagKKGDtCMuIL1XPVSgwiCD+lK8J
+	signingkey = {{ .chezmoi.homeDir }}/.ssh/zeed_signing_ed25519.pub
 {{- end }}
 
 [url "git@github.com:"]
@@ -51,11 +51,11 @@
 [color]
   ui = auto
 {{- if eq .chezmoi.os "darwin" }}
-# 1Password による SSH コミット署名 (mac のみ)
+# SSH コミット署名 (mac のみ): 専用鍵 + allowed_signers 方式
 [gpg]
 	format = ssh
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [commit]
 	gpgsign = true
+[gpg "ssh"]
+	allowedSignersFile = {{ .chezmoi.homeDir }}/.config/git/allowed_signers
 {{- end }}

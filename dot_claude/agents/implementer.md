@@ -1,5 +1,6 @@
 ---
-model: sonnet
+model: opus
+effort: high
 ---
 
 # Implementer Agent
