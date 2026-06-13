@@ -197,7 +197,9 @@ require('lazy').setup({
     end
   },
 
-  -- Supermaven
+  -- Supermaven (AI 補完) — The Rust Book 完走中は OFF。自分の指でタイプして学ぶため。
+  -- 再有効化は下の --[[ / --]] を消すだけ。
+  --[[
   {
     "supermaven-inc/supermaven-nvim",
     config = function()
@@ -208,6 +210,7 @@ require('lazy').setup({
       })
     end,
   },
+  --]]
 
   -- フォーマッタ統合 (LSP に依らず stylua/shfmt/prettier/ruff を呼ぶ)
   {
