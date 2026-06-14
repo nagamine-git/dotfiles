@@ -50,7 +50,9 @@ echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.d/99-bbr.co
 curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 
 # Install packages
-paru -S --needed --noconfirm - < ~/pkglist.txt || echo "Some packages failed to install"
+# pkglist.txt は chezmoi ソース管理下の正本を使う（CWD は冒頭で source dir に移動済み）。
+# 以前は管理外の ~/pkglist.txt を読んでいて、リポジトリと乖離したまま放置される地雷だった。
+paru -S --needed --noconfirm - < pkglist.txt || echo "Some packages failed to install"
 
 # フォント設定
 sudo mkdir -p /usr/share/fonts
@@ -73,9 +75,10 @@ install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmaca
 install_if_missing openclaw openclaw "npm i -g openclaw"
 
 # droidcam
-sudo dkms autoinstall
-sudo modprobe -r v4l2loopback
-sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920" max_width=1920 max_height=1080
+# v4l2loopback-dkms 未ビルド/未ロードでも setup 全体を止めない（set -e 対策で || true）。
+sudo dkms autoinstall || true
+sudo modprobe -r v4l2loopback 2>/dev/null || true
+sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920" max_width=1920 max_height=1080 || true
 
 # gh extension
 gh extension install HikaruEgashira/gh-q

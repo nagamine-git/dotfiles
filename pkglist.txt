@@ -1,7 +1,7 @@
 hyprland
 linux-headers
 greetd-tuigreet
-waybar
+waybar-git
 swaync
 git
 git-delta
@@ -93,3 +93,4 @@ hyprvoice-bin
 google-cloud-sdk
 mermaid-cli
 sunshine
+v4l2loopback-dkms
