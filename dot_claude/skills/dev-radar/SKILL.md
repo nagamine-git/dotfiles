@@ -33,7 +33,9 @@ chezmoi 管理下から「使用中ツール一覧」を Grep / Read で抽出:
 | `~/.local/share/chezmoi/dot_tmux.conf*` | `set -g @plugin '...'` |
 | `~/.local/share/chezmoi/private_dot_config/nvim/init.lua*` | lazy spec (`'owner/repo'`) |
 | `~/.local/share/chezmoi/dot_claude/` | agents, skills, settings |
-| `pacman -Qqe` (実行) | システムパッケージ |
+| `~/.local/share/chezmoi/private_dot_config/hypr/` | WM/compositor (Hyprland) 設定・バージョン |
+| `pacman -Qqe` (実行) / `/etc/os-release` | システムパッケージ・ディストリ |
+| `sw_vers` (darwin) / `uname -sr` | OS 種別・カーネル (Mac か Linux かで判定軸が変わる) |
 
 ### 3. WebSearch (カテゴリ別 / 期間内動向)
 - 補完エンジン (nvim-cmp / blink.cmp)
@@ -46,8 +48,15 @@ chezmoi 管理下から「使用中ツール一覧」を Grep / Read で抽出:
 - dotfiles 管理 1段メタ (home-manager / nix-darwin)
 - AI コーディング (claude code / cursor / aider)
 - パッケージ管理 1段メタ (nix / mise / homebrew)
+- **WM/compositor (Linux)** — Hyprland の動向 + 代替 (niri / river / sway)。スクロール式 (niri) 等のパラダイム変化を見る
+- **WM/タイリング (macOS)** — AeroSpace / yabai。Mac で Hyprland 風タイリングを求める場合の選択肢。**現状 macOS ネイティブで足りているなら ⌀**
+- **ディストリ/OS-base 2段メタ** — EndeavourOS(Arch) 継続妥当性、immutable 系 (bazzite/Aurora)、Apple Silicon の Asahi Linux。**移行コスト >> 便益が常態なので原則 ⌀、地殻変動時のみ ★**
 
 ソース: GitHub Release / Hacker News / 各 changelog。
+
+> WM/distro は「キャッチアップ」が主目的で「乗り換え」はめったに正解にならない層。
+> デファクトの地殻変動 (例: X11→Wayland 級) を**見逃さない**ためにスキャンするのであって、
+> 流行ごとに動くためではない。判定は辛口に、「現状維持で十分」を恐れない。
 
 ### 4. 判定
 
