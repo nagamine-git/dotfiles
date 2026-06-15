@@ -19,9 +19,19 @@ source = ~/.config/hypr/workspaces.conf
 ### MY PROGRAMS ###
 ###################
 
-$terminal = ghostty
-# 低GPU機(iGPU貧弱・VM等)で重い場合は以下と差し替える
-# $terminal = foot
+{{/*
+  端末を GPU 能力で自動選択 (apply 時に検出)。
+  - ディスクリート GPU あり (NVIDIA / Radeon RX / Navi / Arc) → ghostty (GPUアクセラ快適)
+  - 内蔵GPUのみ / VM / 検出失敗時の弱シグナル → foot (純CPUレンダで安定)
+  手動強制: 環境変数 CHEZMOI_TERMINAL=foot|ghostty で上書き。
+  lspci が空(検出不能)のときは ghostty を維持し、誤って foot へ格下げしない。
+*/ -}}
+{{- $virt := output "sh" "-c" "systemd-detect-virt 2>/dev/null || echo none" | trim -}}
+{{- $disc := output "sh" "-c" "vga=$(lspci 2>/dev/null | grep -iE 'VGA|3D|Display'); if [ -z \"$vga\" ]; then echo unknown; elif printf '%s' \"$vga\" | grep -iqE 'NVIDIA|Radeon RX|Navi [0-9]|Arc [AB][0-9]'; then echo yes; else echo no; fi" | trim -}}
+{{- $terminal := "ghostty" -}}
+{{- if or (ne $virt "none") (eq $disc "no") -}}{{- $terminal = "foot" -}}{{- end -}}
+{{- $terminal = env "CHEZMOI_TERMINAL" | default $terminal -}}
+$terminal = {{ $terminal }}
 $fileManager = thunar
 $menu = wofi --show drun
 $browser = zeed
