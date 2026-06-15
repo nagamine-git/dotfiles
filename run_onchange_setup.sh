@@ -28,18 +28,37 @@ install_if_missing() {
 # keyboard layout
 sudo cp etc/keyd/default.conf /etc/keyd/default.conf
 
-# nightly suspend (02:00 JST -> rtcwake 06:30) — atuin/Claude ログで「100% 寝てる」帯
-sudo install -m 755 etc/usr-local-sbin/nightly-suspend.sh /usr/local/sbin/nightly-suspend.sh
-sudo install -m 644 etc/systemd/system/nightly-suspend.service /etc/systemd/system/nightly-suspend.service
-sudo install -m 644 etc/systemd/system/nightly-suspend.timer /etc/systemd/system/nightly-suspend.timer
-sudo systemctl daemon-reload
-sudo systemctl enable --now nightly-suspend.timer
+# === 据置きデスクトップ専用の電源管理 (形状で自動振り分け) ===
+# nightly-suspend (夜間 rtcwake) と Wake-on-LAN は「据置き・有線・後で起こす」前提。
+# ノパソ (バッテリあり) は蓋閉じ/標準の電源管理に任せるのでスキップ。
+# バッテリ有無で判定するので、新マシンも自動で正しく振り分く。
+if ls /sys/class/power_supply/BAT* >/dev/null 2>&1; then
+  echo "→ laptop 検出: 据置き電源管理 (nightly-suspend / WoL) はスキップ"
+else
+  echo "→ desktop 検出: nightly-suspend + WoL を設定"
+  # nightly suspend (02:00 JST -> rtcwake 06:30) — atuin/Claude ログで「100% 寝てる」帯
+  sudo install -m 755 etc/usr-local-sbin/nightly-suspend.sh /usr/local/sbin/nightly-suspend.sh
+  sudo install -m 644 etc/systemd/system/nightly-suspend.service /etc/systemd/system/nightly-suspend.service
+  sudo install -m 644 etc/systemd/system/nightly-suspend.timer /etc/systemd/system/nightly-suspend.timer
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now nightly-suspend.timer
 
-# Wake-on-LAN (enp9s0) — 後で起こせる前提のスリープ用。LAN 内からは wakeonlan で起こせる。
-sudo install -m 644 etc/systemd/system/wol-enable.service /etc/systemd/system/wol-enable.service
-sudo install -m 755 etc/usr-lib-systemd-system-sleep/wol-rearm.sh /usr/lib/systemd/system-sleep/wol-rearm.sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now wol-enable.service
+  # Wake-on-LAN — 有線IF を動的検出 (enp9s0 ベタ書きをやめ、別NICの新デスクトップにも追従)。
+  # LAN 内からは wakeonlan で起こせる。
+  ETH_IF=$(ip -o link show | awk -F': ' '/: (en|eth)/{print $2; exit}')
+  if [ -n "$ETH_IF" ]; then
+    sudo install -m 644 etc/systemd/system/wol-enable.service /etc/systemd/system/wol-enable.service
+    sudo install -m 755 etc/usr-lib-systemd-system-sleep/wol-rearm.sh /usr/lib/systemd/system-sleep/wol-rearm.sh
+    # 検出した IF をインストール済みファイルへ反映 (etc/ の既定 enp9s0 を置換)
+    sudo sed -i "s/enp9s0/$ETH_IF/g" \
+      /etc/systemd/system/wol-enable.service \
+      /usr/lib/systemd/system-sleep/wol-rearm.sh
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now wol-enable.service
+  else
+    echo "  (有線IF が見つからないため WoL はスキップ)"
+  fi
+fi
 
 # bbr
 # Enable BBR congestion control algorithm
