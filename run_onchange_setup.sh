@@ -99,6 +99,11 @@ sudo systemctl enable --now tailscaled
 # tailscale operator設定（sudo無しでtailscale CLI/taildropを使えるように）
 sudo tailscale set --operator="$USER" 2>/dev/null || true
 
+# Tailscale SSH を有効化（sshd 不要で tailnet 経由ログイン可能に。新マシンを最初から
+# リモート管理できる）。`set` は他の設定を温存（`up` と違いクロバーしない）。
+# 未ログイン時は静かにスキップし、Tailscale 認証後の再実行で有効になる。
+sudo tailscale set --ssh 2>/dev/null || true
+
 # firewalld を使っている場合 tailscale0 を trusted zone に入れる
 # (WireGuardで既に認証済みなので全通信を許可)
 if systemctl is-active --quiet firewalld; then
