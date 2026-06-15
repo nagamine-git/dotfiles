@@ -26,10 +26,14 @@ toggle_fcitx5_zenzai() {
   if [[ -f "$fcitx5_config" ]]; then
     # 設定ファイルのバックアップを作成（初回のみ）
     [[ ! -f "${fcitx5_config}.backup" ]] && cp "$fcitx5_config" "${fcitx5_config}.backup"
-    
-    # ZenzaiEnabledの値を変更
-    sed -i "s/^ZenzaiEnabled=.*/ZenzaiEnabled=$enable_zenzai/" "$fcitx5_config"
-    
+
+    # ZenzaiEnabled を上書き。行が無ければ追記（fcitx5 GUI が行ごと消すことがあるため）
+    if grep -q '^ZenzaiEnabled=' "$fcitx5_config"; then
+      sed -i "s/^ZenzaiEnabled=.*/ZenzaiEnabled=$enable_zenzai/" "$fcitx5_config"
+    else
+      printf '\nZenzaiEnabled=%s\n' "$enable_zenzai" >> "$fcitx5_config"
+    fi
+
     # fcitx5に設定をリロードさせる
     if command -v fcitx5-remote >/dev/null 2>&1; then
       fcitx5-remote -r >/dev/null 2>&1 || true

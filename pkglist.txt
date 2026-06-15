@@ -94,3 +94,5 @@ google-cloud-sdk
 mermaid-cli
 sunshine
 v4l2loopback-dkms
+ttf-udev-gothic
+way-thumbsense-git

@@ -71,7 +71,9 @@ CustomXkbOption=
 # Force Enabled Addons
 EnabledAddons=
 # Force Disabled Addons
-DisabledAddons=
+# hazkey-server (0.2.1) が SIGILL で頻繁クラッシュするため addon を無効化
+# upstream で修正されたら空に戻す
+DisabledAddons=hazkey
 # Preload input method to be used by default
 PreloadInputMethod=True
 # パスワード欄に入力メソッドを許可する
