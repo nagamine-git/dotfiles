@@ -22,7 +22,20 @@ fcitx5_config="$HOME/.config/fcitx5/conf/hazkey.conf"
 # fcitx5のZenzai設定を変更する関数
 toggle_fcitx5_zenzai() {
   local enable_zenzai=$1
-  
+
+  # 弱 GPU (iGPU 等) では Zenzai (Vulkan/llama.cpp GPU offload) が SIGILL でクラッシュ
+  # するため、要求が True でもディスクリート GPU が無ければ強制 False に落とす。
+  # 判定閾値は hyprland.conf.tmpl の端末振り分けと同一 (NVIDIA/Radeon RX/Navi/Arc=強)。
+  # lspci が空 (検出不能) のときは誤って無効化せず要求値を尊重する。
+  if [[ "$enable_zenzai" == "True" ]]; then
+    local vga
+    vga=$(lspci 2>/dev/null | grep -iE 'VGA|3D|Display' || true)
+    if [[ -n "$vga" ]] && ! printf '%s' "$vga" | grep -iqE 'NVIDIA|Radeon RX|Navi [0-9]|Arc [AB][0-9]'; then
+      enable_zenzai="False"
+      logger -t hypr-perfmode "weak GPU detected: Zenzai を強制 OFF (要求=True)" 2>/dev/null || true
+    fi
+  fi
+
   if [[ -f "$fcitx5_config" ]]; then
     # 設定ファイルのバックアップを作成（初回のみ）
     [[ ! -f "${fcitx5_config}.backup" ]] && cp "$fcitx5_config" "${fcitx5_config}.backup"
