@@ -162,18 +162,23 @@ if command -v sunshine &> /dev/null; then
   systemctl --user enable --now sunshine.service 2>/dev/null || true
 fi
 
-# === 壁紙: 無ければ DL (冪等) ===
-# 環境心理学エビデンスで最上位の構図 (霧の湖×山×鏡面反射 / blue space + mystery + calm)。
-# Hyprland はタイル WM でデスクトップアイコンが無いため overlay 等は不要。hyprpaper が参照する。
+# === 壁紙: 昼/夜の2枚を DL (冪等)。darkman が日の出/日没で自動切替 ===
+# 昼= 霧の湖 (明るい/blue space + calm)、夜= 焚き火+星空 (暗い/暖色 = 低メラノピック)。
+# 実切替は ~/.local/share/{light,dark}-mode.d/wallpaper.sh (darkman フック) が行う。
+# hyprpaper はアクティブな wallpaper.jpg を参照。Hyprland はタイル WM なので overlay 不要。
 WALLPAPER_DIR="$HOME/.local/share/wallpaper"
-WALLPAPER="$WALLPAPER_DIR/wallpaper.jpg"
-if [ ! -f "$WALLPAPER" ]; then
-  echo "壁紙をダウンロードしています..."
-  mkdir -p "$WALLPAPER_DIR"
+mkdir -p "$WALLPAPER_DIR"
+[ -f "$WALLPAPER_DIR/wallpaper-day.jpg" ] || \
   curl -fsSL "https://unsplash.com/photos/dGyshquBzOc/download?force=true&w=3840" \
-    -o "$WALLPAPER" || echo "⚠ 壁紙のダウンロードに失敗 (継続)"
-else
-  echo "壁紙は既に存在します。スキップします。"
+    -o "$WALLPAPER_DIR/wallpaper-day.jpg" || echo "⚠ 昼壁紙のDL失敗 (継続)"
+[ -f "$WALLPAPER_DIR/wallpaper-night.jpg" ] || \
+  curl -fsSL "https://images.unsplash.com/photo-1722641277067-a7fba0ad1a59?q=85&fm=jpg&w=3840" \
+    -o "$WALLPAPER_DIR/wallpaper-night.jpg" || echo "⚠ 夜壁紙のDL失敗 (継続)"
+# 現在の darkman モードでアクティブ壁紙を決定 (取得不可なら昼)
+if [ "$(darkman get 2>/dev/null)" = "dark" ] && [ -f "$WALLPAPER_DIR/wallpaper-night.jpg" ]; then
+  cp -f "$WALLPAPER_DIR/wallpaper-night.jpg" "$WALLPAPER_DIR/wallpaper.jpg"
+elif [ -f "$WALLPAPER_DIR/wallpaper-day.jpg" ]; then
+  cp -f "$WALLPAPER_DIR/wallpaper-day.jpg" "$WALLPAPER_DIR/wallpaper.jpg"
 fi
 
 # 壁紙の上部輝度に合わせて waybar を明/暗テーマ化 (apply で style.css が既定に戻るため再適用)
