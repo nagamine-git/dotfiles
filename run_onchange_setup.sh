@@ -19,7 +19,9 @@ install_if_missing() {
  
   if ! command -v "$cmd" &> /dev/null; then
     echo "Installing $name..."
-    eval "$install_cmd"
+    # 個別 install の失敗で setup 全体 (set -e) を巻き込まない。
+    # 1 ツールが入らなくても後続のシステム設定・サービス有効化は続行させる。
+    eval "$install_cmd" || echo "⚠ $name のインストールに失敗 (継続)"
   else
     echo "$name already installed, skipping"
   fi
@@ -60,6 +62,16 @@ else
   fi
 fi
 
+# === sleep / lid 設定 (システム必須。壊れやすい install 群より前に置く) ===
+# パッケージや npm の失敗で電源・lid 設定がブロックされないよう、setup の冒頭側で確実に適用する。
+# (以前はファイル末尾にあり、openclaw の EACCES で set -e 中断 → 永久に未適用だった)
+sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
+# logind は起動時のみ conf を読むため、lid 挙動を即時反映するには再起動が要る
+# (既存セッションは維持される)。失敗しても setup は止めない。
+sudo systemctl restart systemd-logind 2>/dev/null || true
+
 # bbr
 # Enable BBR congestion control algorithm
 echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf
@@ -91,7 +103,9 @@ fi
 # アプリケーションのインストール
 install_if_missing starship starship "curl -sS https://starship.rs/install.sh | sh"
 install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin --force"
-install_if_missing openclaw openclaw "npm i -g openclaw"
+# システム npm の global prefix (/usr/lib/node_modules) は root 権限が要るため sudo。
+# 失敗しても install_if_missing 側で握りつぶし継続する。
+install_if_missing openclaw openclaw "sudo npm i -g openclaw"
 
 # droidcam
 # v4l2loopback-dkms 未ビルド/未ロードでも setup 全体を止めない（set -e 対策で || true）。
@@ -140,9 +154,5 @@ if command -v sunshine &> /dev/null; then
   sudo setcap cap_sys_admin+p "$(command -v sunshine)" 2>/dev/null || true
   systemctl --user enable --now sunshine.service 2>/dev/null || true
 fi
-
-sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
-sudo mkdir -p /etc/systemd/logind.conf.d
-sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
 
 echo 'Search and set to wallpaper = ,~/Pictures/john-towner-JgOeRuGD_Y4-unsplash.jpg'
