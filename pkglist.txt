@@ -68,6 +68,7 @@ wtype
 grim
 slurp
 swappy
+imagemagick
 base-devel
 libevdev
 keyd

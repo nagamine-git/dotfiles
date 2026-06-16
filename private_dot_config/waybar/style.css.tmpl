@@ -1,21 +1,25 @@
 {{- $c := .theme.colors -}}
 {{- $f := .theme.fonts -}}
+/* 以下3色は waybar-auto-theme.sh が壁紙上部の輝度で書き換える(既定=dark)。
+   明るい壁紙 → 黒文字/白バー、暗い壁紙 → 白文字/黒バー に自動切替される。 */
+@define-color wbfg #{{ $c.text.hex }};
+@define-color wbbg rgba({{ $c.bg_dark.rgb }}, 0.85);
+@define-color wbsh rgba(0, 0, 0, 0.7);
+
 * {
   margin: 0;
   padding: 0;
   font-size: 14px;
-  color: #{{ $c.text.hex }};
+  color: @wbfg;
   background-color: transparent;
-  /* 明るい壁紙(靄の空など)でも文字が埋もれないよう影で輪郭を確保 */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  /* どの壁紙でも文字が埋もれないよう影で輪郭を確保 (色も自動切替) */
+  text-shadow: 0 1px 2px @wbsh;
 }
 
 #waybar {
   padding: 4px;
   margin: 2px 0 0 0;
-  /* 0.35 だと明るい壁紙が透けて文字が読めなかったため 0.85 へ。
-     テキスト色は維持し、バー背景をしっかり暗くしてコントラストを確保 */
-  background-color: rgba({{ $c.bg_dark.rgb }}, 0.85);
+  background-color: @wbbg;
   border-radius: 8px;
 }
 

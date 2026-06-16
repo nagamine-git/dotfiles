@@ -43,7 +43,9 @@ $browser = zeed
 exec-once = fcitx5 -d --replace
 exec-once = 1password --silent &
 exec-once = hyprvoice serve &
-exec-once = waybar &
+# 壁紙の上部輝度で waybar を明/暗テーマに切替えてから waybar を起動 (; で順序保証、
+# テーマ失敗時も waybar は立つ)。壁紙変更時は waybar-auto-theme.sh を手動再実行。
+exec-once = ~/.local/bin/waybar-auto-theme.sh; waybar &
 exec-once = ~/.local/bin/swaync_launcher.sh &
 exec-once = swayosd-server &
 exec-once = hyprpaper &

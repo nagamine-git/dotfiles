@@ -175,3 +175,8 @@ if [ ! -f "$WALLPAPER" ]; then
 else
   echo "壁紙は既に存在します。スキップします。"
 fi
+
+# 壁紙の上部輝度に合わせて waybar を明/暗テーマ化 (apply で style.css が既定に戻るため再適用)
+if [ -x "$HOME/.local/bin/waybar-auto-theme.sh" ]; then
+  "$HOME/.local/bin/waybar-auto-theme.sh" || true
+fi
