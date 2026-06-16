@@ -2,16 +2,21 @@
 # claude-usage powerline display for tmux
 {{- if eq .chezmoi.os "darwin" }}
 #
-# macOS: ccusage based 5h-window usage percentage.
-# Claude.ai subscription plans (provider: other) cannot query rate limits
-# via API, so we estimate against a configurable token budget per 5h block.
+# macOS: ccusage based 5h-window usage estimate.
+# Claude.ai subscription plans cannot query the real rate limit on macOS
+# (claude-usage's API refresh fails under keychain auth and its JSONL reading
+# goes stale), so we estimate from a FRESH ccusage active block instead.
+# Key fix vs the old version: exclude cache_read tokens, which are ~98% of the
+# raw total and made the percentage explode (e.g. 276%->531%). We count
+# input + output + cache_create against a tunable budget so the number tracks
+# Claude Code's /status roughly while staying live.
 #
-# Env: CLAUDE_5H_BUDGET_TOKENS (default: 70000000 ~ Max 20x tier)
+# Env: CLAUDE_5H_BUDGET_TOKENS (default 25000000, calibrated to ~/status %).
 set -euo pipefail
 
 CACHE_FILE="${HOME}/.claude/ccusage-cache.json"
 CACHE_TTL=60
-BUDGET_TOKENS_5H="${CLAUDE_5H_BUDGET_TOKENS:-70000000}"
+BUDGET_TOKENS_5H="${CLAUDE_5H_BUDGET_TOKENS:-25000000}"
 
 ACCENT_FG="#{{ .theme.colors_darwin.bg_dark.hex }}"
 WARN_BG="#{{ .theme.colors_darwin.warning_alt.hex }}"
@@ -31,7 +36,7 @@ if [ -f "$CACHE_FILE" ]; then
 fi
 
 if [ -z "$json" ]; then
-  json=$(ccusage blocks --json --active 2>/dev/null || true)
+  json=$(ccusage blocks --active --json 2>/dev/null || true)
   [ -n "$json" ] && printf '%s' "$json" > "$CACHE_FILE"
 fi
 
@@ -39,10 +44,17 @@ if [ -z "$json" ] || [ "$(printf '%s' "$json" | jq -r '.blocks | length')" = "0"
   exit 0
 fi
 
-read -r cur proj rem <<<"$(printf '%s' "$json" | jq -r '.blocks[0] | "\(.totalTokens // 0) \(.projection.totalTokens // 0) \(.projection.remainingMinutes // 0)"')"
+# weighted = input + output + cache_create (cache_read excluded: cheap + huge).
+read -r weighted total rem <<<"$(printf '%s' "$json" | jq -r '.blocks[0] | "\((.tokenCounts.inputTokens // 0) + (.tokenCounts.outputTokens // 0) + (.tokenCounts.cacheCreationInputTokens // 0)) \(.totalTokens // 0) \(.projection.remainingMinutes // 0)"')"
 
-pct_now=$(( cur * 100 / BUDGET_TOKENS_5H ))
-pct_proj=$(( proj * 100 / BUDGET_TOKENS_5H ))
+pct_now=$(( weighted * 100 / BUDGET_TOKENS_5H ))
+# projection: scale weighted by the block's own total growth factor.
+proj_total=$(printf '%s' "$json" | jq -r '.blocks[0].projection.totalTokens // 0')
+if [ "${total:-0}" -gt 0 ] && [ "${proj_total:-0}" -gt 0 ]; then
+  pct_proj=$(( weighted * proj_total / total * 100 / BUDGET_TOKENS_5H ))
+else
+  pct_proj=$pct_now
+fi
 
 rm_h=$(( rem / 60 ))
 rm_m=$(( rem % 60 ))
