@@ -61,7 +61,6 @@ xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 distrobox
 slack-desktop-wayland
-mtr
 thunar
 nm-connection-editor
 wtype
