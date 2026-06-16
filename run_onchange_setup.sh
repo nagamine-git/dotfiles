@@ -72,6 +72,13 @@ sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid
 # デバイスを logind 経由で握っており、logind 再起動でアクセスを失い画面が tty へフォール
 # バックして壊れる。lid-action.conf は次回ブート時に自然に反映される (急ぐなら手動 reboot)。
 
+# === Wolow Companion (iPhone Wolow アプリからの遠隔電源制御 daemon) ===
+# install.sh が冪等にバイナリ/systemd service/polkit を設置し enable --now する。
+# 同梱バイナリは x86-64 ビルドなのでアーキを確認。失敗しても setup は止めない。
+if [ "$(uname -m)" = "x86_64" ] && [ -f ./install.sh ]; then
+  bash ./install.sh || echo "⚠ wolow-companion install 失敗 (継続)"
+fi
+
 # bbr
 # Enable BBR congestion control algorithm
 echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf
