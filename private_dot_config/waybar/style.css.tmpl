@@ -6,12 +6,16 @@
   font-size: 14px;
   color: #{{ $c.text.hex }};
   background-color: transparent;
+  /* 明るい壁紙(靄の空など)でも文字が埋もれないよう影で輪郭を確保 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 #waybar {
   padding: 4px;
   margin: 2px 0 0 0;
-  background-color: rgba({{ $c.bg_dark.rgb }}, 0.35);
+  /* 0.35 だと明るい壁紙が透けて文字が読めなかったため 0.85 へ。
+     テキスト色は維持し、バー背景をしっかり暗くしてコントラストを確保 */
+  background-color: rgba({{ $c.bg_dark.rgb }}, 0.85);
   border-radius: 8px;
 }
 
