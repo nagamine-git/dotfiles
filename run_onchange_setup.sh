@@ -68,9 +68,9 @@ fi
 sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
 sudo mkdir -p /etc/systemd/logind.conf.d
 sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
-# logind は起動時のみ conf を読むため、lid 挙動を即時反映するには再起動が要る
-# (既存セッションは維持される)。失敗しても setup は止めない。
-sudo systemctl restart systemd-logind 2>/dev/null || true
+# NOTE: logind は restart しない。稼働中の Wayland コンポジタ (Hyprland) は DRM/input
+# デバイスを logind 経由で握っており、logind 再起動でアクセスを失い画面が tty へフォール
+# バックして壊れる。lid-action.conf は次回ブート時に自然に反映される (急ぐなら手動 reboot)。
 
 # bbr
 # Enable BBR congestion control algorithm
