@@ -162,4 +162,16 @@ if command -v sunshine &> /dev/null; then
   systemctl --user enable --now sunshine.service 2>/dev/null || true
 fi
 
-echo 'Search and set to wallpaper = ,~/Pictures/john-towner-JgOeRuGD_Y4-unsplash.jpg'
+# === 壁紙: 無ければ DL (冪等) ===
+# 環境心理学エビデンスで最上位の構図 (霧の湖×山×鏡面反射 / blue space + mystery + calm)。
+# Hyprland はタイル WM でデスクトップアイコンが無いため overlay 等は不要。hyprpaper が参照する。
+WALLPAPER_DIR="$HOME/.local/share/wallpaper"
+WALLPAPER="$WALLPAPER_DIR/wallpaper.jpg"
+if [ ! -f "$WALLPAPER" ]; then
+  echo "壁紙をダウンロードしています..."
+  mkdir -p "$WALLPAPER_DIR"
+  curl -fsSL "https://unsplash.com/photos/dGyshquBzOc/download?force=true&w=3840" \
+    -o "$WALLPAPER" || echo "⚠ 壁紙のダウンロードに失敗 (継続)"
+else
+  echo "壁紙は既に存在します。スキップします。"
+fi
