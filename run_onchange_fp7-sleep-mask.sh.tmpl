@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# fp7-e14 は常時 Tailscale ホスト → systemd の sleep 系 target を mask し、
+# idle/lid/hypridle 経由を含む全 suspend 経路を物理的に封印する。
+# 他機 (am5-itx は nightly-suspend する) では何もしない。hostname gate はテンプレートで分岐。
+# 手動 mask の再現性確保が目的。既に masked なら no-op。非対話で sudo 不可なら警告のみ。
+{{- if eq .chezmoi.hostname "fp7-e14" }}
+set -u
+targets="sleep.target suspend.target hibernate.target hybrid-sleep.target"
+need=""
+for t in $targets; do
+  [ "$(systemctl is-enabled "$t" 2>/dev/null || true)" = "masked" ] || need="$need$t "
+done
+if [ -n "$need" ]; then
+  if sudo -n true 2>/dev/null || [ -t 0 ]; then
+    sudo systemctl mask $need && echo "masked:$need"
+  else
+    echo "WARN: sleep target 未mask ($need)。非対話で sudo 不可 → 'ssh -t fp7-e14 chezmoi apply' で再適用を。" >&2
+  fi
+fi
+{{- end }}
