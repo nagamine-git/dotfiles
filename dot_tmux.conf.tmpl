@@ -1,6 +1,8 @@
 {{- $c := .theme.colors -}}
 {{- if eq .chezmoi.os "darwin" -}}
 {{- $c = .theme.colors_darwin -}}
+{{- else if eq .chezmoi.hostname "fp7-e14" -}}
+{{- $c = .theme.colors_catppuccin -}}
 {{- end -}}
 set -g mouse on
 

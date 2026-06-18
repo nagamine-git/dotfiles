@@ -76,6 +76,22 @@ require('lazy').setup({
       vim.cmd('colorscheme gruvbox-material')
     end,
   },
+{{- else if eq .chezmoi.hostname "fp7-e14" }}
+  -- fp7-e14 専用テーマ。am5(hybrid 青)/mac(gruvbox 緑)と色相が被らない紫基調。
+  -- CIEDE2000 で既存色から最大の知覚距離を確認して採用 (mauve #cba6f7)。
+  {
+    'catppuccin/nvim',
+    name = 'catppuccin',
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require('catppuccin').setup({
+        flavour = 'mocha',
+        term_colors = true,
+      })
+      vim.cmd('colorscheme catppuccin')
+    end,
+  },
 {{- else }}
   {
     'w0ng/vim-hybrid',
@@ -199,6 +215,8 @@ require('lazy').setup({
 
   -- Supermaven (AI 補完) — The Rust Book 完走中は OFF。自分の指でタイプして学ぶため。
   -- 再有効化は下の --[[ / --]] を消すだけ。
+  -- 再有効化しても ~/ghq/github.com/nagamine-git/projects/ 配下(Rust 学習用)では
+  -- condition で常に AI 補完を OFF にする(自分の指でタイプして学ぶため)。
   --[[
   {
     "supermaven-inc/supermaven-nvim",
@@ -207,6 +225,10 @@ require('lazy').setup({
         keymaps = {
           accept_suggestion = "<M-Space>",  -- Alt+Space で補完確定
         },
+        -- 学習用ディレクトリだけは無効化(true を返すと Supermaven が起動しない)
+        condition = function()
+          return vim.fn.expand("%:p"):find("/ghq/github.com/nagamine-git/projects/", 1, true) ~= nil
+        end,
       })
     end,
   },

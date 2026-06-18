@@ -74,6 +74,45 @@ theme:
     warning_alt:
       hex: "e78a4e"
       rgb: "231, 138, 78"
+  # Catppuccin Mocha - fp7-e14 専用。am5(青hybrid)/mac(緑gruvbox)と色相が被らない
+  # 紫基調。CIEDE2000 で既存占有色から最大の知覚距離(min ΔE>20)を確認して採用。
+  colors_catppuccin:
+    primary:
+      hex: "cba6f7"
+      rgb: "203, 166, 247"
+    accent:
+      hex: "f5c2e7"
+      rgb: "245, 194, 231"
+    bg_dark:
+      hex: "181825"
+      rgb: "24, 24, 37"
+    bg_medium:
+      hex: "1e1e2e"
+      rgb: "30, 30, 46"
+    bg_light:
+      hex: "313244"
+      rgb: "49, 50, 68"
+    surface:
+      hex: "45475a"
+      rgb: "69, 71, 90"
+    text_dim:
+      hex: "7f849c"
+      rgb: "127, 132, 156"
+    text:
+      hex: "cdd6f4"
+      rgb: "205, 214, 244"
+    warning:
+      hex: "f9e2af"
+      rgb: "249, 226, 175"
+    error:
+      hex: "f38ba8"
+      rgb: "243, 139, 168"
+    success:
+      hex: "a6e3a1"
+      rgb: "166, 227, 161"
+    warning_alt:
+      hex: "fab387"
+      rgb: "250, 179, 135"
   fonts:
     ui: "IBM Plex Sans JP"
     terminal: "UDEV Gothic 35NFLG"
