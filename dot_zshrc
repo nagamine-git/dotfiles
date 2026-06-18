@@ -416,7 +416,6 @@ cc() {
 # OpenClaw Completion
 [ -f "$HOME/.openclaw/completions/openclaw.zsh" ] && source "$HOME/.openclaw/completions/openclaw.zsh"
 
-if [[ "$OSTYPE" == darwin* ]]; then
-  # Tailscale は App Store 版でコマンドが PATH に入らないため
-  alias tailscale='/Applications/Tailscale.app/Contents/MacOS/Tailscale'
-fi
+# Tailscale: mac でも OSS 版 (brew install --formula tailscale) を使うため
+# /opt/homebrew/bin/tailscale が PATH に入る。GUI アプリへの alias は不要。
+# (App Store / Standalone 版はサンドボックスのため Tailscale SSH サーバーになれない)
