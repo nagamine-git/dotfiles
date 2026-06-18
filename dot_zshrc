@@ -20,12 +20,6 @@ else
 fi
 export GPG_TTY=$(tty)
 
-# 1Password CLI: SSH 経由は Touch ID 等のバイオメトリックが使えないので
-# パスワード認証へフォールバックし、session token を eval しておく
-if [[ -n $SSH_TTY || -n $SSH_CONNECTION ]] && command -v op >/dev/null 2>&1; then
-  export OP_BIOMETRIC_UNLOCK_ENABLED=false
-  eval "$(op signin)"
-fi
 # export MISE_VERBOSE=1
 
 # 補完
@@ -45,6 +39,17 @@ eval "$(mise activate zsh)"
 eval "$(sheldon source)"
 eval "$(atuin init zsh)"
 eval "$(zoxide init zsh)"
+
+# 1Password CLI: SSH 経由は Touch ID 等のバイオメトリックが使えないので
+# パスワード認証へフォールバックし、session token を eval しておく。
+# NOTE: この op signin は prompt 初期化 (starship 等) より「後」に置くこと。
+#   SSH ログイン時にパスワード入力を Ctrl-C でスキップすると SIGINT が .zshrc を
+#   中断するため、先に prompt/補完を初期化しておかないと素の zsh prompt に落ちる。
+#   `|| true` で signin 失敗・中断時も以降を巻き込まない。
+if [[ -n $SSH_TTY || -n $SSH_CONNECTION ]] && command -v op >/dev/null 2>&1; then
+  export OP_BIOMETRIC_UNLOCK_ENABLED=false
+  eval "$(op signin)" || true
+fi
 
 # Atuinと競合しないようzshの履歴を無効化
 unset HISTFILE
