@@ -14,7 +14,8 @@ keyword general:gaps_in 0;
 keyword general:gaps_out 0;
 keyword decoration:multisample_edges false;
 keyword cursor:animate false;
-keyword misc:vrr on;
+# VRR は 4K@120Hz HDMI でパネルが黒落ちするため常時オフ (config 既定 vrr=0 / sunshine も 0 固定に合わせる)
+keyword misc:vrr 0;
 keyword misc:vfr true;
 keyword misc:animate_manual_resizes false;
 EOF
@@ -33,7 +34,8 @@ keyword general:gaps_in 5;
 keyword general:gaps_out 5;
 keyword decoration:multisample_edges true;
 keyword cursor:animate true;
-keyword misc:vrr on;
+# VRR は 4K@120Hz HDMI でパネルが黒落ちするため常時オフ (config 既定 vrr=0 / sunshine も 0 固定に合わせる)
+keyword misc:vrr 0;
 keyword misc:vfr true;
 keyword misc:animate_manual_resizes true;
 EOF
