@@ -114,7 +114,7 @@ theme:
       hex: "fab387"
       rgb: "250, 179, 135"
   fonts:
-    ui: "IBM Plex Sans JP"
+    ui: "BIZ UDPGothic"
     terminal: "UDEV Gothic 35NFLG"
     mono: "UDEV Gothic 35NFLG"
 

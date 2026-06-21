@@ -95,4 +95,5 @@ mermaid-cli
 sunshine
 v4l2loopback-dkms
 ttf-udev-gothic
+morisawa-biz-ud-gothic-fonts
 way-thumbsense-git
