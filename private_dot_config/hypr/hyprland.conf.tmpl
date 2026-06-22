@@ -66,6 +66,9 @@ exec-once = sudo keyd &
 exec-once = systemctl --user start darkman.service &
 exec-once = systemctl --user start sunshine.service &
 exec-once = ~/.local/bin/hypr_auto_perfmonitor.sh start &
+# VRR は 4K@120Hz HDMI でパネルが黒落ちするため、起動時にモニタへ vrr,0 を明示再適用する
+# (misc:vrr=0 は source=monitors.conf より後に評価されモニタ初期化時に効かないため)。
+exec-once = ~/.local/bin/hypr-vrr-off.sh &
 exec-once = ~/.local/bin/claude-usage-notify &
 exec-once = ~/.local/bin/droidcam.sh &
 exec-once = ~/.local/bin/executable_sleep_backup.sh &
