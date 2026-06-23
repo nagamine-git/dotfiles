@@ -97,3 +97,8 @@ v4l2loopback-dkms
 ttf-udev-gothic
 morisawa-biz-ud-gothic-fonts
 way-thumbsense-git
+
+# security / firewall / update-audit
+arch-audit
+ufw
+pacman-contrib

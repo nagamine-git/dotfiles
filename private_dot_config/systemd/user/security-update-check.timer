@@ -1,0 +1,10 @@
+[Unit]
+Description=週次セキュリティ更新チェックのスケジュール (月曜 10:00)
+
+[Timer]
+OnCalendar=Mon 10:00
+Persistent=true
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

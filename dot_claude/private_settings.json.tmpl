@@ -16,14 +16,32 @@
       "Bash(npm publish*)",
       "Bash(yarn publish*)",
       "Bash(pnpm publish*)",
-      "Bash(cargo publish*)"
+      "Bash(cargo publish*)",
+      "Bash(sendmail*)",
+      "Bash(mailx*)",
+      "Bash(mutt*)",
+      "Bash(ssmtp*)",
+      "Bash(swaks*)",
+      "Bash(op item*)",
+      "Bash(op read*)",
+      "Bash(op signin*)",
+      "Bash(op document*)"
     ],
     "defaultMode": "auto"
   },
-{{- if eq .chezmoi.os "darwin" }}
-  "model": "claude-opus-4-8",
-{{- end }}
+  "model": "opus",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash {{ .chezmoi.homeDir }}/.claude/hooks/injection-guard.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -40,7 +58,7 @@
     ]
   },
   "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,

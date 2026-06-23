@@ -1,0 +1,8 @@
+[Unit]
+Description=週次セキュリティ更新チェック (checkupdates + arch-audit → claude-notify)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/security-update-check.sh

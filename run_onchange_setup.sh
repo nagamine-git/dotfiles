@@ -155,6 +155,20 @@ fi
 systemctl --user daemon-reload
 systemctl --user enable --now taildrop.service 2>/dev/null || true
 
+# === 週次セキュリティ更新チェック (checkupdates + arch-audit → claude-notify) ===
+systemctl --user enable --now security-update-check.timer 2>/dev/null || true
+
+# === ファイアウォール (ufw): inbound 既定拒否 / Tailscale だけ全許可 ===
+# プロンプトインジェクション・侵害時の被害局所化。tailscale0 は WireGuard 認証済みなので全通。
+# tailscale0 を「先に」許可してから enable するので、tailnet 経由 SSH は切れない。
+if command -v ufw >/dev/null 2>&1; then
+  sudo ufw allow in on tailscale0
+  sudo ufw --force default deny incoming
+  sudo ufw --force default allow outgoing
+  sudo ufw --force enable
+  sudo systemctl enable --now ufw.service 2>/dev/null || true
+fi
+
 # Sunshine (iPhone / Moonlight RDP over Tailscale)
 # KMS キャプチャに必要な権限を付与し、ユーザ単位の常駐を有効化
 if command -v sunshine &> /dev/null; then

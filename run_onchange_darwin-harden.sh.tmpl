@@ -1,0 +1,14 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# macOS ハードニング: アプリケーションファイアウォールを有効化する。
+# socketfilterfw は admin 権限が要るため sudo (chezmoi apply 時に対話入力)。
+# inbound を未署名/未許可アプリに対して既定制御し、ステルス + ロギングを有効化。
+set -eu
+FW=/usr/libexec/ApplicationFirewall/socketfilterfw
+if [ -x "$FW" ]; then
+  sudo "$FW" --setglobalstate on || true
+  sudo "$FW" --setstealthmode on || true
+  sudo "$FW" --setloggingmode on || true
+  "$FW" --getglobalstate || true
+fi
+{{ end -}}
