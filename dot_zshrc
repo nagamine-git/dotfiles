@@ -413,6 +413,58 @@ cc() {
     _claude_notify_idle_watch
 }
 
+# セキュリティ/更新チェックの起動時表示 (Arch のみ)
+# 実体は ~/.local/bin/security-update-check.sh が state ファイルへ書く。zsh は「読むだけ」+
+# stat 数回で済ませ起動を遅くしない。重い arch-audit/checkupdates は cache が 24h 超のとき
+# だけ裏で回す (&! でプロンプト非ブロック、結果は次回シェルに反映)。
+# 警告は 3 系統: ①修正版が出た CVE(即/赤) ②最終更新から14日(soft/黄) ③30日(keyringリスク/赤)。
+if [[ "$OSTYPE" != darwin* ]] && command -v security-update-check.sh >/dev/null 2>&1; then
+  () {
+    local state="${XDG_STATE_HOME:-$HOME/.local/state}/security-update-check/status"
+    local pacdb=/var/lib/pacman/local
+    local max_age=$((24*3600))    # 24h でキャッシュ再生成
+    local stale1=$((14*86400))    # 14日: そろそろ更新 (soft)
+    local stale2=$((30*86400))    # 30日: keyring 古化リスク帯 (loud)
+    zmodload zsh/datetime 2>/dev/null   # EPOCHSECONDS
+    zmodload zsh/stat 2>/dev/null       # zstat
+
+    local now=$EPOCHSECONDS cache_mtime=0 db_mtime=0
+    [[ -e $state ]] && cache_mtime=$(zstat +mtime "$state" 2>/dev/null)
+    [[ -e $pacdb ]] && db_mtime=$(zstat +mtime "$pacdb" 2>/dev/null)
+
+    # キャッシュがあり、かつ前回チェック後にパッケージ変更が無い (= 内容が信頼できる) ときだけ表示。
+    # 直後に pacman -Syu した場合は db_mtime > cache_mtime となり、古い値で誤警告しない。
+    if [[ -s $state && $db_mtime -le $cache_mtime ]]; then
+      local first; read -r first < "$state"
+      local vuln=0 last_up=0 f
+      for f in ${(s: :)first}; do
+        case $f in
+          vuln=*)         vuln=${f#vuln=} ;;
+          last_upgrade=*) last_up=${f#last_upgrade=} ;;
+        esac
+      done
+      # ① 修正版が出た CVE は最優先で常に警告
+      if [[ $vuln -gt 0 ]]; then
+        print -P "%F{red}%B⚠ 要対応CVE ${vuln}件%b%f → %F{yellow}sudo pacman -Syu%f  (詳細: cat ${state/#$HOME/~})"
+      fi
+      # ②③ 最終更新からの経過で滞留警告
+      if [[ $last_up -gt 0 ]]; then
+        local age=$(( now - last_up )) days=$(( (now - last_up) / 86400 ))
+        if   (( age >= stale2 )); then
+          print -P "%F{red}⚠ 最終更新から ${days}日%f keyring 古化リスク → %F{yellow}sudo pacman -Sy archlinux-keyring && sudo pacman -Su%f"
+        elif (( age >= stale1 )); then
+          print -P "%F{yellow}● 最終更新から ${days}日%f そろそろ → %F{yellow}sudo pacman -Syu%f"
+        fi
+      fi
+    fi
+
+    # 未生成 / パッケージ変更後 / 24h 超 なら裏で再チェック (結果は次回起動に反映)
+    if [[ ! -s $state || $db_mtime -gt $cache_mtime || $(( now - cache_mtime )) -gt $max_age ]]; then
+      ( security-update-check.sh >/dev/null 2>&1 ) &!
+    fi
+  }
+fi
+
 # OpenClaw Completion
 [ -f "$HOME/.openclaw/completions/openclaw.zsh" ] && source "$HOME/.openclaw/completions/openclaw.zsh"
 
