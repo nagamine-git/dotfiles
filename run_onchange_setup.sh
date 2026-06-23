@@ -90,7 +90,9 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # Install packages
 # pkglist.txt は chezmoi ソース管理下の正本を使う（CWD は冒頭で source dir に移動済み）。
 # 以前は管理外の ~/pkglist.txt を読んでいて、リポジトリと乖離したまま放置される地雷だった。
-paru -S --needed --noconfirm - < pkglist.txt || echo "Some packages failed to install"
+# コメント(#…)と空行を除去してから渡す。paru/pacman は stdin の '#' を
+# パッケージ名扱いするため、生の pkglist.txt を流すと "# security" 等で誤爆する。
+grep -vE '^[[:space:]]*(#|$)' pkglist.txt | paru -S --needed --noconfirm - || echo "Some packages failed to install"
 
 # フォント設定
 sudo mkdir -p /usr/share/fonts
@@ -129,7 +131,9 @@ ghq get HikaruEgashira/gh-q
 # bluetooth
 echo "Enabling Bluetooth service..."
 sudo systemctl enable --now bluetooth
-sudo usermod -a -G bluetooth $USER
+# 今の bluez は 'bluetooth' グループを作らない (polkit 管理)。存在する環境だけ追加し、
+# 無い環境で usermod が exit 6 → setup.sh 全体を失敗させるのを防ぐ。
+getent group bluetooth >/dev/null && sudo usermod -a -G bluetooth "$USER"
 
 # systemctl
 sudo systemctl enable --now keyd
