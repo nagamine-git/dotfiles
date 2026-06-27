@@ -62,6 +62,9 @@ exec-once = autokey-gtk --hide &
 {{- if ne .chezmoi.hostname "fp7-e14" }}
 exec-once = bash -c 'while true; do hypridle; logger -t hypridle "respawned (exit=$?)"; sleep 3; done' &
 {{- end }}
+# polkit 認証エージェント: 1Password の system-auth アンロック / SSH署名承認ダイアログに必須。
+# 不在だと 1Password agent が署名を即拒否し、SSH鍵認証が "agent refused operation" で全滅する。
+exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 exec-once = sudo keyd &
 exec-once = systemctl --user start darkman.service &
 exec-once = systemctl --user start sunshine.service &
@@ -491,7 +494,14 @@ bindl = , XF86AudioPrev, exec, playerctl previous
 
 # === LAPTOP LID ===
 bindl = , switch:on:Lid Switch, exec, hyprctl keyword monitor "eDP-1, disable"
-bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1"
+{{- if eq .chezmoi.hostname "fp7-e14" }}
+# 蓋開け: 内蔵パネルの scale は monitors.conf と一致させ 1.25。
+# 素早い開閉のチャタリングや amdgpu PSR スタックでパネルが黒落ちするため、再有効化後に dpms on を明示する
+# (fp7-e14 は hypridle 不使用で DPMS 復帰の保険が無いため必須)。
+bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1.25" && hyprctl dispatch dpms on
+{{- else }}
+bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1" && hyprctl dispatch dpms on
+{{- end }}
 
 # === CLIPBOARD MANAGEMENT ===
 bind = CTRL $mainMod, V, exec, cliphist list | wofi --dmenu --prompt="📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v
