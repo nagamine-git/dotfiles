@@ -120,6 +120,24 @@ require('lazy').setup({
   -- ファジーファインダー
   { 'nvim-telescope/telescope.nvim', dependencies = { 'nvim-lua/plenary.nvim' } },
 
+  -- セッション復元（tmux-resurrect 連携: 引数なし起動時に cwd のセッションを自動復元）
+  {
+    'folke/persistence.nvim',
+    lazy = false,
+    opts = {},
+    config = function(_, opts)
+      require('persistence').setup(opts)
+      vim.api.nvim_create_autocmd('VimEnter', {
+        nested = true,
+        callback = function()
+          if vim.fn.argc() == 0 then
+            require('persistence').load()
+          end
+        end,
+      })
+    end,
+  },
+
   -- LSPと自動補完
   { 'neovim/nvim-lspconfig' },
   { 'hrsh7th/nvim-cmp' },

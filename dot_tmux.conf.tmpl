@@ -60,6 +60,11 @@ set -g pane-border-style 'fg=#{{ $c.bg_light.hex }}'
 set -g pane-active-border-style 'fg=#{{ $c.primary.hex }}'
 set -g @plugin 'wfxr/tmux-power'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
+# ペイン画面のテキストも保存（claude code 等の表示を復元時に再描画）
+set -g @resurrect-capture-pane-contents 'on'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+# 自動保存（15分間隔）＋ tmux 起動時に自動復元
+set -g @continuum-restore 'on'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @tmux-fzf-launch-key 'f'
 set -g @plugin '2kabhishek/tmux-tilit'
