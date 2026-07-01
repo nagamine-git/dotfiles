@@ -1,4 +1,5 @@
-{{- $bf := .browser_flags -}}
+{{- /* --gtk-version=4 は Zeed (Chromium 147 系) を SEGV させるため除外。Brave 用 browser_flags は共用なのでここで zeed 向けにのみ落とす */ -}}
+{{- $bf := .browser_flags | replace "--gtk-version=4 " "" | replace " --gtk-version=4" "" -}}
 {{- $zeed := "/usr/bin/zeed-browser" -}}
 [Desktop Entry]
 Version=1.0
