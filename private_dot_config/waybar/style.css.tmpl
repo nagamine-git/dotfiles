@@ -10,6 +10,9 @@
   margin: 0;
   padding: 0;
   font-size: 14px;
+  /* 全モジュールに Nerd Font 入り等幅を適用。未指定だと GTK 既定フォント →
+     アイコン(PUA)が Noto CJK にフォールバックして漢字化するため必須。 */
+  font-family: "{{ $f.mono }}", monospace;
   color: @wbfg;
   background-color: transparent;
   /* どの壁紙でも文字が埋もれないよう影で輪郭を確保 (色も自動切替) */
