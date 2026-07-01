@@ -120,7 +120,7 @@ theme:
 
   gtk_theme:
     dark: "Adwaita-dark"
-    light: "Adwaita"
+    light: "Adwaita-dark"
     icon_dark: "Adwaita"
     icon_light: "Adwaita"
 

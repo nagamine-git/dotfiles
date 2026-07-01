@@ -1,5 +1,8 @@
 #!/bin/bash
-gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+# 中央テーマ(.theme.colors)はダーク専用配色で light パレットを持たず、gtk.css も
+# Adwaita-dark 前提で色注入する。よって light モードでも GTK はダークで統一する
+# (明るいテーマに黒背景を流し込む従来のちぐはぐを解消。壁紙/色温度は darkman で昼夜切替継続)。
+gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface gtk-theme "{{ .theme.gtk_theme.light }}"
 gsettings set org.gnome.desktop.interface icon-theme "{{ .theme.gtk_theme.icon_light }}"
 gsettings set org.gnome.desktop.interface font-name "{{ .theme.fonts.ui }} 11"
