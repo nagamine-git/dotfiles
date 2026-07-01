@@ -26,7 +26,10 @@ source = ~/.config/hypr/workspaces.conf
   手動強制: 環境変数 CHEZMOI_TERMINAL=foot|ghostty で上書き。
   lspci が空(検出不能)のときは ghostty を維持し、誤って foot へ格下げしない。
 */ -}}
-{{- $virt := output "sh" "-c" "systemd-detect-virt 2>/dev/null || echo none" | trim -}}
+{{/* systemd-detect-virt は非仮想でも stdout に "none" を出しつつ exit 1 を返す。
+     `|| echo none` だと none が二重出力され $virt="none\nnone" となり、ne 判定が
+     誤って真 → GPU 有無に関わらず foot へ格下げされる。stdout のみを1値で取る。 */ -}}
+{{- $virt := output "sh" "-c" "v=$(systemd-detect-virt 2>/dev/null); echo \"${v:-none}\"" | trim -}}
 {{- $disc := output "sh" "-c" "vga=$(lspci 2>/dev/null | grep -iE 'VGA|3D|Display'); if [ -z \"$vga\" ]; then echo unknown; elif printf '%s' \"$vga\" | grep -iqE 'NVIDIA|Radeon RX|Navi [0-9]|Arc [AB][0-9]'; then echo yes; else echo no; fi" | trim -}}
 {{- $terminal := "ghostty" -}}
 {{- if or (ne $virt "none") (eq $disc "no") -}}{{- $terminal = "foot" -}}{{- end -}}
