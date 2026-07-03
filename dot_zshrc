@@ -46,10 +46,10 @@ eval "$(zoxide init zsh)"
 #   SSH ログイン時にパスワード入力を Ctrl-C でスキップすると SIGINT が .zshrc を
 #   中断するため、先に prompt/補完を初期化しておかないと素の zsh prompt に落ちる。
 #   `|| true` で signin 失敗・中断時も以降を巻き込まない。
-if [[ -n $SSH_TTY || -n $SSH_CONNECTION ]] && command -v op >/dev/null 2>&1; then
-  export OP_BIOMETRIC_UNLOCK_ENABLED=false
-  eval "$(op signin)" || true
-fi
+# if [[ -n $SSH_TTY || -n $SSH_CONNECTION ]] && command -v op >/dev/null 2>&1; then
+#  export OP_BIOMETRIC_UNLOCK_ENABLED=false
+#  eval "$(op signin)" || true
+# fi
 
 # Atuinと競合しないようzshの履歴を無効化
 unset HISTFILE
@@ -188,20 +188,20 @@ _ensure_kali_running() {
         echo "→ Starting Docker service..."
         sudo systemctl start docker
     fi
-    
+
     # Kaliコンテナが存在するか確認
     if ! distrobox list | grep -q "^kali"; then
         echo "→ Creating new Kali container (kali)..."
         distrobox create --name kali --image docker.io/kalilinux/kali-rolling:latest --home ~/distrobox/kali --additional-flags "--privileged"
     fi
-    
+
     return 0
 }
 
 # Kaliコンテナ内でコマンドを実行するヘルパー関数
 _distrobox_kali_exec() {
     _ensure_kali_running || return 1
-    
+
     # distroboxのenterコマンドでbashコマンドを実行
     distrobox enter kali -- bash -c "$@"
     return $?
