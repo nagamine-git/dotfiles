@@ -1,11 +1,11 @@
 # dotfiles
 
 個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
-主にEndeavourOS（Archベース）向けに最適化されています。
+主に CachyOS（Archベース）向けに最適化されています。EndeavourOS でもそのまま利用可能です（いずれも `ID_LIKE=arch`）。
 
 ## 主な設定
 
-- ディストリビューション: EndeavourOS / Arch Linux
+- ディストリビューション: CachyOS / EndeavourOS / Arch Linux
 - シェル: Zsh + Starship
 - ウィンドウマネージャ: Hyprland
 - ターミナル: Ghostty
