@@ -92,7 +92,7 @@ mermaid-cli
 sunshine
 v4l2loopback-dkms
 ttf-udev-gothic
-otf-ibm-plex
+ttf-ibm-plex
 way-thumbsense-git
 
 # security / firewall / update-audit
