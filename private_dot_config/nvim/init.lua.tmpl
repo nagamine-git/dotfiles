@@ -103,8 +103,19 @@ require('lazy').setup({
   },
 {{- end }}
 
-  -- ファイルエクスプローラー
-  { 'nvim-tree/nvim-tree.lua', dependencies = { 'nvim-tree/nvim-web-devicons' } },
+  -- ファイルエクスプローラー (VSCode 風サイドバー: git_status/buffers ビュー切替・診断バッジ)
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons',
+      'MunifTanjim/nui.nvim',
+    },
+  },
+
+  -- パンくずリスト (VSCode breadcrumbs: パス + 関数/クラス階層、クリック可)
+  { 'Bekaboo/dropbar.nvim', dependencies = { 'nvim-telescope/telescope-fzf-native.nvim' } },
 
   -- ステータスライン
   { 'nvim-lualine/lualine.nvim', dependencies = { 'nvim-tree/nvim-web-devicons' } },
@@ -114,8 +125,17 @@ require('lazy').setup({
 
   -- Git統合
   { 'lewis6991/gitsigns.nvim' },
-  { 'tpope/vim-fugitive' },
-  { 'sindrets/diffview.nvim' },
+  -- ソース管理パネル (VSCode Source Control 相当: 変更一覧→Enter で diff→ステージ/コミット)
+  {
+    'NeogitOrg/neogit',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'sindrets/diffview.nvim',
+      'nvim-telescope/telescope.nvim',
+    },
+  },
+  -- 本家 sindrets 版は 2024-08 から停滞のため活発なフォークを使用 (設定互換)
+  { 'sindrets/diffview.nvim', url = 'https://github.com/dlyongemallo/diffview.nvim' },
 
   -- ファジーファインダー
   { 'nvim-telescope/telescope.nvim', dependencies = { 'nvim-lua/plenary.nvim' } },
@@ -138,14 +158,36 @@ require('lazy').setup({
     end,
   },
 
-  -- LSPと自動補完
+  -- LSP
   { 'neovim/nvim-lspconfig' },
-  { 'hrsh7th/nvim-cmp' },
-  { 'hrsh7th/cmp-nvim-lsp' },
-  { 'hrsh7th/cmp-buffer' },
-  { 'hrsh7th/cmp-path' },
-  { 'L3MON4D3/LuaSnip' },
-  { 'saadparwaiz1/cmp_luasnip' },
+
+  -- 自動補完 (nvim-cmp 一式 + lspkind を blink.cmp 1つに統合。アイコン表示は内蔵)
+  {
+    'saghen/blink.cmp',
+    version = '1.*',
+    dependencies = { 'L3MON4D3/LuaSnip' },
+    opts = {
+      snippets = { preset = 'luasnip' },
+      keymap = {
+        preset = 'default',
+        ['<Tab>'] = { 'select_next', 'snippet_forward', 'fallback' },
+        ['<S-Tab>'] = { 'select_prev', 'snippet_backward', 'fallback' },
+        ['<CR>'] = { 'accept', 'fallback' },
+        ['<C-Space>'] = { 'show', 'show_documentation', 'hide_documentation' },
+        ['<C-e>'] = { 'hide', 'fallback' },
+        ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
+        ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
+      },
+      sources = { default = { 'lsp', 'path', 'snippets', 'buffer' } },
+      completion = {
+        documentation = { auto_show = true },
+        menu = {
+          draw = { treesitter = { 'lsp' } },
+        },
+      },
+      appearance = { nerd_font_variant = 'mono' },
+    },
+  },
 
   -- シンタックスハイライト
   { 'nvim-treesitter/nvim-treesitter', branch = 'main', build = ':TSUpdate' },
@@ -199,36 +241,36 @@ require('lazy').setup({
     },
   },
 
-  -- コメントアウト
-  { 'numToStr/Comment.nvim' },
-
-  -- 括弧補完
-  { 'windwp/nvim-autopairs' },
+  -- コメントアウト → Neovim 0.10+ 標準の gc/gcc を使用 (Comment.nvim 廃止)
+  -- 括弧補完 → mini.nvim の mini.pairs を使用 (nvim-autopairs 廃止)
 
   -- インデントガイド
   { 'lukas-reineke/indent-blankline.nvim', main = "ibl" },
 
-  -- アイコン表示
-  { 'onsails/lspkind-nvim' },
-
   -- 暗号化
   { 'jamessan/vim-gnupg' },
 
-  -- Claude Code
+  -- Claude Code (IDE 連携: tmux 別ペインの Claude Code を /ide で接続する)
+  -- Coder 社製サードパーティ (VSCode 拡張の WebSocket/MCP をリバースエンジニアリング)。
+  -- provider="none" で Neovim 内蔵ターミナルは使わず、WebSocket サーバーだけ待受け。
+  -- 運用: tmux ペインで `claude` を起動 → `/ide` で本 nvim に接続 →
+  --   neo-tree 上でファイルに <leader>as → Claude のコンテキストへ送信、
+  --   編集提案は nvim ネイティブ diff で accept/reject。
   {
-    "greggh/claude-code.nvim",
-    dependencies = {
-      "nvim-lua/plenary.nvim", -- Required for git operations
+    'coder/claudecode.nvim',
+    config = true,
+    opts = {
+      terminal = { provider = 'none' },
     },
-    config = function()
-      require("claude-code").setup({
-        window = {
-          position = "vertical",
-          split_ratio = 0.3,
-          enter_insert = true,
-        }
-      })
-    end
+    keys = {
+      { '<leader>as', '<cmd>ClaudeCodeSend<cr>', mode = 'v', desc = 'Send selection to Claude' },
+      {
+        '<leader>as',
+        '<cmd>ClaudeCodeTreeAdd<cr>',
+        desc = 'Add file to Claude context',
+        ft = { 'neo-tree', 'oil', 'minifiles' },
+      },
+    },
   },
 
   -- Supermaven (AI 補完) — The Rust Book 完走中は OFF。自分の指でタイプして学ぶため。
@@ -299,43 +341,49 @@ require('lualine').setup({
   },
 })
 
--- nvim-tree設定
-require('nvim-tree').setup({
-  view = {
-    width = 30,
-    side = 'left',
-  },
-  renderer = {
-    icons = {
-      show = {
-        git = true,
-        folder = true,
-        file = true,
-        folder_arrow = true,
+-- neo-tree設定 (VSCode 風サイドバー)
+require('neo-tree').setup({
+  close_if_last_window = true,
+  enable_git_status = true,
+  enable_diagnostics = true,
+  sources = { 'filesystem', 'buffers', 'git_status' },
+  default_component_configs = {
+    git_status = {
+      symbols = {
+        added = '✚', modified = '', deleted = '✖', renamed = '󰁕',
+        untracked = '', ignored = '', unstaged = '󰄱', staged = '', conflict = '',
       },
     },
   },
-  git = {
-    enable = true,
-    ignore = false,
+  window = {
+    width = 32,
+    position = 'left',
   },
-  filters = {
-    dotfiles = false,
-    custom = {
-      "^\\.git$",
-      "node_modules",
-      "build",
-      "dist",
+  filesystem = {
+    follow_current_file = { enabled = true }, -- 開いているファイルをツリーで自動追従 (旧 update_focused_file)
+    use_libuv_file_watcher = true,
+    filtered_items = {
+      visible = true,
+      hide_dotfiles = false,
+      hide_gitignored = false,
+      hide_by_name = { 'node_modules', 'build', 'dist' },
+      never_show = { '.git' },
     },
-  },
-  update_focused_file = {
-    enable = true,
-    update_cwd = true,
   },
 })
 
--- nvim-treeのキーマッピング
-vim.keymap.set('n', '<C-n>', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
+-- neo-tree のキーマッピング (<C-n> トグルは従来通り / git_status ビュー切替を追加)
+vim.keymap.set('n', '<C-n>', ':Neotree toggle<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ge', ':Neotree git_status<CR>', { noremap = true, silent = true })
+
+-- dropbar設定 (VSCode breadcrumbs)
+require('dropbar').setup()
+
+-- neogit設定 (VSCode Source Control 相当)
+require('neogit').setup({
+  integrations = { diffview = true, telescope = true },
+})
+vim.keymap.set('n', '<leader>gg', ':Neogit<CR>', { noremap = true, silent = true })
 
 -- gitsigns設定
 require('gitsigns').setup()
@@ -369,7 +417,7 @@ vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent
 -- nvim-lspconfig はサーバ定義データとして利用。バイナリが入っているサーバだけ有効化するので
 -- 未インストール環境でもエラーにならず、後からサーバを入れれば自動で有効になる。
 vim.lsp.config('*', {
-  capabilities = require('cmp_nvim_lsp').default_capabilities(),
+  capabilities = require('blink.cmp').get_lsp_capabilities(),
 })
 local lsp_servers = {
   lua_ls = 'lua-language-server',
@@ -386,75 +434,17 @@ for server, bin in pairs(lsp_servers) do
   end
 end
 
--- 自動補完の設定
-local cmp = require('cmp')
-local luasnip = require('luasnip')
-local lspkind = require('lspkind')
-
-local has_words_before = function()
-  local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-  return col ~= 0 and
-    vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
-end
-
-cmp.setup({
-  snippet = {
-    expand = function(args)
-      luasnip.lsp_expand(args.body)
-    end,
-  },
-  mapping = cmp.mapping.preset.insert({
-    ['<C-b>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete(),
-    ['<C-e>'] = cmp.mapping.abort(),
-    ['<CR>'] = cmp.mapping.confirm({ select = true }),
-    ["<Tab>"] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      elseif has_words_before() then
-        cmp.complete()
-      else
-        fallback()
-      end
-    end, { "i", "s" }),
-    ["<S-Tab>"] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { "i", "s" }),
-  }),
-  sources = cmp.config.sources({
-    { name = 'nvim_lsp', max_item_count = 15, keyword_length = 2 },
-    { name = 'luasnip', max_item_count = 15, keyword_length = 2 },
-    { name = 'buffer', max_item_count = 15, keyword_length = 2 },
-    { name = 'path' },
-  }),
-  formatting = {
-    format = lspkind.cmp_format({
-      mode = "symbol",
-      maxwidth = 50,
-      ellipsis_char = "...",
-    }),
-  },
-})
+-- 補完 (blink.cmp) はプラグイン spec の opts で完結。ここでの設定は不要。
 
 -- Treesitter: Neovim 0.12+ は自動でハイライト有効化。パーサーは :TSInstall で管理。
 
 -- indent-blankline設定
 require('ibl').setup()
 
--- Comment.nvim設定
-require('Comment').setup()
+-- コメント (gc/gcc) は Neovim 0.10+ 標準機能を使用 (Comment.nvim 廃止)
 
--- nvim-autopairs設定
-require('nvim-autopairs').setup()
+-- 括弧補完は mini.pairs を使用 (nvim-autopairs 廃止)
+require('mini.pairs').setup()
 
 -- bufferline設定
 require('bufferline').setup({
@@ -479,7 +469,7 @@ require('bufferline').setup({
     end,
     offsets = {
       {
-        filetype = "NvimTree",
+        filetype = "neo-tree",
         text = "File Explorer",
         text_align = "center",
         separator = true
