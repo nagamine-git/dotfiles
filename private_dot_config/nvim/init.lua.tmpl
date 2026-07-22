@@ -1,6 +1,10 @@
 -- init.lua
 vim.loader.enable()
 
+-- leader キー (Space)。プラグインのキーマップに効かせるため lazy.setup より前で設定。
+vim.g.mapleader = ' '
+vim.g.maplocalleader = ' '
+
 -- 基本設定
 vim.opt.encoding = 'utf-8'
 vim.opt.number = true
@@ -22,7 +26,17 @@ vim.opt.smartindent = true
 -- 表示設定
 vim.opt.list = true
 vim.opt.listchars = { tab = '»-', trail = '-', eol = '↲', extends = '»', precedes = '«', nbsp = '%' }
-vim.opt.fillchars:append({ eob = ' ' })
+-- パネル境界を実線でくっきり (VSCode 風の矩形パネル感。色はテーマ維持)
+vim.opt.fillchars:append({
+  eob = ' ',
+  vert = '│',
+  horiz = '─',
+  horizup = '┴',
+  horizdown = '┬',
+  vertleft = '┤',
+  vertright = '├',
+  verthoriz = '┼',
+})
 vim.opt.diffopt:append('iwhite,iwhiteall,iblank')
 vim.opt.laststatus = 3 -- Global statusline (recommended for avante.nvim)
 vim.opt.showcmd = true
@@ -125,15 +139,7 @@ require('lazy').setup({
 
   -- Git統合
   { 'lewis6991/gitsigns.nvim' },
-  -- ソース管理パネル (VSCode Source Control 相当: 変更一覧→Enter で diff→ステージ/コミット)
-  {
-    'NeogitOrg/neogit',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'sindrets/diffview.nvim',
-      'nvim-telescope/telescope.nvim',
-    },
-  },
+  -- ソース管理ビュー (VSCode Source Control 相当: 変更ファイル一覧→選択で side-by-side diff)
   -- 本家 sindrets 版は 2024-08 から停滞のため活発なフォークを使用 (設定互換)
   { 'sindrets/diffview.nvim', url = 'https://github.com/dlyongemallo/diffview.nvim' },
 
@@ -379,24 +385,43 @@ vim.keymap.set('n', '<leader>ge', ':Neotree git_status<CR>', { noremap = true, s
 -- dropbar設定 (VSCode breadcrumbs)
 require('dropbar').setup()
 
--- neogit設定 (VSCode Source Control 相当)
-require('neogit').setup({
-  integrations = { diffview = true, telescope = true },
+-- gitsigns設定 (行単位の変更表示 + ステージ操作。コミットは tmux ペインの git/Claude Code で)
+require('gitsigns').setup({
+  on_attach = function(bufnr)
+    local gs = require('gitsigns')
+    local function map(mode, l, r, desc)
+      vim.keymap.set(mode, l, r, { buffer = bufnr, silent = true, desc = desc })
+    end
+    map('n', ']c', function() gs.nav_hunk('next') end, '次の変更へ')
+    map('n', '[c', function() gs.nav_hunk('prev') end, '前の変更へ')
+    map('n', '<leader>gs', gs.stage_hunk, 'この hunk をステージ')
+    map('n', '<leader>gr', gs.reset_hunk, 'この hunk を破棄')
+    map('n', '<leader>gS', gs.stage_buffer, 'ファイル全体をステージ')
+    map('n', '<leader>gp', gs.preview_hunk, '変更をインラインプレビュー')
+    map('n', '<leader>gb', function() gs.blame_line({ full = true }) end, '行の blame')
+  end,
 })
-vim.keymap.set('n', '<leader>gg', ':Neogit<CR>', { noremap = true, silent = true })
-
--- gitsigns設定
-require('gitsigns').setup()
 
 -- Telescope設定
 vim.keymap.set('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
 
--- Diffview設定
+-- Diffview設定 (VSCode の「ソース管理ビュー」= 変更ファイル一覧 → 選択で side-by-side diff)
 require('diffview').setup({
   diff_binaries = false,
   enhanced_diff_hl = true,
   use_icons = true,
+  file_panel = {
+    listing_style = 'list', -- ツリーではなく VSCode 風のフラットなファイル一覧
+    win_config = {
+      position = 'left',
+      width = 32,
+    },
+  },
+  view = {
+    default = { layout = 'diff2_horizontal' }, -- 左右 side-by-side
+    merge_tool = { layout = 'diff3_horizontal' },
+  },
 })
 
 -- 通常のvim diff用のカスタム色設定
@@ -410,8 +435,20 @@ end
 set_base_diff_colors()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = set_base_diff_colors })
 
-vim.keymap.set('n', '<M-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true })
-vim.keymap.set('n', '<leader>dc', ':DiffviewClose<CR>', { noremap = true, silent = true })
+-- パネル境界をくっきり見せる (VSCode の editorGroup.border 相当のニュートラルグレー)
+-- 3台とも暗背景なので固定グレーで境界が溶けず、各テーマの色相も壊さない。
+local function set_ui_accents()
+  vim.api.nvim_set_hl(0, 'WinSeparator', { fg = '#585858' })
+end
+set_ui_accents()
+vim.api.nvim_create_autocmd('ColorScheme', { callback = set_ui_accents })
+
+-- ソース管理ビュー (VSCode の Source Control 感覚)
+vim.keymap.set('n', '<leader>gg', ':DiffviewOpen<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを開く' })
+vim.keymap.set('n', '<leader>gc', ':DiffviewClose<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを閉じる' })
+vim.keymap.set('n', '<leader>gh', ':DiffviewFileHistory %<CR>', { noremap = true, silent = true, desc = 'このファイルの変更履歴' })
+vim.keymap.set('n', '<leader>gH', ':DiffviewFileHistory<CR>', { noremap = true, silent = true, desc = 'リポジトリの変更履歴' })
+vim.keymap.set('n', '<M-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true }) -- 従来キーも維持
 
 -- LSP設定 (Neovim 0.12 標準の vim.lsp.config / vim.lsp.enable 方式)
 -- nvim-lspconfig はサーバ定義データとして利用。バイナリが入っているサーバだけ有効化するので
