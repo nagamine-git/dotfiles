@@ -337,6 +337,36 @@ require('lazy').setup({
     event = 'VeryLazy',
     opts = { preset = 'modern' },
   },
+
+  -- ▼ VSCode 風 UI 強化 ▼
+
+  -- 診断/シンボルのパネル (VSCode 下部「問題」タブ + アウトラインビュー相当)
+  {
+    'folke/trouble.nvim',
+    cmd = 'Trouble',
+    opts = { focus = true },
+    keys = {
+      { '<leader>xx', '<cmd>Trouble diagnostics toggle<cr>', desc = 'ワークスペース診断 (問題パネル)' },
+      { '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<cr>', desc = 'このファイルの診断' },
+      { '<leader>xs', '<cmd>Trouble symbols toggle focus=false<cr>', desc = 'シンボル一覧 (アウトライン)' },
+      { '<leader>xl', '<cmd>Trouble loclist toggle<cr>', desc = 'Location list' },
+      { '<leader>xq', '<cmd>Trouble qflist toggle<cr>', desc = 'Quickfix list' },
+    },
+  },
+
+  -- スクロールバー + 変更/診断/検索マーカー (VSCode 右端のスクロールバー装飾・ミニマップ的把握)
+  { 'lewis6991/satellite.nvim', opts = {} },
+
+  -- LSP 進捗表示 (VSCode 右下の進捗トースト)
+  { 'j-hui/fidget.nvim', opts = {} },
+
+  -- TODO/FIXME/HACK ハイライト + 一覧 (VSCode の TODO Tree 拡張相当)
+  {
+    'folke/todo-comments.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    event = 'VeryLazy',
+    opts = {},
+  },
 })
 
 
@@ -410,9 +440,17 @@ require('gitsigns').setup({
   end,
 })
 
--- Telescope設定
+-- Telescope設定 (VSCode のクイックオープン / 全文検索 / コマンドパレット相当)
 vim.keymap.set('n', '<C-p>', ':Telescope find_files<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<C-f>', ':Telescope live_grep<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ff', ':Telescope find_files<CR>', { noremap = true, silent = true, desc = 'ファイルを開く (Ctrl+P)' })
+vim.keymap.set('n', '<leader>fg', ':Telescope live_grep<CR>', { noremap = true, silent = true, desc = '全文検索 (Ctrl+Shift+F)' })
+vim.keymap.set('n', '<leader>fb', ':Telescope buffers<CR>', { noremap = true, silent = true, desc = '開いているバッファ' })
+vim.keymap.set('n', '<leader>fr', ':Telescope oldfiles<CR>', { noremap = true, silent = true, desc = '最近のファイル' })
+vim.keymap.set('n', '<leader>fc', ':Telescope commands<CR>', { noremap = true, silent = true, desc = 'コマンドパレット (Ctrl+Shift+P)' })
+vim.keymap.set('n', '<leader>fk', ':Telescope keymaps<CR>', { noremap = true, silent = true, desc = 'キーマップ検索' })
+vim.keymap.set('n', '<leader>fd', ':Telescope diagnostics<CR>', { noremap = true, silent = true, desc = '診断一覧' })
+vim.keymap.set('n', '<leader>ft', ':TodoTelescope<CR>', { noremap = true, silent = true, desc = 'TODO/FIXME 一覧' })
 
 -- Diffview設定 (VSCode の「ソース管理ビュー」= 変更ファイル一覧 → 選択で side-by-side diff)
 require('diffview').setup({
@@ -492,6 +530,52 @@ for server, bin in pairs(lsp_servers) do
   end
 end
 
+-- LSP キーマップ (VSCode の定義ジャンプ/参照/リネーム/コードアクション相当)。
+-- LspAttach で「LSP が付いたバッファだけ」に設定。( ) 内は対応する VSCode 操作。
+vim.api.nvim_create_autocmd('LspAttach', {
+  callback = function(ev)
+    local function map(mode, keys, fn, desc)
+      vim.keymap.set(mode, keys, fn, { buffer = ev.buf, silent = true, desc = desc })
+    end
+    map('n', 'gd', vim.lsp.buf.definition, '定義へジャンプ (F12)')
+    map('n', 'gD', vim.lsp.buf.declaration, '宣言へジャンプ')
+    map('n', 'gr', vim.lsp.buf.references, '参照一覧 (Shift+F12)')
+    map('n', 'gi', vim.lsp.buf.implementation, '実装へジャンプ')
+    map('n', 'gy', vim.lsp.buf.type_definition, '型定義へジャンプ')
+    map('n', 'K', vim.lsp.buf.hover, 'ホバー (ドキュメント表示)')
+    map('n', '<leader>rn', vim.lsp.buf.rename, 'シンボルをリネーム (F2)')
+    map({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, 'コードアクション (Ctrl+.)')
+    map('n', '<leader>e', vim.diagnostic.open_float, '行の診断を表示')
+    map('n', '[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, '前の診断へ')
+    map('n', ']d', function() vim.diagnostic.jump({ count = 1, float = true }) end, '次の診断へ')
+    -- inlay hints (VSCode の型注釈インライン表示)。対応サーバなら自動でオン、<leader>ih で切替。
+    if vim.lsp.inlay_hint then
+      pcall(vim.lsp.inlay_hint.enable, true, { bufnr = ev.buf })
+      map('n', '<leader>ih', function()
+        vim.lsp.inlay_hint.enable(
+          not vim.lsp.inlay_hint.is_enabled({ bufnr = ev.buf }), { bufnr = ev.buf })
+      end, 'インレイヒント切替')
+    end
+  end,
+})
+
+-- 診断の見た目 (VSCode 風: 波線 + 行内メッセージ + gutter アイコン)
+vim.diagnostic.config({
+  virtual_text = { prefix = '●', spacing = 2 },
+  signs = {
+    text = {
+      [vim.diagnostic.severity.ERROR] = '',
+      [vim.diagnostic.severity.WARN] = '',
+      [vim.diagnostic.severity.INFO] = '',
+      [vim.diagnostic.severity.HINT] = '',
+    },
+  },
+  underline = true,
+  update_in_insert = false,
+  severity_sort = true,
+  float = { border = 'rounded', source = true },
+})
+
 -- 補完 (blink.cmp) はプラグイン spec の opts で完結。ここでの設定は不要。
 
 -- Treesitter: Neovim 0.12+ は自動でハイライト有効化。パーサーは :TSInstall で管理。
@@ -513,7 +597,13 @@ require('bufferline').setup({
     right_mouse_command = "bdelete! %d",
     left_mouse_command = "buffer %d",
     indicator = {
-      style = 'underline',
+      icon = '▎',
+      style = 'icon', -- アクティブタブの左にアクセントバー (VSCode 風)
+    },
+    hover = {
+      enabled = true,
+      delay = 150,
+      reveal = { 'close' },
     },
     buffer_close_icon = '',
     modified_icon = '●',
