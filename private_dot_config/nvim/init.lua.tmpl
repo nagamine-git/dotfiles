@@ -9,6 +9,8 @@ vim.g.maplocalleader = ' '
 vim.opt.encoding = 'utf-8'
 vim.opt.number = true
 vim.opt.cursorline = true
+vim.opt.signcolumn = 'yes'  -- サイン列を常時表示 (VSCode 風の左余白。git/診断が出ても行がガタつかない)
+vim.opt.numberwidth = 4     -- 行番号の右に少し余白
 vim.opt.mouse = 'a'
 vim.opt.termguicolors = true
 vim.opt.background = 'dark'
@@ -354,6 +356,12 @@ require('neo-tree').setup({
   enable_diagnostics = true,
   sources = { 'filesystem', 'buffers', 'git_status' },
   default_component_configs = {
+    indent = {
+      with_expanders = true, -- フォルダに VSCode Explorer 風の折りたたみ矢印 ▸▾
+      expander_collapsed = '',
+      expander_expanded = '',
+      expander_highlight = 'NeoTreeExpander',
+    },
     git_status = {
       symbols = {
         added = '✚', modified = '', deleted = '✖', renamed = '󰁕',
@@ -412,7 +420,11 @@ require('diffview').setup({
   enhanced_diff_hl = true,
   use_icons = true,
   file_panel = {
-    listing_style = 'list', -- ツリーではなく VSCode 風のフラットなファイル一覧
+    listing_style = 'tree', -- VSCode Explorer 風のツリー表示
+    tree_options = {
+      flatten_dirs = true, -- 中間の単一ディレクトリは畳んで a/b/c と1行に
+      folder_statuses = 'only_folded',
+    },
     win_config = {
       position = 'left',
       width = 32,
