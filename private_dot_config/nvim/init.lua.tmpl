@@ -446,7 +446,16 @@ vim.api.nvim_create_autocmd('ColorScheme', { callback = set_ui_accents })
 -- ソース管理ビュー (VSCode の Source Control 感覚)
 vim.keymap.set('n', '<leader>gg', ':DiffviewOpen<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを開く' })
 vim.keymap.set('n', '<leader>gc', ':DiffviewClose<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを閉じる' })
-vim.keymap.set('n', '<leader>gh', ':DiffviewFileHistory %<CR>', { noremap = true, silent = true, desc = 'このファイルの変更履歴' })
+vim.keymap.set('n', '<leader>gh', function()
+  -- 実ファイル上ならそのファイルの履歴、neo-tree 等の特殊バッファ上なら
+  -- リポジトリ全体の履歴にフォールバック (% が疑似バッファを指すエラーを回避)
+  local f = vim.fn.expand('%:p')
+  if vim.bo.buftype == '' and f ~= '' and vim.fn.filereadable(f) == 1 then
+    vim.cmd('DiffviewFileHistory %')
+  else
+    vim.cmd('DiffviewFileHistory')
+  end
+end, { noremap = true, silent = true, desc = 'このファイルの変更履歴 (特殊バッファではリポジトリ全体)' })
 vim.keymap.set('n', '<leader>gH', ':DiffviewFileHistory<CR>', { noremap = true, silent = true, desc = 'リポジトリの変更履歴' })
 vim.keymap.set('n', '<M-d>', ':DiffviewOpen<CR>', { noremap = true, silent = true }) -- 従来キーも維持
 
