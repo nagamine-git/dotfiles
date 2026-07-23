@@ -14,7 +14,16 @@ POLKIT_RULES="50-wolow-companion.rules"
 echo "Installing Wolow Companion..."
 
 # Install binary
-sudo install -Dm755 "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+# バイナリは git 管理外 (2026-07 監査で追跡廃止)。導入済みマシンは /usr/local/bin の
+# 既存コピーで継続。新規マシンは既存機から ~/wolow-companion へ scp してから apply する。
+if [ -f "$BINARY_NAME" ]; then
+    sudo install -Dm755 "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+elif [ -x "$INSTALL_DIR/$BINARY_NAME" ]; then
+    echo "wolow-companion: binary not in \$HOME — keeping existing $INSTALL_DIR/$BINARY_NAME"
+else
+    echo "⚠ wolow-companion: binary が見つかりません。既存機から scp で配置してください (スキップ)"
+    exit 0
+fi
 
 # Install systemd system service
 sudo install -Dm644 /dev/stdin "$SERVICE_DIR/$SERVICE_NAME" << 'EOF'

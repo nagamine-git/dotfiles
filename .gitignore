@@ -31,3 +31,7 @@ private*token
 # scaphandre のローカル clone (過去に gitlink として誤コミット→2026-07 に追跡解除。
 # ディレクトリ自体は残っていてもよいが二度と追跡しない)
 scaphandre/
+
+# wolow-companion バイナリ (4.4MB ELF)。2026-07 に git 追跡を廃止。
+# ソースツリー内のコピーは新規マシン bootstrap 用の配布マスターとして残してよいが追跡しない
+wolow-companion

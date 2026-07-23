@@ -61,10 +61,17 @@ chezmoi apply -v
 
 ## Wolow Companion (Linux のみ)
 
-iPhone の Wolow アプリからの遠隔電源制御 daemon。リポジトリ直下の
-`wolow-companion` (バイナリ) / `50-wolow-companion.rules` (polkit) /
-`install.sh` / `uninstall.sh` がその部品で、`run_onchange_setup.sh` から
-自動導入されます (macOS では `.chezmoiignore` で全て除外)。
+iPhone の Wolow アプリからの遠隔電源制御 daemon。
+`50-wolow-companion.rules` (polkit) / `install.sh` / `uninstall.sh` が部品で、
+`run_onchange_setup.sh` から自動導入されます (macOS では `.chezmoiignore` で全て除外)。
+
+バイナリ `wolow-companion` は **git 管理外** (2026-07 にバイナリ直コミットを廃止)。
+導入済みマシンは `/usr/local/bin/wolow-companion` の既存コピーで動き続けます。
+新規マシンでは既存機からバイナリを取得してから apply:
+
+```bash
+scp am5-itx:/usr/local/bin/wolow-companion ~/wolow-companion && chezmoi apply
+```
 
 ## マシン追加チェックリスト
 
