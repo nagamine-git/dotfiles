@@ -58,6 +58,14 @@ set -g message-style 'bg=#{{ $c.primary.hex }},fg=#{{ $c.bg_dark.hex }}'
 set -g message-command-style 'bg=#{{ $c.accent.hex }},fg=#{{ $c.bg_dark.hex }}'
 set -g pane-border-style 'fg=#{{ $c.bg_light.hex }}'
 set -g pane-active-border-style 'fg=#{{ $c.primary.hex }}'
+
+# copy-mode の選択を強調 (公式 issue #1500: モード表示が弱いUX欠落への対応)
+set -g mode-style 'fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.primary.hex }},bold'
+
+# アクティブ pane を「境界色 + 背景明暗」の二重手がかりで識別 (Gestalt figure-ground)。
+# 非アクティブを僅かに暗く。色差だけで十分 or 低スペック機で重い場合はこの2行を消せば戻る。
+set -g window-style 'fg=default,bg=#{{ $c.bg_dark.hex }}'
+set -g window-active-style 'fg=default,bg=#{{ $c.bg_medium.hex }}'
 set -g @plugin 'wfxr/tmux-power'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
 # ペイン画面のテキストも保存（claude code 等の表示を復元時に再描画）
