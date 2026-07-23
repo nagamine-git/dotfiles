@@ -207,3 +207,16 @@ fi
 if [ -x "$HOME/.local/bin/waybar-auto-theme.sh" ]; then
   "$HOME/.local/bin/waybar-auto-theme.sh" || true
 fi
+
+# === 2026-07 監査クリーンアップ (冪等。全機で一巡したら削除してよい) ===
+# 旧世代 brave-browser.desktop の配備残骸 (ソースは削除済み、~/.local/share 版に一本化)
+rm -f "$HOME/.config/brave-browser.desktop"
+# Continue.dev 廃止 (Claude Code に一本化。設定・同期 skill とも撤去)
+rm -rf "$HOME/.continue"
+# Ghostty CVE-2026-26982 (ペースト経由の任意コマンド実行、v1.3.0 で修正) の未対応検出
+if command -v ghostty >/dev/null 2>&1; then
+  gv="$(ghostty +version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+  if [ -n "$gv" ] && [ "$(printf '%s\n' 1.3.0 "$gv" | sort -V | head -1)" != "1.3.0" ]; then
+    echo "⚠ ghostty $gv は CVE-2026-26982 未修正 (>=1.3.0 必要)。更新を推奨"
+  fi
+fi
