@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Wolow Companion (iPhone Wolow アプリからの遠隔電源制御 daemon) のインストーラ。
+# chezmoi のブートストラップではない。Linux では run_onchange_setup.sh から
+# cwd=$HOME で自動実行され、~/wolow-companion と ~/50-wolow-companion.rules を参照する。
 set -euo pipefail
 
 BINARY_NAME="wolow-companion"

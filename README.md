@@ -1,42 +1,88 @@
 # dotfiles
 
-個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
-主にEndeavourOS（Archベース）向けに最適化されています。
+個人的な設定ファイルを [chezmoi](https://www.chezmoi.io/) で管理するリポジトリです。
+**3台のマシン (macOS 1台 + EndeavourOS 2台) を単一ソースで管理**しており、
+OS / ホスト名によるテンプレート分岐が中核機構です。
 
-## 主な設定
+## マシン構成
 
-- ディストリビューション: EndeavourOS / Arch Linux
-- シェル: Zsh + Starship
-- ウィンドウマネージャ: Hyprland
-- ターミナル: Ghostty
-- エディタ: Neovim
-- 入力メソッド: fcitx5
-- システム最適化: irqbalance, powertop
-- 開発ツール: Docker, lazygit, lazydocker, atuin
-- その他: git, SSH, waybar など
+| ホスト | OS / WM | テーマ (色分離) | 分岐条件 |
+|---|---|---|---|
+| mac (M1) | macOS | Gruvbox Material (緑) | `eq .chezmoi.os "darwin"` |
+| am5-itx | EndeavourOS / Hyprland | Hybrid (青) | デフォルト (`else`) |
+| fp7-e14 | EndeavourOS / Hyprland (常時稼働) | Catppuccin Mocha (紫) | `eq .chezmoi.hostname "fp7-e14"` |
 
-## 使い方
+3台のテーマは CIEDE2000 で色相の被りが無いことを確認して選定
+(どのマシンの画面かが色で即座に分かる)。パレットは `.chezmoidata/data.yaml` に集約。
 
-### インストール
+## セットアップ
+
+前提: テンプレートが `onepasswordRead` を使うため **1Password CLI (`op`) の
+インストールとサインインが必要** (無いと初回 apply がレンダリングで失敗します)。
 
 ```bash
-# chezmoiのインストール
-paru -S chezmoi
+# chezmoi のインストール
+paru -S chezmoi          # Arch/EndeavourOS
+brew install chezmoi     # macOS
 
-# リポジトリの取得と適用
+# 1Password CLI にサインインしてから
 chezmoi init --apply nagamine-git
 ```
+
+- Linux では `pkglist.txt` のパッケージが `run_onchange_setup.sh` により自動導入されます
+- 開発時は `pre-commit install` を推奨 (gitleaks / shellcheck 等がコミット時に走る)
 
 ### 更新
 
 ```bash
-# 変更を適用
 chezmoi apply -v
 ```
 
-### パッケージ
+## 構成ハイライト
 
-必要なパッケージは `pkglist.txt` に記載されており、`run_onchange_setup.sh` 実行時に自動的にインストールされます。
+- **シェル**: zsh + sheldon + starship (2行プロンプト、`starship.toml.tmpl` で3台配色分岐)
+- **ターミナル**: Ghostty (UDEV Gothic 35NFLG / リガチャ無効 / カーソル点滅無効)
+- **tmux**: prefix は **`C-t`**。TPM (tmux-power / resurrect / continuum / fzf / tilit)。
+  pane 数で main-vertical (≤3) ⇔ tiled (≥4) を自動切替 (`M-Enter` でトグル、`M-m` で zoom)
+- **Neovim**: leader は **Space**。VSCode 相当の操作系 + 認知科学ベースの UI 設定
+  (詳細は下表)。キーの学習は nvim 内で **`:Tutor chezmoi-keys`**
+
+| 機能 | プラグイン | キー |
+|---|---|---|
+| ファイルツリー | neo-tree | `C-n` |
+| ファイル/全文検索 | telescope | `C-p` / `C-f` |
+| ソース管理 (diff) | diffview | `Space gg` |
+| パンくず | dropbar | (常時表示) |
+| 補完 | blink.cmp | `Tab` / `CR` |
+| ラベルジャンプ | flash | `s` + 2文字 |
+| 問題パネル | trouble | `Space xx` |
+| Git ハンク操作 | gitsigns | `]c` `[c` `Space gs` |
+
+## Wolow Companion (Linux のみ)
+
+iPhone の Wolow アプリからの遠隔電源制御 daemon。リポジトリ直下の
+`wolow-companion` (バイナリ) / `50-wolow-companion.rules` (polkit) /
+`install.sh` / `uninstall.sh` がその部品で、`run_onchange_setup.sh` から
+自動導入されます (macOS では `.chezmoiignore` で全て除外)。
+
+## マシン追加チェックリスト
+
+1. `.chezmoidata/data.yaml` に配色パレットを追加 (既存3台と CIEDE2000 で色相分離を確認)
+2. hostname 分岐を持つファイルに分岐を追加:
+   `private_dot_config/nvim/init.lua.tmpl` / `dot_tmux.conf.tmpl` /
+   `private_dot_config/starship.toml.tmpl` / `private_dot_config/hypr/hyprland.conf.tmpl` /
+   `private_dot_ssh/config.tmpl` / `run_onchange_fp7-sleep-mask.sh.tmpl` (該当時)
+3. `pkglist.txt` と `.chezmoiignore` の OS 分岐を確認
+4. `chezmoi apply --dry-run -v` で差分を確認してから適用
+
+## 復元手順 (新規機・被災機)
+
+1. chezmoi と 1Password CLI を導入し `op` にサインイン
+2. `chezmoi init --apply nagamine-git`
+3. Linux: 再ログイン (Hyprland / systemd user unit 反映)。tmux は初回起動時に
+   TPM がプラグインを自動導入
+4. `~/.config/zeed/claude-budget.json` 等の mutable state は chezmoi 管理外
+   (必要なら旧機から手動コピー)
 
 ### claude-pace (Claude Max 残量計)
 

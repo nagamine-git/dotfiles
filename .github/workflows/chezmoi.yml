@@ -28,6 +28,7 @@ jobs:
 
       - name: Verify chezmoi source state
         run: |
+          # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)
           chezmoi --source="$GITHUB_WORKSPACE" doctor || true
           chezmoi --source="$GITHUB_WORKSPACE" execute-template '{{ "ok" }}'
 
@@ -66,5 +67,4 @@ jobs:
           severity: error
           ignore_paths: >-
             etc
-            scaphandre
           scandir: .
