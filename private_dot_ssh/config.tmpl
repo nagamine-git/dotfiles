@@ -6,6 +6,10 @@ Include ~/.orbstack/ssh/config
 
 Host am5-itx fp7-e14
   User tsuyoshi
+  # 意図的な非対称 (2026-07 監査で確認): この鍵は 1Password agent に登録していない
+  # mac ローカル専用鍵。Linux 側と同じ「.pub + agent」方式に揃えると agent が
+  # 本鍵を持たないため認証不能になる (agent 鍵一覧と指紋不一致を実測済み)。
+  # 理想形に寄せる場合: 1Password へ本鍵を登録 → この行を id_ed25519.pub に変更。
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
 
