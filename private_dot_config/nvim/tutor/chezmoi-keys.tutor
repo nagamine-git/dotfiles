@@ -1,0 +1,96 @@
+# この環境のキーバインド Tutor (chezmoi-keys)
+
+このチュートリアルは **この chezmoi 環境に固有** の設定だけを学びます。
+標準 Vim は `:Tutor` (無印) を先にどうぞ。
+
+leader キーは **Space** です。以下 `Space` と表記します。
+各行を実際に打って進んでください。
+
+## 1. 移動 — flash.nvim (サッケード低減)
+
+`s` + **飛びたい場所の2文字** でラベルジャンプします。
+下の行の `moon` へ、`s` `m` `o` → 表示されたラベル1打で飛んでください:
+
+    the moon is made of green cheese
+
+- `S` : Treesitter ノード選択 (関数・ブロック単位で広げる)
+- 注意: 旧来の `s` (1文字置換) は **`cl`** で代替
+
+検索とスクロールは自動で画面中央に寄ります:
+`/cheese` して `n` → 一致が常に中央。`Ctrl-d` / `Ctrl-u` も中央維持。
+
+行番号はハイブリッド表示です。`5j` の「5」は **相対行番号を読むだけ**。
+
+## 2. ファイルを開く (VSCode 風)
+
+- `Ctrl-p`      : ファイル名で開く (VSCode Ctrl+P)
+- `Ctrl-f`      : 全文検索 (live grep)
+- `Ctrl-n`      : ファイルツリー (neo-tree) をトグル
+- `Space f r`   : 最近のファイル
+- `Space f c`   : コマンドパレット
+- `Space f k`   : キーマップ検索 (このチュートリアルを忘れたらこれ)
+
+## 3. Git — diffview が主役
+
+- `Space g g`   : ソース管理ビュー (変更一覧 → side-by-side diff)
+- `Space g c`   : 閉じる
+- `Space g h`   : このファイルの履歴 / `Space g H` : リポジトリ全体
+- `] c` / `[ c` : 次/前の変更ハンクへ
+- `Space g s`   : ハンクをステージ / `Space g r` : ハンクを破棄
+- `Space g p`   : ハンクをインラインプレビュー / `Space g b` : 行 blame
+- `Space g e`   : neo-tree の git_status ビュー
+
+## 4. LSP (定義ジャンプなど)
+
+- `g d` : 定義へ / `g r` : 参照一覧 / `g i` : 実装へ / `g y` : 型定義へ
+- `K`   : ホバードキュメント
+- `Space r n` : リネーム / `Space c a` : コードアクション
+- `] d` / `[ d` : 次/前の診断へ / `Space e` : 行の診断詳細
+- 診断はカーソル行だけ下に展開されます (他行は ✘▲●○ アイコンのみ)
+
+## 5. パネル (VSCode の下部パネル相当)
+
+- `Space x x` : 問題パネル (ワークスペース診断)
+- `Space x s` : シンボル一覧 (アウトライン)
+- `Space f d` : 診断を Telescope で / `Space f t` : TODO/FIXME 一覧
+
+## 6. 編集強化 — mini.nvim
+
+**囲み (surround)** — プレフィックスは `g s`:
+
+    "hello world"
+
+- `g s a` + 範囲 + 記号 : 囲む (例: `gsaiw'` で単語を ' で囲む)
+- `g s d` + 記号        : 囲み削除 (例: `gsd"`)
+- `g s r` + 旧 + 新     : 囲み変更 (例: `gsr"'` で "→')
+
+**テキストオブジェクト (mini.ai)**:
+- `c i f` : 関数の中身を書き換え / `c i a` : 引数を書き換え
+
+**行の移動 (mini.move)**:
+- `Alt-j` / `Alt-k` : 行(選択)を上下へ / `Alt-h` / `Alt-l` : インデント
+
+下の行で `Alt-j` を試してください:
+
+    move me down
+
+## 7. バッファとウィンドウ
+
+- `Tab` / `Shift-Tab` : 次/前のバッファ
+- `Space b p` : バッファを選んでジャンプ / `Space b c` : 選んで閉じる
+- `Ctrl-w v` / `Ctrl-w s` : 縦/横分割 (非アクティブ側は暗くなる)
+- `Ctrl-w q` : ウィンドウを閉じる / `Ctrl-w o` : 他を全部閉じる
+
+## 8. Claude Code 連携
+
+tmux ペインで `claude` → `/ide` で本 nvim に接続してから:
+- ビジュアル選択 + `Space a s` : 選択範囲を Claude へ送る
+- neo-tree 上で `Space a s`    : ファイルをコンテキストに追加
+
+## 9. 忘れたら
+
+- `Space` を押して待つ … which-key がチートシートを表示
+- `Space f k` … 全キーマップを検索
+- `:Tutor chezmoi-keys` … このチュートリアルを再表示
+
+以上。`:q` で終了します。
