@@ -1,5 +1,9 @@
 # dotfiles
 
+> **Chezmoi-managed dotfiles for a Hyprland / Wayland desktop on Arch Linux** (CachyOS & EndeavourOS).
+> Zsh + Starship, Neovim, Ghostty, fcitx5, waybar. Managed with [chezmoi](https://www.chezmoi.io/).
+> *Notes below are in Japanese.*
+
 個人的な設定ファイルを[chezmoi](https://www.chezmoi.io/)で管理するリポジトリです。
 主に CachyOS（Archベース）向けに最適化されています。EndeavourOS でもそのまま利用可能です（いずれも `ID_LIKE=arch`）。
 
