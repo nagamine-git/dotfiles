@@ -1,5 +1,9 @@
 # dotfiles
 
+> **Chezmoi-managed dotfiles for Hyprland / Wayland on Arch Linux** (CachyOS & EndeavourOS) + macOS.
+> Single source across 3 machines via OS/hostname templating. Zsh + Starship, Neovim, Ghostty, tmux, fcitx5, waybar.
+> *Detailed notes below are in Japanese.*
+
 個人的な設定ファイルを [chezmoi](https://www.chezmoi.io/) で管理するリポジトリです。
 **3台のマシン (macOS 1台 + Arch系 Linux 2台) を単一ソースで管理**しており、
 OS / ホスト名によるテンプレート分岐が中核機構です。Linux は主に CachyOS
