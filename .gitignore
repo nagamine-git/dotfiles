@@ -27,3 +27,7 @@ private*token
 
 # Claude Code per-checkout local state (権限許可など。APIキー混入の恐れがあり追跡しない)
 .claude/
+
+# scaphandre のローカル clone (過去に gitlink として誤コミット→2026-07 に追跡解除。
+# ディレクトリ自体は残っていてもよいが二度と追跡しない)
+scaphandre/

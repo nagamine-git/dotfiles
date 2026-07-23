@@ -65,7 +65,6 @@ wolow-companion
 .config/cursor-flags.conf
 .config/electron-flags.conf
 .config/electron27-flags.conf
-.config/brave-browser.desktop
 
 .local/share/applications
 .local/share/applications/**
