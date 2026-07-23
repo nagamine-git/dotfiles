@@ -6,11 +6,20 @@ export LC_ALL=ja_JP.UTF-8
 export EDITOR=nvim
 
 
-# PATHの設定 - 一箇所にまとめてシンプル化
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH"
+# PATHの設定 - 一箇所にまとめてシンプル化 (source ~/.zshrc 再実行での重複追加を防ぐ)
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.local/share/nvim-linux-x86_64/bin:$PATH" ;;
+esac
 export GOPATH="$HOME/go"
-export PATH="$GOPATH/bin:$PATH"
-export PATH="$PATH:/snap/bin"
+case ":$PATH:" in
+  *":$GOPATH/bin:"*) ;;
+  *) export PATH="$GOPATH/bin:$PATH" ;;
+esac
+case ":$PATH:" in
+  *":/snap/bin:"*) ;;
+  *) export PATH="$PATH:/snap/bin" ;;
+esac
 if [[ "$OSTYPE" == darwin* ]]; then
   # macOS: Homebrew shellenv と 1Password CLI SSH agent の位置が Linux と異なる
   [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -92,6 +101,7 @@ tgh() {
         fi
         # If this was the first session, prompt for rename
         if $is_first_session; then
+            echo -n "セッション名を変更する? (y/N): "
             read -r ans
             if [[ "$ans" =~ ^[Yy]$ ]]; then
                 echo -n "New name: "
@@ -143,8 +153,10 @@ tm() {
 
 tmux_fzf_window() {
     window_list=$(tmux list-windows -a -F '#{session_id}:#{window_index} #{session_name}:#{window_name}')
-    target_index=$(echo $window_list | fzf | awk '{ print $1 }')
-    tmux switch-client -t $target_index
+    target_index=$(echo "$window_list" | fzf | awk '{ print $1 }')
+    # fzf を Esc/Ctrl-C でキャンセルした場合は何もしない (空の -t で tmux が usage エラーになるのを防ぐ)
+    [ -z "$target_index" ] && return 0
+    tmux switch-client -t "$target_index"
 }
 
 # tmux attachのエイリアス
@@ -338,7 +350,10 @@ case ":$PATH:" in
 esac
 
 # Zeed Browser depot_tools
-export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools"
+case ":$PATH:" in
+  *":$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools:"*) ;;
+  *) export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools" ;;
+esac
 
 alias ccnim='ANTHROPIC_AUTH_TOKEN=freecc ANTHROPIC_BASE_URL=http://localhost:8082 claude'
 alias ccr-code='~/.local/bin/ccr-start.sh'
@@ -361,30 +376,26 @@ _cc_is_ollama_model_available() {
 }
 
 _claude_notify_idle_watch() {
+    # claude 実行「中」のペインを 30 秒間隔で監視し、画面が 30 秒間不変なら idle 通知。
+    # cc() が claude 起動前にバックグラウンドで開始し、終了時に kill する。
+    # (旧実装は claude 終了「後」に一度だけ監視していたため、対話中は一切通知されず、
+    #  終了後の放置シェルに誤通知が飛ぶという逆の挙動になっていた)
     [ -z "${TMUX_PANE:-}" ] && return 0
-
-    local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify"
-    mkdir -p "$runtime_dir"
-    local key session window pane prompt_file pid_file
-    session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
-    window="$(tmux display-message -p '#{window_index}' 2>/dev/null || true)"
-    pane="$(tmux display-message -p '#{pane_index}' 2>/dev/null || true)"
-    key="${session}_${window}_${pane}"
-    prompt_file="$runtime_dir/${key}.prompt"
-    pid_file="$runtime_dir/${key}.idle.pid"
-
-    tmux capture-pane -p -S -20 > "$prompt_file" 2>/dev/null || true
-
-    (
+    local prev current notified=0
+    prev="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
+    while :; do
       sleep 30
       current="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
-      before="$(cat "$prompt_file" 2>/dev/null || true)"
-      if [ "$current" = "$before" ]; then
-        "$HOME/.local/bin/claude-notify" idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
+      if [ "$current" = "$prev" ]; then
+        if [ "$notified" -eq 0 ]; then
+          "$HOME/.local/bin/claude-notify" idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
+          notified=1   # 画面が動くまで再通知しない
+        fi
+      else
+        notified=0
       fi
-      rm -f "$prompt_file" "$pid_file"
-    ) &!
-    echo $! > "$pid_file"
+      prev="$current"
+    done
 }
 
 cc() {
@@ -393,24 +404,32 @@ cc() {
         printf '\033]0;%s\007' "claude:$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || echo unknown)"
     fi
 
+    local _idle_pid=""
+    if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
+        _claude_notify_idle_watch &!
+        _idle_pid=$!
+    fi
+
+    local rc=0
     if _cc_is_pro_available; then
         echo "→ Claude Pro (sonnet)" >&2
-        claude --model sonnet "$@"
+        claude --model sonnet "$@" || rc=$?
     elif _cc_is_ollama_model_available "glm-5"; then
         echo "→ Ollama: glm-5:cloud" >&2
-        ollama launch claude --model glm-5:cloud "$@"
+        ollama launch claude --model glm-5:cloud "$@" || rc=$?
     elif _cc_is_ollama_model_available "$_CC_LOCAL_MODEL"; then
         echo "→ Ollama local: $_CC_LOCAL_MODEL" >&2
-        ollama launch claude --model "$_CC_LOCAL_MODEL" "$@"
+        ollama launch claude --model "$_CC_LOCAL_MODEL" "$@" || rc=$?
     else
         echo "[cc] 利用可能なバックエンドが見つかりません:" >&2
         echo "  1. Claude Pro: claude auth login" >&2
         echo "  2. Ollama cloud: ollama pull glm-5" >&2
         echo "  3. Ollama local: ollama pull glm-4.7-flash && ollama create $_CC_LOCAL_MODEL" >&2
-        return 1
+        rc=1
     fi
 
-    _claude_notify_idle_watch
+    [ -n "$_idle_pid" ] && kill "$_idle_pid" 2>/dev/null
+    return $rc
 }
 
 # セキュリティ/更新チェックの起動時表示 (Arch のみ)
