@@ -9,6 +9,8 @@ vim.g.maplocalleader = ' '
 vim.opt.encoding = 'utf-8'
 vim.opt.number = true
 vim.opt.cursorline = true
+vim.opt.cursorlineopt = 'number'  -- 行全体でなく行番号のみ強調 (ICER'23: 背景強調は理解度を上げずノイズになりうる。位置手がかりだけ残す)
+vim.opt.colorcolumn = '100'        -- 長すぎる行の視認 (可読性研究の上限目安)。色は set_ui_accents で淡色化。
 vim.opt.signcolumn = 'yes'  -- サイン列を常時表示 (VSCode 風の左余白。git/診断が出ても行がガタつかない)
 vim.opt.numberwidth = 4     -- 行番号の右に少し余白
 vim.opt.mouse = 'a'
@@ -57,6 +59,38 @@ vim.opt.hlsearch = true
 
 -- クリップボード設定
 vim.opt.clipboard = 'unnamedplus'
+
+-- ▼ 認知・人間工学設定 (科学的根拠ベース) ▼
+-- 周辺視野に前後の文脈を常に残す。カーソルを端に寄せず作業記憶を外部化 (認知負荷軽減)。
+vim.opt.scrolloff = 8
+vim.opt.sidescrolloff = 8
+-- ハイブリッド行番号 (現在行=絶対 / 他=相対)。5j 等 count 付きモーションの暗算コストを削減。
+vim.opt.relativenumber = true
+-- 永続 undo。セッションを跨いで巻き戻せる (データ保全)。
+vim.opt.undofile = true
+-- 破壊的操作 (未保存終了等) の前に確認 (データ損失防止)。
+vim.opt.confirm = true
+-- CursorHold/診断の反応を機敏に (100ms 未満の"瞬時"知覚閾値に寄せる)。
+vim.opt.updatetime = 250
+-- ヤンク時に対象を一瞬ハイライト (操作の即時フィードバック)。
+vim.api.nvim_create_autocmd('TextYankPost', {
+  callback = function() (vim.hl or vim.highlight).on_yank({ timeout = 150 }) end,
+})
+-- ファイルを開いた時に前回のカーソル位置へ復元 (文脈の継続性)。
+vim.api.nvim_create_autocmd('BufReadPost', {
+  callback = function()
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    if mark[1] > 0 and mark[1] <= vim.api.nvim_buf_line_count(0) then
+      pcall(vim.api.nvim_win_set_cursor, 0, mark)
+    end
+  end,
+})
+-- 検索/半ページ移動後に対象を画面中央へ寄せる (視線の再定位コスト削減。前庭系にも優しい)。
+for _, k in ipairs({ 'n', 'N', '*', '#' }) do
+  vim.keymap.set('n', k, k .. 'zzzv', { silent = true })
+end
+vim.keymap.set('n', '<C-d>', '<C-d>zz', { silent = true })
+vim.keymap.set('n', '<C-u>', '<C-u>zz', { silent = true })
 
 -- GPG設定
 vim.g.GPGDefaultRecipients = {}      -- 既定受信者なし
@@ -338,6 +372,20 @@ require('lazy').setup({
     opts = { preset = 'modern' },
   },
 
+  -- ラベルジャンプ (サッケード低減: 2文字入力で画面内の任意位置へ、視線を対象から外さず跳躍)。
+  -- s=ジャンプ / S=Treesitterノード選択。既定の s は cl で代替できるため flash に譲る
+  -- (mini.surround を gs* にずらしてあるのはこのため)。
+  {
+    'folke/flash.nvim',
+    event = 'VeryLazy',
+    opts = {},
+    keys = {
+      { 's', mode = { 'n', 'x', 'o' }, function() require('flash').jump() end, desc = 'Flash jump' },
+      { 'S', mode = { 'n', 'x', 'o' }, function() require('flash').treesitter() end, desc = 'Flash Treesitter' },
+      { 'r', mode = 'o', function() require('flash').remote() end, desc = 'Remote Flash' },
+    },
+  },
+
   -- ▼ VSCode 風 UI 強化 ▼
 
   -- 診断/シンボルのパネル (VSCode 下部「問題」タブ + アウトラインビュー相当)
@@ -487,11 +535,27 @@ vim.api.nvim_create_autocmd('ColorScheme', { callback = set_base_diff_colors })
 
 -- パネル境界をくっきり見せる (VSCode の editorGroup.border 相当のニュートラルグレー)
 -- 3台とも暗背景なので固定グレーで境界が溶けず、各テーマの色相も壊さない。
+-- あわせて非アクティブウィンドウを暗く・100字ガイドを淡く (Gestalt figure-ground / 現テーマ非依存)。
+local function scale_hex(rgb, factor)
+  local r = math.min(255, math.floor((math.floor(rgb / 65536) % 256) * factor))
+  local g = math.min(255, math.floor((math.floor(rgb / 256) % 256) * factor))
+  local b = math.min(255, math.floor((rgb % 256) * factor))
+  return string.format('#%02x%02x%02x', r, g, b)
+end
 local function set_ui_accents()
   vim.api.nvim_set_hl(0, 'WinSeparator', { fg = '#585858' })
+  local normal = vim.api.nvim_get_hl(0, { name = 'Normal' })
+  if normal and normal.bg then
+    vim.api.nvim_set_hl(0, 'NormalNC', { bg = scale_hex(normal.bg, 0.85) })    -- 非アクティブは暗く
+    vim.api.nvim_set_hl(0, 'ColorColumn', { bg = scale_hex(normal.bg, 1.18) })  -- 100字ガイドは僅かに明るく
+  end
 end
 set_ui_accents()
-vim.api.nvim_create_autocmd('ColorScheme', { callback = set_ui_accents })
+vim.api.nvim_create_autocmd({ 'ColorScheme', 'VimEnter' }, { callback = set_ui_accents })
+
+-- インサート中だけ現在行全体を強調 (編集位置の把握)、ノーマルに戻れば行番号のみ (ノイズ削減)。
+vim.api.nvim_create_autocmd('InsertEnter', { callback = function() vim.opt.cursorlineopt = 'both' end })
+vim.api.nvim_create_autocmd('InsertLeave', { callback = function() vim.opt.cursorlineopt = 'number' end })
 
 -- ソース管理ビュー (VSCode の Source Control 感覚)
 vim.keymap.set('n', '<leader>gg', ':DiffviewOpen<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを開く' })
@@ -559,15 +623,19 @@ vim.api.nvim_create_autocmd('LspAttach', {
   end,
 })
 
--- 診断の見た目 (VSCode 風: 波線 + 行内メッセージ + gutter アイコン)
+-- 診断の見た目 (科学的更新)
+-- ・カーソル行だけ下に詳細展開 (0.11 virtual_lines)。全行常時の virtual_text はノイズ源かつ
+--   複数診断が末尾で省略され読めない問題があるため無効化。
+-- ・severity を色だけでなく「形」でも区別 (WCAG 1.4.1 / 赤緑色弱でも判別可能)。
 vim.diagnostic.config({
-  virtual_text = { prefix = '●', spacing = 2 },
+  virtual_lines = { current_line = true },
+  virtual_text = false,
   signs = {
     text = {
-      [vim.diagnostic.severity.ERROR] = '',
-      [vim.diagnostic.severity.WARN] = '',
-      [vim.diagnostic.severity.INFO] = '',
-      [vim.diagnostic.severity.HINT] = '',
+      [vim.diagnostic.severity.ERROR] = '✘',
+      [vim.diagnostic.severity.WARN] = '▲',
+      [vim.diagnostic.severity.INFO] = '●',
+      [vim.diagnostic.severity.HINT] = '○',
     },
   },
   underline = true,
