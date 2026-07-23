@@ -14,12 +14,13 @@ parse_remaining_seconds() {
     local output="$1"
     # (Xh) or (XhYm) or (Xm) 形式をパース
     local hm
-    hm=$(echo "$output" | grep -oP '\(\K[^)]+(?=\))')
+    # 5h/7d 両方が (…) を持つと複数行になり算術展開が壊れるため、最初の1つ (5h側) に限定
+    hm=$(echo "$output" | grep -oP '\(\K[^)]+(?=\))' | head -n1)
     [ -z "$hm" ] && echo 0 && return
 
     local hours=0 mins=0
-    hours=$(echo "$hm" | grep -oP '\d+(?=h)' || echo 0)
-    mins=$(echo  "$hm" | grep -oP '\d+(?=m)' || echo 0)
+    hours=$(echo "$hm" | grep -oP '\d+(?=h)' | head -n1 || echo 0)
+    mins=$(echo  "$hm" | grep -oP '\d+(?=m)' | head -n1 || echo 0)
     echo $(( hours * 3600 + mins * 60 ))
 }
 

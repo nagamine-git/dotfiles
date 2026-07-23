@@ -13,7 +13,7 @@ After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/tsuyoshi/.local/bin/executable_sleep_backup.sh
+ExecStart=/home/tsuyoshi/.local/bin/sleep_backup.sh
 User=tsuyoshi
 Group=tsuyoshi
 

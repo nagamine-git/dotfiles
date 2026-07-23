@@ -2,8 +2,7 @@
 # 50 min work / 10 min break pomodoro for Waybar
 # icon sets
 fill="⣿"                                    # full bar
-# partials=(⣿ ⣷ ⣶ ⣦ ⣤ ⣄ ⣀ ⡀)
-partials=(⣿ ⣿ ⣿ ⣿ ⣿ ⣿ ⣿ ⣿)
+partials=(⣿ ⣷ ⣶ ⣦ ⣤ ⣄ ⣀ ⡀)
 empty="⣿"               # base char for empty segment
 empty_markup="<span foreground='#eceff450'>⣿</span>"  # light grey full block
 total_seg=6             # 8-step fade from full→empty

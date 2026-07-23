@@ -60,7 +60,7 @@ if [ -f "$BUDGET_FILE" ]; then
     else $def end' "$BUDGET_FILE" 2>/dev/null || echo "$DEFAULT_BUDGET")
 fi
 case "$budget" in
-  ''|*[!0-9]*) budget="$DEFAULT_BUDGET" ;;
+  ''|0|*[!0-9]*) budget="$DEFAULT_BUDGET" ;;  # 0 はゼロ除算になるため既定値へ
 esac
 
 out=0

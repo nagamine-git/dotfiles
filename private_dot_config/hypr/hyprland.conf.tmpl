@@ -78,8 +78,9 @@ exec-once = ~/.local/bin/hypr_auto_perfmonitor.sh start &
 exec-once = ~/.local/bin/hypr-vrr-off.sh &
 exec-once = ~/.local/bin/claude-usage-notify &
 exec-once = ~/.local/bin/droidcam.sh &
-exec-once = ~/.local/bin/executable_sleep_backup.sh &
-exec-once = way-thumbsense --exclude-left=10 --exclude-right=10 & 
+# sleep_backup は exec-once では機能しない (起動時点で「スリープ復帰5分以内」を満たさず
+# 即終了 + sudo timeshift が対話不能)。systemd timer 方式 (setup_sleep_backup.sh) に一本化。
+exec-once = way-thumbsense --exclude-left=10 --exclude-right=10 &
 
 # Float these instances on special workspaces
 windowrule {
