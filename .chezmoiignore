@@ -21,9 +21,10 @@ scaphandre/**
 */ -}}
 {{- if eq .chezmoi.os "darwin" }}
 run_onchange_setup.sh
-setup.sh
+install.sh
 uninstall.sh
 wolow-companion
+50-wolow-companion.rules
 
 .zshenv
 .claude-code-router
@@ -75,11 +76,14 @@ wolow-companion
 
 .local/bin/hypr_auto_perfmonitor.sh
 .local/bin/hypr_perfmodeswitch.sh
+.local/bin/hypr-vrr-off.sh
 .local/bin/hyprvoice_ptt.sh
 .local/bin/lib_hypr_perfmode.sh
 .local/bin/droidcam.sh
 .local/bin/sunshine-virtual-display.sh
 .local/bin/idle-sleep.sh
+.local/bin/mic-snr.sh
+.local/bin/sleep-now.sh
 .local/bin/sleep_backup.sh
 .local/bin/setup_sleep_backup.sh
 .local/bin/integrate-appimage.sh
