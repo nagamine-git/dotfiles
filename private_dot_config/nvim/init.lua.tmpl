@@ -1,3 +1,6 @@
+{{- $c := .theme.colors -}}
+{{- if eq .chezmoi.os "darwin" -}}{{- $c = .theme.colors_darwin -}}
+{{- else if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 -- init.lua
 vim.loader.enable()
 
@@ -278,7 +281,8 @@ require('lazy').setup({
     dependencies = { '3rd/image.nvim' },
     opts = {
       renderer_options = {
-        mermaid = { background = '#161719', theme = 'dark', scale = 2 },
+        -- 背景はホストのテーマ bg_dark に追従 (直書きだと mac/fp7 で色が浮く)
+        mermaid = { background = '#{{ $c.bg_dark.hex }}', theme = 'dark', scale = 2 },
       },
     },
   },
@@ -697,7 +701,8 @@ require('bufferline').setup({
     right_trunc_marker = '',
     diagnostics = "nvim_lsp",
     diagnostics_indicator = function(count, level)
-      local icon = level:match("error") and " " or " "
+      -- 診断 sign (✘▲) と同じ形状符号化。旧実装は両分岐とも空白で区別不能だった
+      local icon = level:match("error") and "✘ " or "▲ "
       return " " .. icon .. count
     end,
     offsets = {
