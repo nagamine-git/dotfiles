@@ -50,7 +50,7 @@ chezmoi 管理下から「使用中ツール一覧」を Grep / Read で抽出:
 - パッケージ管理 1段メタ (nix / mise / homebrew)
 - **WM/compositor (Linux)** — Hyprland の動向 + 代替 (niri / river / sway)。スクロール式 (niri) 等のパラダイム変化を見る
 - **WM/タイリング (macOS)** — AeroSpace / yabai。Mac で Hyprland 風タイリングを求める場合の選択肢。**現状 macOS ネイティブで足りているなら ⌀**
-- **ディストリ/OS-base 2段メタ** — EndeavourOS(Arch) 継続妥当性、immutable 系 (bazzite/Aurora)、Apple Silicon の Asahi Linux。**移行コスト >> 便益が常態なので原則 ⌀、地殻変動時のみ ★**
+- **ディストリ/OS-base 2段メタ** — CachyOS/EndeavourOS(Arch) 継続妥当性、immutable 系 (bazzite/Aurora)、Apple Silicon の Asahi Linux。**移行コスト >> 便益が常態なので原則 ⌀、地殻変動時のみ ★**
 
 ソース: GitHub Release / Hacker News / 各 changelog。
 

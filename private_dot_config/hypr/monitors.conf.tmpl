@@ -1,0 +1,14 @@
+{{/*
+  Monitor 設定。Hyprland の monitor 宣言はここに集約。
+  - eDP-1: ホスト別 scale (fp7-e14=1.25 / それ以外=1)
+  - 外部出力: auto (接続時に preferred)
+  lid 開閉は hyprland.lua 内の bindl で hyprctl keyword monitor を動的制御。
+  VRR は 4K@120Hz HDMI で黒落ちするため、起動時に hypr-vrr-off.sh が vrr,0 を再適用する
+  (misc:vrr=0 は本ファイルより後に評価されモニタ初期化時に効かないため)。
+*/ -}}
+{{- if eq .chezmoi.hostname "fp7-e14" }}
+monitor = eDP-1, preferred, auto, 1.25
+{{- else }}
+monitor = eDP-1, preferred, auto, 1
+{{- end }}
+monitor = , preferred, auto, 1

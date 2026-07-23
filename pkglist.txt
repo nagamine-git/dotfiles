@@ -5,13 +5,13 @@ waybar-git
 swaync
 git
 git-delta
+github-cli
 chezmoi
 vim
 neovim
 tmux
 fcitx5-im
 fcitx5-hazkey-bin
-hazkey-zenzai-vulkan
 brave-bin
 zeed-bin
 wofi
@@ -48,8 +48,6 @@ cliphist
 atuin
 hypridle
 hyprlock
-linux-zen
-linux-zen-headers
 hyprsession-sh
 irqbalance
 powertop
@@ -71,7 +69,6 @@ imagemagick
 base-devel
 libevdev
 keyd
-timeshift
 bluez
 zoxide
 fastfetch
@@ -95,7 +92,7 @@ mermaid-cli
 sunshine
 v4l2loopback-dkms
 ttf-udev-gothic
-otf-ibm-plex
+ttf-ibm-plex
 way-thumbsense-git
 
 # security / firewall / update-audit

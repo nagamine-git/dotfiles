@@ -94,6 +94,10 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # パッケージ名扱いするため、生の pkglist.txt を流すと "# security" 等で誤爆する。
 grep -vE '^[[:space:]]*(#|$)' pkglist.txt | paru -S --needed --noconfirm - || echo "Some packages failed to install"
 
+chsh -s $(which zsh)
+
+mise i
+
 # フォント設定
 sudo mkdir -p /usr/share/fonts
 
@@ -123,9 +127,9 @@ sudo modprobe -r v4l2loopback 2>/dev/null || true
 sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920" max_width=1920 max_height=1080 || true
 
 # gh extension
-gh extension install HikaruEgashira/gh-q
-gh extension install dlvhdr/gh-dash
-ghq get HikaruEgashira/gh-q
+# gh extension install HikaruEgashira/gh-q
+# gh extension install dlvhdr/gh-dash
+# ghq get HikaruEgashira/gh-q
 
 
 # bluetooth

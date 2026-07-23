@@ -1,16 +1,17 @@
 # dotfiles
 
 個人的な設定ファイルを [chezmoi](https://www.chezmoi.io/) で管理するリポジトリです。
-**3台のマシン (macOS 1台 + EndeavourOS 2台) を単一ソースで管理**しており、
-OS / ホスト名によるテンプレート分岐が中核機構です。
+**3台のマシン (macOS 1台 + Arch系 Linux 2台) を単一ソースで管理**しており、
+OS / ホスト名によるテンプレート分岐が中核機構です。Linux は主に CachyOS
+(Archベース) 向けで、EndeavourOS でもそのまま利用可能 (いずれも `ID_LIKE=arch`)。
 
 ## マシン構成
 
 | ホスト | OS / WM | テーマ (色分離) | 分岐条件 |
 |---|---|---|---|
 | mac (M1) | macOS | Gruvbox Material (緑) | `eq .chezmoi.os "darwin"` |
-| am5-itx | EndeavourOS / Hyprland | Hybrid (青) | デフォルト (`else`) |
-| fp7-e14 | EndeavourOS / Hyprland (常時稼働) | Catppuccin Mocha (紫) | `eq .chezmoi.hostname "fp7-e14"` |
+| am5-itx | Arch系 (CachyOS) / Hyprland | Hybrid (青) | デフォルト (`else`) |
+| fp7-e14 | Arch系 / Hyprland (常時稼働) | Catppuccin Mocha (紫) | `eq .chezmoi.hostname "fp7-e14"` |
 
 3台のテーマは CIEDE2000 で色相の被りが無いことを確認して選定
 (どのマシンの画面かが色で即座に分かる)。パレットは `.chezmoidata/data.yaml` に集約。

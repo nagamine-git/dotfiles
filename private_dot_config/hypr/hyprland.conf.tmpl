@@ -503,7 +503,9 @@ bindl = , switch:on:Lid Switch, exec, hyprctl keyword monitor "eDP-1, disable"
 # 蓋開け: 内蔵パネルの scale は monitors.conf と一致させ 1.25。
 # 素早い開閉のチャタリングや amdgpu PSR スタックでパネルが黒落ちするため、再有効化後に dpms on を明示する
 # (fp7-e14 は hypridle 不使用で DPMS 復帰の保険が無いため必須)。
-bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1.25" && hyprctl dispatch dpms on
+# さらに suspend 復帰と重なると keyword での再有効化が取りこぼされ eDP-1 が disable のまま残る事故が
+# あるため、monitors.conf を読み直す reload を保険として最後に撃ち、確実に内蔵パネルを復活させる。
+bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1.25" && hyprctl dispatch dpms on && hyprctl reload
 {{- else }}
 bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred, auto, 1" && hyprctl dispatch dpms on
 {{- end }}
