@@ -1,0 +1,57 @@
+{{- $c := .theme.colors -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{- $c = .theme.colors_darwin -}}
+{{- else if eq .chezmoi.hostname "fp7-e14" -}}
+{{- $c = .theme.colors_catppuccin -}}
+{{- end -}}
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# 2行プロンプト: 1行目=文脈情報 / 2行目=入力。
+# コマンド入力位置を常に画面左端の同じ場所へ固定し、情報の肥大化が入力位置を
+# 押し出さないようにする (視線の再定位・コピペ時の情報混入を防ぐ)。
+# 要素はディレクトリ/git/実行時間/時刻の少数に絞りノイズを抑える (情報密度の抑制)。
+add_newline = true
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$fill\
+$cmd_duration\
+$time\
+$line_break\
+$character"""
+
+[fill]
+symbol = ' '
+
+[directory]
+style = '#{{ $c.primary.hex }} bold'
+truncation_length = 3
+truncate_to_repo = true
+read_only = ' '
+read_only_style = '#{{ $c.error.hex }}'
+
+[git_branch]
+symbol = ' '
+style = '#{{ $c.accent.hex }}'
+
+[git_status]
+style = '#{{ $c.warning.hex }}'
+
+# 2秒超のコマンドだけ実行時間を表示 (遅い処理への気づき。常時表示のノイズは避ける)。
+[cmd_duration]
+min_time = 2000
+format = '[ $duration]($style) '
+style = '#{{ $c.text_dim.hex }}'
+
+[time]
+disabled = false
+time_format = '%R'
+format = '[$time]($style)'
+style = '#{{ $c.text_dim.hex }}'
+
+[character]
+success_symbol = '[❯](#{{ $c.success.hex }} bold)'
+error_symbol = '[❯](#{{ $c.error.hex }} bold)'
+vimcmd_symbol = '[❮](#{{ $c.primary.hex }} bold)'
