@@ -1,4 +1,5 @@
 {{- $c := .theme.colors -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 /* 基本スタイル */
 * {

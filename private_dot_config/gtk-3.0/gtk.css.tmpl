@@ -1,5 +1,5 @@
 {{- $c := .theme.colors -}}
-{{- if eq .chezmoi.os "darwin" }}{{ $c = .theme.colors_darwin }}{{ end -}}
+{{- if eq .chezmoi.os "darwin" }}{{ $c = .theme.colors_darwin }}{{ else if eq .chezmoi.hostname "fp7-e14" }}{{ $c = .theme.colors_catppuccin }}{{ end -}}
 /* 中央テーマ(.theme.colors)から GTK3 のベース色を上書きし、ghostty/tmux と配色を一致させる。
    ベーステーマ(Adwaita-dark)のウィジェット形状は活かしつつ色だけ差し替える方式。
    ※ この @define-color は全 GTK3 アプリに効く（thunar 含む / 一貫テーミング）。 */

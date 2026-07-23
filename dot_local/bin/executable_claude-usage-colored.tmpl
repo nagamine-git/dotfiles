@@ -76,6 +76,8 @@ else
   printf '#[fg=%s,nobold]%s#[default]' "$ACCENT_FG" "$text"
 fi
 {{- else }}
+{{- $c := .theme.colors -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end }}
 # Linux: claude-usage wrapper (requires GNU grep with -P for percent parsing)
 output=$(claude-usage 2>/dev/null)
 [ -z "$output" ] && exit 0
@@ -90,12 +92,12 @@ if [ -z "$pct5" ] && [ -z "$pct7" ]; then
 fi
 
 if [ "$max" -ge 90 ]; then
-    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bg=#{{ .theme.colors.error.hex }},bold]$output#[default]"
+    echo "#[fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.error.hex }},bold]$output#[default]"
 elif [ "$max" -ge 75 ]; then
-    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bg=#{{ .theme.colors.warning.hex }},bold]$output#[default]"
+    echo "#[fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.warning.hex }},bold]$output#[default]"
 elif [ "$max" -ge 70 ]; then
-    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},bold]$output#[default]"
+    echo "#[fg=#{{ $c.bg_dark.hex }},bold]$output#[default]"
 else
-    echo "#[fg=#{{ .theme.colors.bg_dark.hex }},nobold]$output#[default]"
+    echo "#[fg=#{{ $c.bg_dark.hex }},nobold]$output#[default]"
 fi
 {{- end }}
