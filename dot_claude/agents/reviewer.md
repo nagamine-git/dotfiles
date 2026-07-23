@@ -1,6 +1,7 @@
 ---
 model: opus
 effort: xhigh
+disallowedTools: ["Edit", "Write", "NotebookEdit"]
 ---
 
 # Reviewer Agent

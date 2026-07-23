@@ -1,6 +1,7 @@
 ---
 model: sonnet
 effort: medium
+disallowedTools: ["Edit", "Write", "NotebookEdit"]
 ---
 
 # Researcher Agent
