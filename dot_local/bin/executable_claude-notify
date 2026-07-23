@@ -58,11 +58,24 @@ echo "$window" > "$runtime_dir/last_window"
 echo "$pane" > "$runtime_dir/last_pane"
 printf '%b\n' "$full_body" > "$runtime_dir/last_body"
 
-if notify-send -A focus=Focus --app-name="Claude Code" --icon=dialog-information --expire-time=15000 --wait "$summary" "$full_body" >/tmp/claude-notify-action 2>/dev/null; then
-  action="$(cat /tmp/claude-notify-action 2>/dev/null || true)"
-  if [ "$action" = "focus" ] && [ -n "$session" ] && [ -n "$window" ] && [ -n "$pane" ]; then
-    /home/tsuyoshi/.local/bin/claude-notify-focus "$session" "$window" "$pane" >/dev/null 2>&1 || true
+if command -v notify-send >/dev/null 2>&1; then
+  # Linux: アクション付き通知。action ファイルはペイン単位で一意化
+  # (固定パスだと複数ペイン同時通知で他ペインの Focus クリックを誤読するレース)
+  action_file="$runtime_dir/action.$$"
+  if notify-send -A focus=Focus --app-name="Claude Code" --icon=dialog-information --expire-time=15000 --wait "$summary" "$full_body" >"$action_file" 2>/dev/null; then
+    action="$(cat "$action_file" 2>/dev/null || true)"
+    rm -f "$action_file"
+    if [ "$action" = "focus" ] && [ -n "$session" ] && [ -n "$window" ] && [ -n "$pane" ]; then
+      "$HOME/.local/bin/claude-notify-focus" "$session" "$window" "$pane" >/dev/null 2>&1 || true
+    fi
+  else
+    rm -f "$action_file"
+    notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
   fi
-else
-  notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
+elif command -v osascript >/dev/null 2>&1; then
+  # macOS: これまで notify-send 不在で無音だった通知を osascript で表示
+  # (argv 渡しでクオート問題を回避。アクションボタンは非対応)
+  osascript -e 'on run argv' \
+            -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
+            -e 'end run' "$summary" "$(printf '%b' "$full_body")" >/dev/null 2>&1 || true
 fi
