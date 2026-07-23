@@ -588,6 +588,23 @@ require('ibl').setup()
 -- 括弧補完は mini.pairs を使用 (nvim-autopairs 廃止)
 require('mini.pairs').setup()
 
+-- ▼ mini.nvim を使い倒す (プラグイン純増ゼロ。既にロード済みのモジュールを有効化) ▼
+
+-- 囲み操作: gsa=囲む / gsd=囲み削除 / gsr=囲み変更 (例 gsr"' で "x"→'x')。
+-- s 単体は flash に譲るため、既定の s* プレフィックスを gs* にずらして衝突を回避。
+require('mini.surround').setup({
+  mappings = {
+    add = 'gsa', delete = 'gsd', replace = 'gsr',
+    find = 'gsf', find_left = 'gsF', highlight = 'gsh', update_n_lines = 'gsn',
+  },
+})
+
+-- 高度なテキストオブジェクト: ci) ca] ci" に加え、関数 cif / 引数 cia など。ciw の上位。
+require('mini.ai').setup()
+
+-- 行/選択の移動: Alt+h/j/k/l で左右・上下へ (VSCode の Alt+↑↓ 相当)。
+require('mini.move').setup()
+
 -- bufferline設定
 require('bufferline').setup({
   options = {
