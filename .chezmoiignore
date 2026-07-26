@@ -1,5 +1,6 @@
 README.md
 AGENTS.md
+PLAN.md
 pkglist.txt
 .editorconfig
 .gitattributes
@@ -20,7 +21,7 @@ scaphandre/**
    パターンは target (ホーム配下) のパス。
 */ -}}
 {{- if eq .chezmoi.os "darwin" }}
-run_onchange_setup.sh
+setup.sh
 install.sh
 uninstall.sh
 wolow-companion
