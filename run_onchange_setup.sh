@@ -38,7 +38,7 @@ if ls /sys/class/power_supply/BAT* >/dev/null 2>&1; then
   echo "→ laptop 検出: 据置き電源管理 (nightly-suspend / WoL) はスキップ"
 else
   echo "→ desktop 検出: nightly-suspend + WoL を設定"
-  # nightly suspend (02:00 JST -> rtcwake 06:30) — atuin/Claude ログで「100% 寝てる」帯
+  # nightly suspend (02:00 JST、自動復帰なし・起こすのは WoL) — atuin/Claude ログで「100% 寝てる」帯
   sudo install -m 755 etc/usr-local-sbin/nightly-suspend.sh /usr/local/sbin/nightly-suspend.sh
   sudo install -m 644 etc/systemd/system/nightly-suspend.service /etc/systemd/system/nightly-suspend.service
   sudo install -m 644 etc/systemd/system/nightly-suspend.timer /etc/systemd/system/nightly-suspend.timer
@@ -85,7 +85,7 @@ echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf
 echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.d/99-bbr.conf
 
 # 1password
-curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
+curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import || echo "⚠ 1password GPG key import 失敗 (継続)"
 
 # Install packages
 # pkglist.txt は chezmoi ソース管理下の正本を使う（CWD は冒頭で source dir に移動済み）。
@@ -98,24 +98,8 @@ chsh -s $(which zsh)
 
 mise i
 
-# フォント設定
-sudo mkdir -p /usr/share/fonts
-
-# RobotoNotoSansJP
-if [ ! -f /usr/share/fonts/Roboto-NotoSansJP-Regular.ttf ]; then
-    echo "RobotoNotoSansJPフォントをインストールしています..."
-    [ -d /tmp/robotonoto ] && rm -rf /tmp/robotonoto
-    git clone --depth 1 https://github.com/reindex-ot/RobotoNotoSansJP.git /tmp/robotonoto
-    sudo cp /tmp/robotonoto/*.ttf /usr/share/fonts/
-    rm -rf /tmp/robotonoto
-    fc-cache -f -v
-else
-    echo "RobotoNotoSansJPフォントはすでにインストールされています。スキップします。"
-fi
 
 # アプリケーションのインストール
-install_if_missing starship starship "curl -sS https://starship.rs/install.sh | sh"
-install_if_missing sheldon sheldon "curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin --force"
 # システム npm の global prefix (/usr/lib/node_modules) は root 権限が要るため sudo。
 # 失敗しても install_if_missing 側で握りつぶし継続する。
 install_if_missing openclaw openclaw "sudo npm i -g openclaw"
@@ -143,6 +127,8 @@ getent group bluetooth >/dev/null && sudo usermod -a -G bluetooth "$USER"
 sudo systemctl enable --now keyd
 sudo systemctl enable --now greetd
 sudo systemctl enable --now tailscaled
+# pkglist/README で謳っている IRQ 分散を実際に有効化 (長年 inactive だった)
+sudo systemctl enable --now irqbalance
 
 # tailscale operator設定（sudo無しでtailscale CLI/taildropを使えるように）
 sudo tailscale set --operator="$USER" 2>/dev/null || true
@@ -175,13 +161,6 @@ if command -v ufw >/dev/null 2>&1; then
   sudo ufw --force default allow outgoing
   sudo ufw --force enable
   sudo systemctl enable --now ufw.service 2>/dev/null || true
-fi
-
-# Sunshine (iPhone / Moonlight RDP over Tailscale)
-# KMS キャプチャに必要な権限を付与し、ユーザ単位の常駐を有効化
-if command -v sunshine &> /dev/null; then
-  sudo setcap cap_sys_admin+p "$(command -v sunshine)" 2>/dev/null || true
-  systemctl --user enable --now sunshine.service 2>/dev/null || true
 fi
 
 # === 壁紙: 昼/夜の2枚を DL (冪等)。darkman が日の出/日没で自動切替 ===

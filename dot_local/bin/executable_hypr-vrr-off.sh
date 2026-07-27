@@ -21,7 +21,8 @@ hyprctl keyword misc:vrr 0 >/dev/null 2>&1
 
 # monitor=NAME,RES,POS,SCALE[,...] の各行に vrr,0 を付与して再適用する。
 grep -E '^[[:space:]]*monitor[[:space:]]*=' "$MON" | while IFS= read -r line; do
-  val=$(printf '%s' "${line#*=}" | tr -d ' ')
+  # 空白は前後 trim のみ (desc: 指定はモニタ名に空白を含むため全空白削除だと壊れる)
+  val=$(printf '%s' "${line#*=}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   case "$val" in
     "")            : ;;                                            # 空
     *,vrr,*)       hyprctl keyword monitor "$val"        >/dev/null 2>&1 ;;  # 既に vrr 指定あり

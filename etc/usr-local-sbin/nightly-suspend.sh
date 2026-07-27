@@ -1,7 +1,8 @@
 #!/bin/sh
 # 毎晩 02:00 に systemd timer から呼ばれる。
-# - /home/tsuyoshi/.no-suspend-tonight があれば 1 回限りスキップ (翌朝起こす分も無し)。
-# - 無ければ rtcwake で次の 06:30 に RTC アラーム仕込んで suspend。
+# - /home/tsuyoshi/.no-suspend-tonight があれば 1 回限りスキップ。
+# - 無ければ suspend する。自動復帰はしない (2026-07-19 に rtcwake 06:30 を撤去。
+#   定刻に勝手に起きるのが不評だったため。起こすときは WoL / Wolow を使う)。
 # 02-06 時の活動が atuin/Claude のログ上ゼロな前提のデータドリブン設計。
 #
 # ガード:
@@ -15,7 +16,6 @@ set -eu
 
 USER_HOME=/home/tsuyoshi
 SKIP_FLAG="$USER_HOME/.no-suspend-tonight"
-WAKE_HHMM=06:30
 
 if [ -f "$SKIP_FLAG" ]; then
   rm -f "$SKIP_FLAG"
@@ -35,12 +35,8 @@ if [ "$uptime_sec" -lt 300 ]; then
   exit 0
 fi
 
-WAKE_TS=$(date -d "today $WAKE_HHMM" +%s)
-NOW_TS=$(date +%s)
-if [ "$WAKE_TS" -le "$NOW_TS" ]; then
-  WAKE_TS=$(date -d "tomorrow $WAKE_HHMM" +%s)
-fi
+# 過去に rtcwake で仕込んだアラームが残っていても無効化してから寝る
+echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true
 
-logger -t nightly-suspend "arming RTC wake at $(date -d "@$WAKE_TS") then suspending"
-/usr/bin/rtcwake -m no -t "$WAKE_TS"
+logger -t nightly-suspend "suspending (no RTC wake; use WoL to wake)"
 /usr/bin/systemctl suspend
