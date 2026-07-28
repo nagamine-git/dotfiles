@@ -12,8 +12,6 @@ etc
 etc/**
 bin
 bin/**
-scaphandre
-scaphandre/**
 
 {{- /*
    macOS 用に Linux 専用の設定を無視する。
@@ -43,8 +41,6 @@ wolow-companion
 .config/swaync/**
 .config/xdg-desktop-portal
 .config/xdg-desktop-portal/**
-.config/sunshine
-.config/sunshine/**
 .config/foot
 .config/foot/**
 .config/autokey
@@ -63,6 +59,8 @@ wolow-companion
 .config/fontconfig/**
 .config/gtk-3.0
 .config/gtk-3.0/**
+.config/pacman
+.config/pacman/**
 .config/cursor-flags.conf
 .config/electron-flags.conf
 .config/electron27-flags.conf
@@ -80,12 +78,9 @@ wolow-companion
 .local/bin/hyprvoice_ptt.sh
 .local/bin/lib_hypr_perfmode.sh
 .local/bin/droidcam.sh
-.local/bin/sunshine-virtual-display.sh
 .local/bin/idle-sleep.sh
 .local/bin/mic-snr.sh
 .local/bin/sleep-now.sh
-.local/bin/sleep_backup.sh
-.local/bin/setup_sleep_backup.sh
 .local/bin/integrate-appimage.sh
 .local/bin/uninstall-appimage.sh
 .local/bin/fix-brave-pwa.sh

@@ -1,6 +1,7 @@
 {{/*
   Monitor 設定。Hyprland の monitor 宣言はここに集約。
   - eDP-1: ホスト別 scale (fp7-e14=1.25 / それ以外=1)
+  - S270ES (am5-itx の 27" 4K): scale 1 だと ~163PPI 等倍で文字極小のため 1.5 (2560x1440 相当)
   - 外部出力: auto (接続時に preferred)
   lid 開閉は hyprland.lua 内の bindl で hyprctl keyword monitor を動的制御。
   VRR は 4K@120Hz HDMI で黒落ちするため、起動時に hypr-vrr-off.sh が vrr,0 を再適用する
@@ -11,4 +12,5 @@ monitor = eDP-1, preferred, auto, 1.25
 {{- else }}
 monitor = eDP-1, preferred, auto, 1
 {{- end }}
+monitor = desc:IPS Inc. (Intellectual Property Solutions Inc.) S270ES 0000000000001, preferred, auto, 1.5
 monitor = , preferred, auto, 1

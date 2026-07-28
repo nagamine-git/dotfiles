@@ -8,7 +8,6 @@
 #
 # 起こす側コマンド:
 #   同じ LAN: wakeonlan 30:56:0f:46:da:f4
-#   iPhone Moonlight (家 WiFi 接続中): host 長押し → "Wake PC"
 #   ※外出先 (cellular/別 LAN) からの WoL は家側に常時 ON の relay (RPi/router 等) が必要
 
 set -eu
@@ -50,7 +49,6 @@ fi
 echo
 echo "起こし方:"
 echo "  LAN内: wakeonlan $MAC"
-echo "  iPhone Moonlight (家WiFi時): host 長押し → Wake PC"
 [ -n "$WAKE_ARG" ] && echo "  自動: $(date -d "@$WAKE_TS" '+%F %T') に RTC で自動起床"
 echo
 
