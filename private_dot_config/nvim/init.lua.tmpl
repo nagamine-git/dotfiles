@@ -406,8 +406,21 @@ require('lazy').setup({
     },
   },
 
-  -- スクロールバー + 変更/診断/検索マーカー (VSCode 右端のスクロールバー装飾・ミニマップ的把握)
-  { 'lewis6991/satellite.nvim', opts = {} },
+  -- スクロールバー + 変更/診断/検索マーカー (VSCode 右端のスクロールバー装飾・ミニマップ的把握)。
+  -- ハンドル位置 =「共通スケール上の位置」符号化 (Cleveland & McGill 1984 で最高精度) なので
+  -- %位置の一瞥把握はミニマップよりこれが本命。既定の半透明 (winblend=50) は視認性を殺すため不透明寄りに。
+  { 'lewis6991/satellite.nvim', opts = { winblend = 10 } },
+
+  -- 構造的位置の常時表示 (VSCode Sticky Scroll 相当: 囲むスコープの実コード行を上端に固定)。
+  -- 開発者の hard questions「このコードは何の中にあるか」(Ko 2006 / LaToza & Myers 2010) に常時回答。
+  -- dropbar のパンくずが圧縮1行パスなのに対し、こちらは関数シグネチャや if/for の条件がそのまま見える。
+  {
+    'nvim-treesitter/nvim-treesitter-context',
+    opts = {
+      max_lines = 3,           -- ノイズ増の上限を3行で固定 (超過時は外側スコープから捨てる)
+      multiline_threshold = 1, -- 1スコープ=1行に圧縮 (複数行シグネチャは先頭行のみ)
+    },
+  },
 
   -- LSP 進捗表示 (VSCode 右下の進捗トースト)
   { 'j-hui/fidget.nvim', opts = {} },
@@ -552,7 +565,14 @@ local function set_ui_accents()
   if normal and normal.bg then
     vim.api.nvim_set_hl(0, 'NormalNC', { bg = scale_hex(normal.bg, 0.85) })    -- 非アクティブは暗く
     vim.api.nvim_set_hl(0, 'ColorColumn', { bg = scale_hex(normal.bg, 1.18) })  -- 100字ガイドは僅かに明るく
+    vim.api.nvim_set_hl(0, 'TreesitterContext', { bg = scale_hex(normal.bg, 1.18) })  -- sticky context も同系の淡色
+    vim.api.nvim_set_hl(0, 'SatelliteBar', { bg = scale_hex(normal.bg, 1.8) })  -- スクロールバーのハンドル (既定 Visual リンクはテーマ依存で薄い)
   end
+  -- sticky context の下端に境界線 (本文と地続きに誤読しないように。WinSeparator と同じグレー)
+  vim.api.nvim_set_hl(0, 'TreesitterContextBottom', { underline = true, sp = '#585858' })
+  vim.api.nvim_set_hl(0, 'TreesitterContextLineNumberBottom', { underline = true, sp = '#585858' })
+  -- バー上のカーソル位置マーカー ⎺⎻⎼⎽ (=今何%地点かの印)。既定の NonText 色は一瞥で読めないため明示。
+  vim.api.nvim_set_hl(0, 'SatelliteCursor', { fg = '#9e9e9e' })
 end
 set_ui_accents()
 vim.api.nvim_create_autocmd({ 'ColorScheme', 'VimEnter' }, { callback = set_ui_accents })
