@@ -37,7 +37,7 @@ source = ~/.config/hypr/workspaces.conf
 {{- $terminal = env "CHEZMOI_TERMINAL" | default $terminal -}}
 $terminal = {{ $terminal }}
 $fileManager = thunar
-$menu = wofi --show drun
+$menu = rofi -show drun
 $browser = zeed
 
 #################
@@ -45,6 +45,8 @@ $browser = zeed
 #################
 
 exec-once = fcitx5 -d --replace
+# Secret Service (org.freedesktop.secrets) provider。gog 等の keyring 経由トークン読み書きに必要
+exec-once = gnome-keyring-daemon --start --components=secrets
 exec-once = 1password --silent &
 exec-once = hyprvoice serve &
 # 壁紙の上部輝度で waybar を明/暗テーマに切替えてから waybar を起動 (; で順序保証、
@@ -292,6 +294,12 @@ windowrule {
 layerrule = blur on, match:namespace waybar
 layerrule = ignore_alpha 0.2, match:namespace waybar
 
+# ランチャー (rofi) も blur。半透明のまま背後をぼかすことで、後ろに端末など
+# 文字の多いウィンドウがあっても行のテキストが読める (blur 無しだと素通しで
+# 実効コントラストが背後次第になり、テーマ側で測った 8.66:1 が保証されない)
+layerrule = blur on, match:namespace rofi
+layerrule = ignore_alpha 0.5, match:namespace rofi
+
 #######################
 ### LAYOUT SETTINGS ###
 #######################
@@ -378,7 +386,7 @@ bind = $mainMod SHIFT, f, fullscreen
 bind = ALT, m, fullscreen, 1
 bind = $mainMod SHIFT, space, togglefloating
 bind = $mainMod, tab, exec, hyprctl dispatch focusurgentorlast
-bind = $mainMod, p, exec, hyprctl clients -j | jq -r '.[] | select(.mapped == true) | select(.workspace.id > 0) | "[\(.workspace.id)] \(.class): \(.title // "No Title")"' | wofi --dmenu --prompt="ウィンドウ検索" | cut -d'|' -f1 | xargs -I {} hyprctl dispatch focuswindow "address:{}"
+bind = $mainMod, p, exec, hyprctl clients -j | jq -r '.[] | select(.mapped == true) | select(.workspace.id > 0) | "[\(.workspace.id)] \(.class): \(.title // "No Title")"' | rofi -dmenu -p "ウィンドウ検索" | cut -d'|' -f1 | xargs -I {} hyprctl dispatch focuswindow "address:{}"
 bind = $mainMod, v, layoutmsg, togglesplit
 
 # === WINDOW GROUPING (StarCraft2 Grid-inspired: Group commands in left hand) ===
@@ -508,7 +516,7 @@ bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1, preferred
 {{- end }}
 
 # === CLIPBOARD MANAGEMENT ===
-bind = CTRL $mainMod, V, exec, cliphist list | wofi --dmenu --prompt="📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v
+bind = CTRL $mainMod, V, exec, cliphist list | rofi -dmenu -p "📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v
 
 # === NOTIFICATION CENTER ===
 bind = $mainMod, R, exec, swaync-client -t -sw

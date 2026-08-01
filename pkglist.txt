@@ -14,7 +14,10 @@ fcitx5-im
 fcitx5-hazkey-bin
 brave-bin
 zeed-bin
-wofi
+rofi
+rofi-calc
+rofi-emoji
+gnome-keyring
 playerctl
 brightnessctl
 wireplumber

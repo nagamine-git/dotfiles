@@ -18,7 +18,7 @@ header="🚫 None (direct)"
 [[ -n "$current" ]] && header="🚫 None (direct) [current: exit enabled]"
 
 choice=$(printf '%s\n%s\n' "$header" "$nodes" | \
-  wofi --dmenu --prompt="Exit Node" -i --width=600 --height=500)
+  rofi -dmenu -p "Exit Node" -i -theme-str 'window {width: 600px;}')
 
 [[ -z "$choice" ]] && exit 0
 

@@ -1,0 +1,249 @@
+{{- $c := .theme.colors -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
+{{- $f := .theme.fonts -}}
+/*
+ * rofi theme — Raycast/Spotlight 風ランチャー
+ *
+ * 設計の根拠:
+ *  - 文字サイズは 1.25 の等比スケール: 本文 13 / 入力欄 16 (入力欄を焦点にする)
+ *  - 本文 #{{ $c.text.hex }} は入力欄背景に対し 8.66:1 (WCAG AA 4.5 を大きく満たす)
+ *  - 補助テキストはパレットの text_dim (#{{ $c.text_dim.hex }}) だと 2.69:1 で AA 不合格。
+ *    色相を保ったまま明度のみ上げた fg-dim を定義し 4.56:1 を確保している
+ *  - 選択状態は「背景 + 文字色 + 左アクセントバー」の3チャネルで冗長に示す。
+ *    背景差だけでは 1.57:1 しかなく状態変化の手がかりとして弱いため
+ *  - 半透明なので実効コントラストは背後のウィンドウに左右される。対策は2段構え:
+ *    (1) hyprland.conf の `layerrule = blur on, match:namespace rofi` で背後を均す
+ *        (実測: ランチャー内側の輪郭成分が素の画面比 0.40 まで低下)
+ *    (2) 背景の不透明度を 97% にし、背後が真っ白でも AA を割らないようにする
+ *
+ * 寸法についての注意 (スクリーンショットからの実測ベース):
+ *  rofi のフォント指定は pt で、モニタスケール (この環境では 1.5) が乗る。
+ *  一方 px 指定にはスケールが乗らないので、両者を混ぜるとアイコンだけ相対的に
+ *  小さくなる (20px 指定では行の文字に対して明らかに小さかった)。そこで
+ *  アイコンは em 指定にして文字に追従させる。em は行の高さ基準で解決されるため
+ *  1.0em でアイコン高さ = 文字の行高となり、両者の釣り合いが取れる。
+ *  実測値: アイコン 26 論理px / 行ピッチ 57.3 論理px / 12 行で高さ 775 論理px。
+ */
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    icon-theme: "Adwaita";
+    display-drun: "アプリ検索";
+    display-run: "コマンド実行";
+    display-window: "ウィンドウ";
+
+    matching: "fuzzy";
+    case-sensitive: false;
+    /* 一致度順に並べ替える。無効だと元の並び順のままなので、"zeed" と打っても
+       完全一致の Zeed が下の方に埋もれる */
+    sort: true;
+    sorting-method: "fzf";
+
+    /* drun の照合対象を名前系だけに絞る。既定は name,generic,exec,categories,keywords
+       で、Zeed 製の PWA は Exec に "zeed" を含むため "zeed" と打つと無関係な
+       アプリまで全部ヒットしていた */
+    drun-match-fields: "name,generic";
+    window-match-fields: "title,class";
+
+    cycle: true;
+    sidebar-mode: false;
+    hover-select: true;
+
+    /* 行番号ジャンプ (vim flash 的な直接移動)。番号は element-index が各行に
+       表示し、絞り込みに追従して振り直される。
+       既定の Super+N は Hyprland のワークスペース切替に奪われるので Alt+N に。
+       Alt+N は kb-custom-N が先に押さえているため、空文字で解放してから割り当てる */
+    kb-custom-1: "";
+    kb-custom-2: "";
+    kb-custom-3: "";
+    kb-custom-4: "";
+    kb-custom-5: "";
+    kb-custom-6: "";
+    kb-custom-7: "";
+    kb-custom-8: "";
+    kb-custom-9: "";
+    kb-custom-10: "";
+    kb-select-1: "Alt+1";
+    kb-select-2: "Alt+2";
+    kb-select-3: "Alt+3";
+    kb-select-4: "Alt+4";
+    kb-select-5: "Alt+5";
+    kb-select-6: "Alt+6";
+    kb-select-7: "Alt+7";
+    kb-select-8: "Alt+8";
+    kb-select-9: "Alt+9";
+    kb-select-10: "Alt+0";
+}
+
+* {
+    font: "{{ $f.ui }} 13";
+
+    /* 97%: 背後が真っ白でも本文 8.67:1 / 補助 4.56:1 で AA を満たす最小値。
+       92% だと補助テキストが 3.93:1 まで落ちる (下のコメント参照) */
+    bg-window: rgba({{ $c.bg_dark.rgb }}, 97%);
+    bg-input: rgba({{ $c.bg_medium.rgb }}, 85%);
+    bg-selected: rgba({{ $c.primary.rgb }}, 30%);
+    border-col: rgba({{ $c.primary.rgb }}, 25%);
+
+    fg: #{{ $c.text.hex }};
+    fg-accent: #{{ $c.accent.hex }};
+    /* パレットの text_dim (#{{ $c.text_dim.hex }}) は 2.69:1 で AA 不合格のため、
+       色相 210° を保ち明度のみ上げて 4.56:1 にした値 */
+    fg-dim: #7d8791;
+    /* 行番号バッジ用。本文でも補助でもない装飾なので AA(4.5) ではなく
+       非テキスト UI の 3:1 を基準にした (最悪ケースで 3.45:1) */
+    fg-faint: #69737c;
+
+    background-color: transparent;
+    text-color: @fg;
+}
+
+window {
+    width: 800px;
+    location: center;
+    padding: 8px;
+    border-radius: 12px;
+    background-color: @bg-window;
+    border: 1px;
+    border-color: @border-col;
+}
+
+/* message を listview の後ろに置いて Raycast 的なフッターにする
+   (既定では inputbar と listview の間に入る) */
+mainbox {
+    padding: 0px;
+    spacing: 0px;
+    background-color: transparent;
+    children: [ "inputbar", "listview", "message" ];
+}
+
+/* prompt を children から外すことでモード名 ("unified" 等) を表示しない。
+   Spotlight/Raycast と同じく、案内は entry の placeholder のみに任せる */
+inputbar {
+    margin: 0px 0px 8px 0px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background-color: @bg-input;
+    children: [ "entry" ];
+}
+
+entry {
+    font: "{{ $f.ui }} 16";
+    text-color: @fg;
+    placeholder: "何でも検索…";
+    placeholder-color: @fg-dim;
+    cursor: text;
+    vertical-align: 0.5;
+}
+
+listview {
+    padding: 0px;
+    margin: 0px;
+    spacing: 2px;
+    border: 0px;
+    lines: 12;
+    fixed-height: false;
+    scrollbar: false;
+    dynamic: true;
+}
+
+/* 全要素に透明な 2px 左ボーダーを持たせ、選択時のみ着色する。
+   こうしないと選択のたびに内容が 2px 横にずれてちらつく。
+   element-index は行番号ジャンプ (Alt+N) の番号バッジ。右端に置く */
+element {
+    padding: 10px 14px;
+    spacing: 12px;
+    border: 0px 0px 0px 2px;
+    border-color: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    children: [ "element-icon", "element-text", "element-index" ];
+}
+
+/* em 指定 (px ではない): 上のコメント参照。文字とアイコンの比率を保つため */
+element-icon {
+    size: 1.0em;
+    cursor: inherit;
+    background-color: transparent;
+}
+
+element-text {
+    expand: true;
+    background-color: transparent;
+    text-color: inherit;
+    cursor: inherit;
+    vertical-align: 0.5;
+    /* 一致部分の強調。既定の下線付きボールドは煩いのでアクセント色のボールドに。
+       highlight は変数参照 (@name) を受け付けないため色をリテラルで書く */
+    highlight: bold #{{ $c.accent.hex }};
+}
+
+/* 行番号バッジ。11 行目以降は空文字になるので幅を固定して列を揃える */
+element-index {
+    expand: false;
+    width: 1.4em;
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    text-color: @fg-faint;
+    background-color: transparent;
+    cursor: inherit;
+}
+
+element normal.normal,
+element alternate.normal {
+    background-color: transparent;
+    text-color: @fg;
+}
+
+/* 選択行: 文字色は本文のままにして、背景と左バーで示す。
+   行全体をアクセント色にすると主張が強すぎるため */
+element selected.normal {
+    background-color: @bg-selected;
+    border-color: @fg-accent;
+    text-color: @fg;
+}
+
+element urgent.normal,
+element alternate.urgent {
+    background-color: transparent;
+    text-color: #{{ $c.warning.hex }};
+}
+
+element selected.urgent {
+    background-color: @bg-selected;
+    border-color: #{{ $c.warning.hex }};
+    text-color: #{{ $c.warning.hex }};
+}
+
+element active.normal,
+element alternate.active {
+    background-color: transparent;
+    text-color: @fg-accent;
+}
+
+element selected.active {
+    background-color: @bg-selected;
+    border-color: @fg-accent;
+    text-color: @fg-accent;
+}
+
+/* フッター。区切りは罫線ではなく上向きの余白とごく淡い文字で示す */
+message {
+    margin: 6px 0px 0px 0px;
+    padding: 8px 14px 2px 14px;
+    border: 1px 0px 0px 0px;
+    border-color: @border-col;
+    background-color: transparent;
+}
+
+textbox {
+    text-color: @fg-faint;
+    vertical-align: 0.5;
+}
+
+error-message {
+    padding: 16px;
+    border-radius: 12px;
+    background-color: @bg-window;
+    text-color: @fg;
+}

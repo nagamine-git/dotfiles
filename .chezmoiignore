@@ -35,8 +35,8 @@ wolow-companion
 .config/hypr/**
 .config/waybar
 .config/waybar/**
-.config/wofi
-.config/wofi/**
+.config/rofi
+.config/rofi/**
 .config/swaync
 .config/swaync/**
 .config/xdg-desktop-portal
