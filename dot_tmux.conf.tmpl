@@ -36,12 +36,6 @@ unbind [
 bind-key v copy-mode
 
 
-# painサイズ切り替え
-bind-key -n M-Left resize-pane -L 3
-bind-key -n M-Right resize-pane -R 3
-bind-key -n M-Up resize-pane -U 3
-bind-key -n M-Down resize-pane -D 3
-
 bind-key -n M-Tab switch-client -l
 
 set -g @plugin 'tmux-plugins/tpm'
@@ -87,6 +81,18 @@ bind-key -n M-f run "tmux split-window -l 12 'zsh -ci tmux_fzf_window'"
 
 # Override tmux-tilit's M-m (main-vertical layout) → アクティブ pane の最大化トグル
 bind-key -n M-m resize-pane -Z \; display-message "zoom: #{?window_zoomed_flag,on,off}"
+
+# Override tmux-tilit's M-Left/Right/Up/Down (resize) → pane移動に変更
+bind-key -n M-Left select-pane -L
+bind-key -n M-Right select-pane -R
+bind-key -n M-Up select-pane -U
+bind-key -n M-Down select-pane -D
+
+# paneサイズ切り替え (移動と衝突しないよう Shift 併用)
+bind-key -n M-S-Left resize-pane -L 3
+bind-key -n M-S-Right resize-pane -R 3
+bind-key -n M-S-Up resize-pane -U 3
+bind-key -n M-S-Down resize-pane -D 3
 
 # main-vertical を使うときの幅。4K (3840px) で main/side = 1920/1920px ≒ 160chars 等分。
 set -g main-pane-width "50%"
