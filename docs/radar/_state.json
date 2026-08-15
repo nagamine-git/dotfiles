@@ -1,0 +1,28 @@
+{
+  "last_run": "2026-08-15",
+  "seen": [
+    {"tool": "mise 宣言的システムブートストラップ", "decided_at": "2026-08-15", "decision": "⌀ 様子見"},
+    {"tool": "lazygit v0.64.0 (git.pagers→git.diffRenderers)", "decided_at": "2026-08-15", "decision": "⌀ config未使用のため影響なし"},
+    {"tool": "jujutsu (jj) v0.44.0 タグ追跡stable化", "decided_at": "2026-08-15", "decision": "⌀ 未導入・乗り換え動機なし"},
+    {"tool": "Claude Code auto mode既定化", "decided_at": "2026-08-15", "decision": "★★ 要確認"},
+    {"tool": "Claude Code TodoWrite既定オフ", "decided_at": "2026-08-15", "decision": "★★ 要確認 (daily-focus skillへの影響)"},
+    {"tool": "Claude Code セッション間メッセージング (SendMessage)", "decided_at": "2026-08-15", "decision": "⌀ 情報として記録"},
+    {"tool": "Claude Code /code-reviewバックグラウンド化", "decided_at": "2026-08-15", "decision": "⌀ 情報として記録"},
+    {"tool": "Claude Code Slack MCP OAuth修正", "decided_at": "2026-08-15", "decision": "★★ 要確認"},
+    {"tool": "Claude Code プラグインzip配布", "decided_at": "2026-08-15", "decision": "⌀ 情報として記録"},
+    {"tool": "chrome-devtools-mcp v1.7.0", "decided_at": "2026-08-15", "decision": "⌀ 通常更新"},
+    {"tool": "Cursor Router", "decided_at": "2026-08-15", "decision": "⌀ 乗り換え動機なし"},
+    {"tool": "OpenAI Codex CLI /import", "decided_at": "2026-08-15", "decision": "⌀ 乗り換え動機なし"},
+    {"tool": "Hyprland 0.56/0.56.2", "decided_at": "2026-08-15", "decision": "⌀ 破壊的変更なし"},
+    {"tool": "CachyOS 8月リリース (noctalia-greeter)", "decided_at": "2026-08-15", "decision": "⌀ greetd-tuigreet使用のため非該当"},
+    {"tool": "Arch AUR悪意パッケージ大量発生", "decided_at": "2026-08-15", "decision": "⌀ AURヘルパー未導入と推定"},
+    {"tool": "freee Agent Hub / 顧問先管理AIエージェント", "decided_at": "2026-08-15", "decision": "⌀ 税理士事務所向けのため非該当"},
+    {"tool": "MCP仕様2026-07-28 (ステートレス化)", "decided_at": "2026-08-15", "decision": "★★ 要確認 (freee-mcp連携)"},
+    {"tool": "弥生 記帳代行AI β版", "decided_at": "2026-08-15", "decision": "⌀ freeeからの乗り換えコスト過大"},
+    {"tool": "Notion AI利用上限導入", "decided_at": "2026-08-15", "decision": "⌀ 移行検討に値しない"},
+    {"tool": "ROCm 7.14正式版", "decided_at": "2026-08-15", "decision": "⌀ 通常更新で追従"},
+    {"tool": "ROCm.AI (Claude Code/Cursor向けAMD Skills)", "decided_at": "2026-08-15", "decision": "⌀ 様子見"},
+    {"tool": "netdata v2.11.0", "decided_at": "2026-08-15", "decision": "⌀ 未導入のため非該当"},
+    {"tool": "Tailscale SSH脆弱性修正 (TS-2026-009/010)", "decided_at": "2026-08-15", "decision": "★★ 要確認 (バージョン確認)"}
+  ]
+}
