@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-08-18",
+  "last_run": "2026-08-19",
   "seen": [
     {"tool": "mise 宣言的システムブートストラップ", "decided_at": "2026-08-15", "decision": "⌀ 様子見"},
     {"tool": "lazygit v0.64.0 (git.pagers→git.diffRenderers)", "decided_at": "2026-08-15", "decision": "⌀ config未使用のため影響なし"},
@@ -42,6 +42,7 @@
     {"tool": "Codex CLI /import Cursor skills対応拡張", "decided_at": "2026-08-18", "decision": "⌀ 乗り換え方向機能で導入動機なし"},
     {"tool": "Cursor Origin (ホスト型コードベース/PR一元管理)", "decided_at": "2026-08-18", "decision": "⌀ チーム/クラウド向けで一人法人ローカル運用に非該当"},
     {"tool": "Claude Code プラグインマーケットプレイス規模判明 (skills 4384件/MCP 727件超)", "decided_at": "2026-08-18", "decision": "⌀ 情報として記録のみ"},
-    {"tool": "AMD CDNA5 / Instinct MI455X", "decided_at": "2026-08-18", "decision": "⌀ データセンター向けで自作dGPU機に非該当"}
+    {"tool": "AMD CDNA5 / Instinct MI455X", "decided_at": "2026-08-18", "decision": "⌀ データセンター向けで自作dGPU機に非該当"},
+    {"tool": "Claude Code v2.1.236", "decided_at": "2026-08-19", "decision": "⌀ [不明] 変更内容未確認、通常更新とみられる"}
   ]
 }
