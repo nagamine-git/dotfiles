@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-08-20",
+  "last_run": "2026-08-21",
   "seen": [
     {"tool": "mise 宣言的システムブートストラップ", "decided_at": "2026-08-15", "decision": "⌀ 様子見"},
     {"tool": "lazygit v0.64.0 (git.pagers→git.diffRenderers)", "decided_at": "2026-08-15", "decision": "⌀ config未使用のため影響なし"},
@@ -44,6 +44,11 @@
     {"tool": "Claude Code プラグインマーケットプレイス規模判明 (skills 4384件/MCP 727件超)", "decided_at": "2026-08-18", "decision": "⌀ 情報として記録のみ"},
     {"tool": "AMD CDNA5 / Instinct MI455X", "decided_at": "2026-08-18", "decision": "⌀ データセンター向けで自作dGPU機に非該当"},
     {"tool": "Claude Code v2.1.236", "decided_at": "2026-08-19", "decision": "⌀ [不明] 変更内容未確認、通常更新とみられる"},
-    {"tool": "Claude Code v2.1.237 (Concise出力スタイル追加/LLMゲートウェイprompt cache修正)", "decided_at": "2026-08-20", "decision": "⌀ [確認済] alias提案禁止方針のため導入判断保留、影響軽微"}
+    {"tool": "Claude Code v2.1.237 (Concise出力スタイル追加/LLMゲートウェイprompt cache修正)", "decided_at": "2026-08-20", "decision": "⌀ [確認済] alias提案禁止方針のため導入判断保留、影響軽微"},
+    {"tool": "Tailscale SSH脆弱性修正版確認 (TS-2026-009/010, v1.98.9以降)", "decided_at": "2026-08-21", "decision": "★★ [確認済] 修正版番号判明、実機でのtailscale version確認を推奨"},
+    {"tool": "Claude Code v2.1.238 (メモリ無制限増加修正/keybindingFlavor/MCP headersHelper)", "decided_at": "2026-08-21", "decision": "⌀ [確認済] 安定性修正、通常更新で追従"},
+    {"tool": "Claude Code v2.1.239 (リモートMCPサーバ5xx復帰不具合修正/Esc競合修正)", "decided_at": "2026-08-21", "decision": "⌀ [確認済] Slack MCP等に実利ある安定性修正、通常更新で追従"},
+    {"tool": "MCPエコシステムセキュリティ懸念 (Seoul Dev Summit/OX Security報告、公開サーバのOAuth未実装率)", "decided_at": "2026-08-21", "decision": "⌀ [確認済] freee-mcp/Slack MCPともOAuth採用済みで非該当"},
+    {"tool": "一人社長向けAI SaaS一般トレンド記事 (Sales Trigger等)", "decided_at": "2026-08-21", "decision": "⌀ 汎用まとめ記事のみ、具体的乗り換え候補なし"}
   ]
 }
