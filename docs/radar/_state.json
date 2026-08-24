@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-08-23",
+  "last_run": "2026-08-24",
   "seen": [
     {"tool": "mise 宣言的システムブートストラップ", "decided_at": "2026-08-15", "decision": "⌀ 様子見"},
     {"tool": "lazygit v0.64.0 (git.pagers→git.diffRenderers)", "decided_at": "2026-08-15", "decision": "⌀ config未使用のため影響なし"},
@@ -58,6 +58,10 @@
     {"tool": "Antigravity CLI v1.1.17", "decided_at": "2026-08-22", "decision": "⌀ 未導入のため非該当"},
     {"tool": "Tailscale v1.102.3 (現行stable、TS-2026-009/010修正版から大幅に進行)", "decided_at": "2026-08-23", "decision": "⌀ [確認済] ローリングリリース運用なら通常更新で解消見込み、実機バージョン確認のみ残置で監視クローズ見込み"},
     {"tool": "Claude Code v2.1.241 (voice mode固着修正/mTLS証明書自動リロード/Remote Control権限プロンプト表示修正)", "decided_at": "2026-08-23", "decision": "⌀ [確認済] mTLS・voice mode常用構成なし、Remote Control表示修正のみ地味に有用、通常更新で追従"},
-    {"tool": "Codex CLI v0.148.0 (/export・codex exec fork・Bedrock Runtime組み込み・サンドボックスfail-closed化)", "decided_at": "2026-08-23", "decision": "⌀ 未導入・乗り換え動機なし"}
+    {"tool": "Codex CLI v0.148.0 (/export・codex exec fork・Bedrock Runtime組み込み・サンドボックスfail-closed化)", "decided_at": "2026-08-23", "decision": "⌀ 未導入・乗り換え動機なし"},
+    {"tool": "amd-skills (AMD Skills / ROCm.AI Claude Code向けSkillsプラグイン)", "decided_at": "2026-08-24", "decision": "★★ [確認済] Claude Pluginsで正式に検索・インストール可能になったことを確認、ROCm共用dGPU環境に直接ヒットする導入候補"},
+    {"tool": "Tailscale TS-2026-011 (host-scoped IPv4 destination / 4via6アドレス処理脆弱性)", "decided_at": "2026-08-24", "decision": "⌀ [推定] v1.102.3で修正済みとみられる、既存監視事項(TS-2026-009/010)と合わせ実機バージョン確認待ち"},
+    {"tool": "freee Agent Hub正式公開日確定 (8/28) / freee顧問先管理AIエージェント提供開始日確定 (9/15)", "decided_at": "2026-08-24", "decision": "⌀ 日付確定のみ、税理士事務所向けのため非該当"},
+    {"tool": "CachyOS 8月リリース詳細 (Shelly Zig書き換え完了・kernel-manager/update applet Rust化・chwdハンドヘルド検出改善)", "decided_at": "2026-08-24", "decision": "⌀ 既出内容の延長、破壊的変更なし"}
   ]
 }
