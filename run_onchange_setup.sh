@@ -62,6 +62,24 @@ else
   fi
 fi
 
+# === OOM対策: zram 16GB + systemd-oomd (am5-itx専用, 2026-08-29) ===
+# 2026-08-29、zeed(ブラウザ自動化)×9 + ffmpeg 18.6GB のメモリスパイクを
+# swap0Bのまま食らい、kernelのoom-killerが即発動して複数プロセス
+# (tmux pane・slack含む) が巻き添え死 → reboot に至った ([[project_tmux_oom_reboot]])。
+# zramで瞬間スパイクの緩衝材を作り、systemd-oomdで「1プロセスだけ早期に狩る」
+# 体制にする。Arch の systemd は Fedora と違い oomd 有効化の drop-in を同梱しないため
+# -.slice / user-.slice を自前で ManagedOOM 化しないと oomd は何も監視しない。
+if [ "$(hostname)" = "am5-itx" ]; then
+  echo "→ am5-itx 検出: zram 16GB + systemd-oomd を設定"
+  sudo pacman -S --needed --noconfirm zram-generator
+  sudo install -D -m 644 etc/systemd/zram-generator.conf /etc/systemd/zram-generator.conf
+  sudo install -D -m 644 "etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf" "/etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf"
+  sudo install -D -m 644 etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf /etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf
+  sudo systemctl daemon-reload
+  sudo systemctl start systemd-zram-setup@zram0.service
+  sudo systemctl enable --now systemd-oomd.service
+fi
+
 # === sleep / lid 設定 (システム必須。壊れやすい install 群より前に置く) ===
 # パッケージや npm の失敗で電源・lid 設定がブロックされないよう、setup の冒頭側で確実に適用する。
 # (以前はファイル末尾にあり、openclaw の EACCES で set -e 中断 → 永久に未適用だった)
