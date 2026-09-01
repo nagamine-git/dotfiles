@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-08-31",
+  "last_run": "2026-09-01",
   "seen": [
     {
       "tool": "mise 宣言的システムブートストラップ",
@@ -505,6 +505,36 @@
       "tool": "Codex CLI rust-v0.151.0",
       "decided_at": "2026-08-31",
       "decision": "⌀ 未導入・乗り換え動機なし"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 依然7.2.4のまま、反映待ち継続"
+    },
+    {
+      "tool": "Tailscale最新版",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 9月分リリースノート未公開、実機確認は宿題のまま"
+    },
+    {
+      "tool": "Hyprland 0.57",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 進捗20%のまま変化なし"
+    },
+    {
+      "tool": "Claude Code v2.1.252 (最新版確認)",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 9月分新規リリース未確認、現行が最新"
+    },
+    {
+      "tool": "freee-mcp v0.34.0 (最新版確認)",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 8/31以降の新規リリースなし"
+    },
+    {
+      "tool": "MCP仕様2026-07-28 / Agent Plugins 1.0 後続動向",
+      "decided_at": "2026-09-01",
+      "decision": "⌀ [確認済] 8月後半から進展なし"
     }
   ]
 }
