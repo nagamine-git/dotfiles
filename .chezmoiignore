@@ -78,7 +78,6 @@ wolow-companion
 .local/bin/hyprvoice_ptt.sh
 .local/bin/lib_hypr_perfmode.sh
 .local/bin/droidcam.sh
-.local/bin/idle-sleep.sh
 .local/bin/mic-snr.sh
 .local/bin/sleep-now.sh
 .local/bin/integrate-appimage.sh
