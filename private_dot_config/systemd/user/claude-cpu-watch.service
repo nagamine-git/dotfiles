@@ -1,0 +1,10 @@
+[Unit]
+Description=Claude Code の CPU 活動を監視してスタンプを更新 (idle-sleep.sh 用)
+Documentation=file:%h/.local/bin/claude-cpu-watch.sh
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/claude-cpu-watch.sh
+# 監視自体が負荷源にならないよう最低優先度で回す
+Nice=19
+IOSchedulingClass=idle
