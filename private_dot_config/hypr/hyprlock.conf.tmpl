@@ -27,7 +27,12 @@ background {
     monitor =
     path = screenshot
     blur_size = 8
-    blur_passes = 3
+    # blur_passes は 3 から 1 に下げた (2026-08-08)。4K スクリーンショットへの
+    # 3 パスブラーで hyprlock が GPU に不正なコマンドを吐き、amdgpu が
+    # "Illegal opcode in command stream" + CPF page fault を報告して落ちていた。
+    # 08-06 21:20 は同じ経路で ring reset に失敗し Hyprland ごと道連れになった。
+    # 再発が止まらなければ 0 (blur 無効) か path=screenshot の廃止まで下げる。
+    blur_passes = 1
 }
 
 input-field {
