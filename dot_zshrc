@@ -5,6 +5,13 @@ export LANG=ja_JP.UTF-8
 export LC_ALL=ja_JP.UTF-8
 export EDITOR=nvim
 
+# MIOpen: 畳み込みアルゴリズムの実測ベンチマークを禁止し FindDb/immediate に倒す。
+# 既定の HYBRID は FindDb ミス時に GPU 上で実測を走らせ、その間 graphics ring が
+# 詰まる。単一 GPU をデスクトップと共用しているため、10秒 (gfx ring の既定
+# タイムアウト) を超えると amdgpu が GPU 全体をリセットし Hyprland ごと落ちる。
+# 2026-08-06 21:20 に実際に発生 (dopa/gen.py の PyTorch+ROCm 実行中)。
+export MIOPEN_FIND_MODE=FAST
+
 
 # PATHの設定 - 一箇所にまとめてシンプル化 (source ~/.zshrc 再実行での重複追加を防ぐ)
 case ":$PATH:" in
