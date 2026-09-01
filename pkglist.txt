@@ -87,6 +87,7 @@ bc
 xorg-xwayland
 dust
 tree
+onefetch
 vlc
 darkman
 hyprvoice-bin

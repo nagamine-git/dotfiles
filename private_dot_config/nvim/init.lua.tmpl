@@ -185,19 +185,58 @@ require('lazy').setup({
   -- ファジーファインダー
   { 'nvim-telescope/telescope.nvim', dependencies = { 'nvim-lua/plenary.nvim' } },
 
+  -- スタート画面 (引数なし `nvim` で cwd のセッションが無いとき。旧: 空バッファ)。
+  -- ランチャーではなく「この repo は何で・今どうなっているか」を出す。中身は全部外部コマンドで、
+  -- Lua 側は宣言だけ。onefetch=言語構成/規模, tree=ディレクトリ構成, git=作業状況。
+  {
+    'folke/snacks.nvim',
+    priority = 1000,
+    lazy = false,
+    opts = {
+      dashboard = {
+        preset = { keys = {} },  -- キーのランチャー部分は出さない (欲しいのは把握であって導線ではない)
+        sections = {
+          -- 上段: この repo の素性。Churn (変更が集中しているファイル) がそのまま「注意すべき箇所」。
+          -- --no-color-palette=下端の色見本を消す / --no-title=git のユーザ名行を消す /
+          -- -d で version・url・dependencies を落として 20 行に収める。
+          -- width を明示しないと下段の pane 幅に縛られてロゴ+情報が横に切れる。
+          { section = 'terminal', height = 20, width = 100, padding = 1, ttl = 5 * 60,
+            enabled = vim.fn.executable('onefetch') == 1,
+            cmd = 'onefetch --no-color-palette --no-title -d version url dependencies'
+              .. ' --number-of-authors 2 --number-of-languages 4' },
+          -- 下段左: ディレクトリ構成。-d でディレクトリのみ (ファイルまで出すと monorepo で溢れる)。
+          { pane = 1, icon = ' ', title = '構成', padding = 1 },
+          -- tail -n +2 は tree が先頭に出す "." の行を落とすため。
+          { pane = 1, section = 'terminal', height = 14, ttl = 5 * 60,
+            cmd = 'tree -L 2 -d --dirsfirst --noreport -I "node_modules|.git|dist|build|target" | tail -n +2' },
+          -- 下段右: 注意すべき箇所 = 未コミットの変更と TODO の量。
+          { pane = 2, icon = ' ', title = '変更中 / 注意', padding = 1 },
+          { pane = 2, section = 'terminal', height = 5, ttl = 60,
+            cmd = 'git status --short --branch --renames; rg -c --no-filename -e "TODO|FIXME|HACK|XXX" 2>/dev/null | awk "{s+=\\$1} END{print \\"TODO/FIXME  \\" s+0 \\" 件\\"}"' },
+          { pane = 2, icon = ' ', title = '最近のコミット', padding = 1 },
+          { pane = 2, section = 'terminal', height = 8, ttl = 5 * 60,
+            cmd = 'git log --oneline --decorate --color=always -6' },
+        },
+      },
+    },
+  },
+
   -- セッション復元（tmux-resurrect 連携: 引数なし起動時に cwd のセッションを自動復元）
+  -- セッションがある cwd では上のダッシュボードより復元を優先する (分岐はここ1箇所)。
   {
     'folke/persistence.nvim',
     lazy = false,
     opts = {},
     config = function(_, opts)
-      require('persistence').setup(opts)
+      local persistence = require('persistence')
+      persistence.setup(opts)
       vim.api.nvim_create_autocmd('VimEnter', {
         nested = true,
         callback = function()
-          if vim.fn.argc() == 0 then
-            require('persistence').load()
-          end
+          -- 引数付き起動は従来どおり不介入。`nvim .` は neo-tree が netrw を hijack して開く。
+          -- セッションが無い cwd は何もしない = snacks.dashboard がそのまま残る。
+          if vim.fn.argc() ~= 0 then return end
+          if vim.fn.filereadable(persistence.current()) == 1 then persistence.load() end
         end,
       })
     end,
