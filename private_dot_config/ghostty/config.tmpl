@@ -14,7 +14,19 @@ theme = Hybrid
 # Hyprland Optimization (Minimal & Clean)
 window-decoration = false
 gtk-titlebar = false
-gtk-tabs-location = hidden
+{{- if ne .chezmoi.os "darwin" }}
+
+# 単一インスタンスを切り、1ウィンドウ = 1プロセスにする (2026-08-23)。
+# am5-itx は deep(S3) からの復帰のたびに amdgpu が MODE1 reset を打っており
+# (suspend 16回 : MODE1 reset 16回で完全一致)、HYPR_IGNORE_GPU_RESETS=1 で
+# Hyprland が生き延びる代わりにクライアントの GL コンテキストが lost したまま残る。
+# 既存ウィンドウは描画を維持できるが新規サーフェスの初期化に失敗するため、
+# 既定の detect (= 新窓は必ず既存プロセスが作る) だと数日稼働後に
+# 「新しいウィンドウだけ中身が出ず壁紙が透ける」状態に全滅する。
+# 1窓1プロセスなら腐ったプロセスを引きずらない。代償はメモリと起動時間、
+# および linux-cgroup = single-instance の分離が効かなくなること。
+gtk-single-instance = false
+{{- end }}
 
 # Performance & Aesthetics
 confirm-close-surface = false
