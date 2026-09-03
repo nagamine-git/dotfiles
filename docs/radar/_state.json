@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-09-02",
+  "last_run": "2026-09-03",
   "seen": [
     {
       "tool": "mise 宣言的システムブートストラップ",
@@ -595,6 +595,51 @@
       "tool": "Arch Linux 2026.09.01 ISO (kernel 7.2.2 / glibc 2.44)",
       "decided_at": "2026-09-02",
       "decision": "⌀ [確認済] ローリング更新の反復、glibc2.44クラッシュは既に修正確認済みで影響なし"
+    },
+    {
+      "tool": "Claude Code v2.1.259 (auto modeがcommand/skill frontmatter指定モデルを無視するバグ修正)",
+      "decided_at": "2026-09-03",
+      "decision": "★★★ [確認済] dot_claude/agents/*.mdの3エージェント全てがfrontmatterでmodel明示、モデル配車則にも直撃"
+    },
+    {
+      "tool": "Claude Code v2.1.259 (並行セッションが~/.claude.jsonを無言で上書きし合うバグ修正)",
+      "decided_at": "2026-09-03",
+      "decision": "★★ [確認済] remoteControlAtStartup + radarスケジュール実行との並行動作リスクを解消"
+    },
+    {
+      "tool": "Claude Code v2.1.259 (Remote ControlでStopがバックグラウンドagent/workflowを止めないバグ修正)",
+      "decided_at": "2026-09-03",
+      "decision": "★★ [確認済] remoteControlAtStartup + skipWorkflowUsageWarning構成に直撃"
+    },
+    {
+      "tool": "Claude Code v2.1.259 (managedMcpServers / --permission-prompts none / glab認識 / Bash Read() deny rule迂回修正)",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 組織向け機能・GitHub運用のため大半非該当、injection-guard.shは独自実装のため影響限定的"
+    },
+    {
+      "tool": "TailscaleUp 2026 Aperture GA / Tailscale PAM beta 詳細確認",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 8/26基調講演由来の内容で8/28分に既出、9月新規動意なし"
+    },
+    {
+      "tool": "lazygit v0.64.1 最新版確認",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 8/16以降変化なし"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 依然7.2.4のまま、反映待ち継続"
+    },
+    {
+      "tool": "Hyprland 0.57",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 進捗20%のまま変化なし"
+    },
+    {
+      "tool": "freee-mcp v0.34.2 最新版確認",
+      "decided_at": "2026-09-03",
+      "decision": "⌀ [確認済] 9/1以降の新規リリースなし"
     }
   ]
 }
