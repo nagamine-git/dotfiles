@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-09-03",
+  "last_run": "2026-09-04",
   "seen": [
     {
       "tool": "mise 宣言的システムブートストラップ",
@@ -640,6 +640,61 @@
       "tool": "freee-mcp v0.34.2 最新版確認",
       "decided_at": "2026-09-03",
       "decision": "⌀ [確認済] 9/1以降の新規リリースなし"
+    },
+    {
+      "tool": "Claude Code v2.1.260 (Fable 5.1 プロンプトキャッシュ不具合修正: ツール結果後コンテキストが非キャッシュ再送)",
+      "decided_at": "2026-09-04",
+      "decision": "★★★ [確認済] Fable週次枠管理コストに直結、通常更新で追従"
+    },
+    {
+      "tool": "Claude Code v2.1.261 (/skill-doctor 追加)",
+      "decided_at": "2026-09-04",
+      "decision": "★★ [確認済] dot_claude/skills 3件のコンテキストコスト可視化に有用"
+    },
+    {
+      "tool": "Claude Code v2.1.260 (/cost・ステータスラインへのキャッシュミス原因表示追加)",
+      "decided_at": "2026-09-04",
+      "decision": "★★ [確認済] 8/27採用のcacheTtl効果検証をさらに一歩進める"
+    },
+    {
+      "tool": "Claude Code v2.1.260/261 (プラグインフックロード失敗後のモデル切替ブロック修正/プラグイン同期重複修正/Remote Control権限モード表示・停止不具合修正)",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 5プラグイン+remoteControlAtStartup構成に間接的に有用、自動適用"
+    },
+    {
+      "tool": "Claude Code v2.1.260 (/diff フルスクリーン差分パネル)",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 情報として記録、緊急性なし"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 依然rocm-core 7.2.4のまま、反映待ち継続"
+    },
+    {
+      "tool": "Hyprland 0.57",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 進捗20%のまま変化なし"
+    },
+    {
+      "tool": "Tailscale最新版",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 9月分リリースノート未公開、実機確認は宿題のまま"
+    },
+    {
+      "tool": "freee-mcp v0.34.2 最新版確認",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] 9/1以降の新規リリースなし"
+    },
+    {
+      "tool": "Cursor 自己ホスト型実行マシン/エージェントワークスペース、Codex CLI Linux版デスクトップアプリプレビュー",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [推定] 発表日特定できず、乗り換え動機なし"
+    },
+    {
+      "tool": "blink.cmp / snacks.nvim / telescope.nvim 最新版確認",
+      "decided_at": "2026-09-04",
+      "decision": "⌀ [確認済] blink.cmpはv1.10.2(4/4)のまま9月新着なし"
     }
   ]
 }
