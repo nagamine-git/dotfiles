@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-09-07",
+  "last_run": "2026-09-08",
   "seen": [
     {
       "tool": "mise 宣言的システムブートストラップ",
@@ -800,6 +800,51 @@
       "tool": "マネーフォワード/弥生会計 AI機能動向",
       "decided_at": "2026-09-07",
       "decision": "⌀ [確認済] 9月固有の新着なし"
+    },
+    {
+      "tool": "freee-mcp v0.35.0/v0.35.1 (mcp-only APIをLaunch/従業員評価ドメイン別に分割)",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [確認済] 一人法人・従業員なしのため両ドメインとも非該当"
+    },
+    {
+      "tool": "Codex CLI v0.153.4 (GPT-6-Astra既定化)",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ 未導入・乗り換え動機なし"
+    },
+    {
+      "tool": "Cursor v08.19.26",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ 未導入・乗り換え動機なし"
+    },
+    {
+      "tool": "Gemini CLI v0.58.0",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ 未導入・乗り換え動機なし"
+    },
+    {
+      "tool": "Zellij v0.45.0/v0.45.1 (nested sessions/Kitty graphics/新UI)",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [確認済] tmux運用中で乗り換え動機なし"
+    },
+    {
+      "tool": "Hyprland 0.57マイルストーン",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [確認済] 進捗20%のまま変化なし"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [推定] 公式サイトがプロキシでブロックされ直接確認不可、検索結果上は変化なし"
+    },
+    {
+      "tool": "Tailscale最新版",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [推定] 公式サイトがプロキシでブロックされ直接確認不可、検索結果上は変化なし"
+    },
+    {
+      "tool": "CachyOS 9月リリース",
+      "decided_at": "2026-09-08",
+      "decision": "⌀ [確認済] 9/8時点で未発表"
     }
   ]
 }
