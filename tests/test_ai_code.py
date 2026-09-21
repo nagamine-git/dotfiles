@@ -54,6 +54,8 @@ class LauncherTests(unittest.TestCase):
 
     def test_default_and_end_of_options(self):
         self.assertEqual(self.dry("claude", "a prompt"), self.dry("claude", "standard", "a prompt"))
+        self.assertEqual(self.dry("codex", "a prompt"), self.dry("codex", "standard", "a prompt"))
+        self.assertEqual(self.dry("codex", "exec", "hello"), self.dry("codex", "standard", "exec", "hello"))
         self.assertEqual(self.dry("codex", "--", "deep")[-1], "deep")
         self.assertEqual(self.dry("codex", "standard", "exec", "hello")[-2:], ["exec", "hello"])
 
@@ -165,6 +167,8 @@ class ConfigTests(unittest.TestCase):
                 self.assertTrue((destination / f".codex/quality-{preset}.config.toml").is_file())
             self.assertTrue((destination / ".claude/agents/reviewer.md").is_file())
             self.assertTrue((destination / ".codex/agents/dotfiles-reviewer.toml").is_file())
+            self.assertTrue((destination / ".claude/agents/deep-specialist.md").is_file())
+            self.assertTrue((destination / ".codex/agents/dotfiles-specialist.toml").is_file())
 
     @unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed; native check is optional")
     def test_native_codex_profile_loading_without_auth_or_model_calls(self):
@@ -209,6 +213,8 @@ class ConfigTests(unittest.TestCase):
                     self.assertFalse(cfg["agents"]["enabled"])
                 else:
                     self.assertEqual(cfg["agents"]["max_concurrent_threads_per_session"], 2)
+                    if preset == "standard":
+                        self.assertTrue(cfg["agents"]["enabled"])
                     self.assertNotIn("sandbox_mode", cfg)
                     self.assertNotIn("approval_policy", cfg)
 
@@ -218,11 +224,12 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(cfg["name"], path.stem)
             self.assertTrue(cfg["description"])
             self.assertTrue(cfg["developer_instructions"])
+            self.assertFalse(cfg["agents"]["enabled"], "Leaf agents must not recursively delegate")
             if path.stem != "dotfiles-implementer":
                 self.assertEqual(cfg["sandbox_mode"], "read-only")
 
     def test_claude_agents_have_required_metadata_and_no_shell_for_readers(self):
-        for role in ("implementer", "researcher", "reviewer"):
+        for role in ("implementer", "researcher", "reviewer", "deep-specialist"):
             text = (ROOT / f"dot_claude/agents/{role}.md").read_text()
             self.assertTrue(text.startswith("---\n"))
             frontmatter = text.split("---", 2)[1]
@@ -230,9 +237,23 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(fields["name"].strip(), role)
             self.assertTrue(fields["description"].strip())
             self.assertLessEqual(int(fields["maxTurns"]), 30)
-            if role != "implementer":
+            if role == "implementer":
+                denied = {tool.strip() for tool in fields["disallowedTools"].split(",")}
+                self.assertIn("Agent", denied)
+            else:
                 tools = {tool.strip() for tool in fields["tools"].split(",")}
                 self.assertTrue(tools.isdisjoint({"Bash", "Write", "Edit", "NotebookEdit", "Agent"}))
+
+    def test_specialists_have_explicit_strong_models_and_bounded_access(self):
+        cfg = tomllib.loads((ROOT / "private_dot_codex/agents/dotfiles-specialist.toml").read_text())
+        self.assertEqual(cfg["model"], "gpt-6-astra")
+        self.assertEqual(cfg["model_reasoning_effort"], "high")
+        text = (ROOT / "dot_claude/agents/deep-specialist.md").read_text()
+        fields = dict(line.split(":", 1) for line in text.split("---", 2)[1].splitlines() if ":" in line)
+        self.assertEqual(fields["model"].strip(), "claude-fable-5-1")
+        self.assertEqual(fields["effort"].strip(), "high")
+        self.assertLessEqual(int(fields["maxTurns"]), 20)
+        self.assertEqual({tool.strip() for tool in fields["tools"].split(",")}, {"Read", "Grep", "Glob"})
 
 
 if __name__ == "__main__":

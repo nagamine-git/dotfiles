@@ -5,7 +5,11 @@ model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 Gather only the requested evidence. Do not edit, commit, or send external messages.
+Do not delegate again; return unresolved decisions to the lead.
 Prefer targeted file reads and official documentation; open sources before relying on them.
 Return concise findings, file/line or URL citations, and unresolved questions.
 Distinguish vendor claims, account availability, and measured behavior.
 """
+
+[agents]
+enabled = false

@@ -21,18 +21,19 @@ chezmoi apply --parent-dirs --include=files,dirs -- ~/.local/bin/ai-code ~/.clau
 `~/.codex/config.toml`、認証、Claudeのsettings・通知フックは上書きしない。
 Codexの通常起動のmodel/effortは従来どおり。新設定は下記ランチャーか`--profile`で選ぶ。
 グローバル作業規約とカスタムエージェントは通常起動でも読み込まれる。
+反映後は新しいセッションで起動する（進行中の会話への再読込は保証しない）。
 `AGENTS.override.md`があればCodexはそちらを優先する。独自のCODEX_HOME /
 CLAUDE_CONFIG_DIRを使う場合、chezmoiの標準配備先から必要ファイルを別途配備する。
 
 | 用途 | コマンド | モデル / effort |
 |---|---|---|
-| 通常の実装 | `ai-code claude standard` | Opus / high |
-| 曖昧な設計・難問 | `ai-code claude deep` | Fable 5.1 / high |
-| 明確な軽作業 | `ai-code claude routine` | Sonnet / medium |
+| 自動判断で作業 | `ai-code claude` | 親 Opus / high → 必要時 Fable 5.1専門担当 |
+| 親モデルの任意指定 | `ai-code claude deep` | Fable 5.1 / high |
+| 親モデルの任意指定 | `ai-code claude routine` | Sonnet / medium |
 | ファイルと検証記録のレビュー | `ai-code claude review` | Opus / xhigh |
-| 通常の実装 | `ai-code codex standard` | GPT-5.6 Sol / high |
-| 曖昧な設計・難問 | `ai-code codex deep` | GPT-6 Astra / high |
-| 明確な軽作業 | `ai-code codex routine` | GPT-5.6 Terra / medium |
+| 自動判断で作業 | `ai-code codex` | 親 Sol / high → 必要時 Astra専門担当 |
+| 親モデルの任意指定 | `ai-code codex deep` | GPT-6 Astra / high |
+| 親モデルの任意指定 | `ai-code codex routine` | GPT-5.6 Terra / medium |
 | Git差分のレビュー | `ai-code codex review --base main` | GPT-6 Astra / high |
 
 Claudeのopus/sonnet aliasはproviderやローカルのalias上書きに依存する。
@@ -40,9 +41,9 @@ Codexのprofileは0.134以降の独立した`quality-*.config.toml`形式を使�
 プロジェクト設定や明示CLIオプションはprofileより優先する。起動時の実モデルも確認する。
 
 ```bash
-ai-code claude 'この不具合を再現して修正して'       # standardが既定
-ai-code --dry-run codex deep '設計を確認して'        # コマンド表示のみ・課金なし
-ai-code codex standard exec 'この変更を実装して'
+ai-code claude 'この不具合を再現して修正して'       # 難易度の指定は不要
+ai-code --dry-run codex '設計を確認して'             # 親の起動コマンド表示のみ・課金なし
+ai-code codex exec 'この変更を実装して'
 ai-code codex review --uncommitted                  # 未コミット差分
 ai-code codex review --base main                    # ブランチ全体
 ai-code claude review '指定したファイルとテスト記録をレビューして'
@@ -54,11 +55,45 @@ Fable/Astraへのアクセス・課金条件は契約次第であり、インス
 安全判定などによるfallbackは別の機能なので、実モデルと通知を確認する。
 Fableの非対話`-p`は契約によってusage creditsを確認なしで使うため、先に契約を確認する。
 
+## 難易度はAIが判断する
+
+ユーザーは`deep`などを選ばなくてよい。親が開始時と新しい証拠・失敗の後に
+曖昧さ・影響範囲・危険・検証可能性を評価し、必要な専門担当へ自律的に委任する。
+これはネイティブsubagentと作業規約を使った判断であり、親モデルの途中切替や
+独立した難易度分類APIではない。CLI自体はpromptを採点しない。
+
+| 状況 | 指示している動作 |
+|---|---|
+| 小さく明確な修正 | 親が実装・検証。分類用の追加呼出しなし |
+| 切り出せる資料収集 | Sonnet / Terraのresearcherへ必要部分だけ委任 |
+| 曖昧な設計、認証・課金・データ移行の変更、複数領域の原因不明障害 | 最初からFable / Astraのspecialistへ相談 |
+| 同じ問題への修正が2回失敗 | 再現・試行をまとめてspecialistへ相談 |
+| 親がすでにFable / Astra | 自分で再評価。同じモデルへの重複相談はしない |
+| 委任禁止、モデル固定、予算制限、モデル利用不可 | 制約を尊重して未検証点を報告。勝手な降格・追加契約なし |
+
+専門担当は設計・診断に絞り、親が回答を待って実装・テストを行う。
+相談の理由は通知するが、ユーザーに難易度選択は求めない。仕様・権限について本当に
+不足する情報は別途確認する。同時子担当は最大2件、難問相談は1件、子から再委任しない。
+同じ根拠で相談を繰り返さず、専門担当でも未解決なら不足情報を報告する。
+
+Codexのstandard profileでは`agents.enabled=true`、子担当ではfalseを指定する。
+上位の管理設定・プロジェクト設定・明示CLI指定で無効なら自動委任はできない。
+手動presetは親の選択であり、全担当のモデル固定ではない。モデル固定や委任禁止は
+明示指示を優先する。review起動は検査専用なので、この自動相談の対象外。
+
+判断はモデルへの指示であり、必ず正しく分類する保証や費用上限の強制ではない。
+追加課金を有効化する設定は変更しないが、すでに有効な従量課金・usage creditsは
+子担当でも消費し得る。アカウント側の利用上限は別途必要。
+オフラインテストは配備・モデル設定・子の再委任無効化を検証する。
+実際の判断精度、モデル利用権、費用は未測定で、`--dry-run`でも検証されない。
+
 ## 改善した点
 
 - Claudeの既存agentファイルに必須の`name`・`description`を追加。欠けると現行版はファイルをスキップする。
 - 実装はOpus/high、資料収集はSonnet/medium、レビューはOpus/xhigh。
   researcher/reviewerは許可toolを列挙し、Bash経由の書き込みも防ぐ。テスト実行は親担当。
+- 難問相談のdeep-specialist (Fable 5.1/high) / dotfiles-specialist (Astra/high) を追加。
+  親への「上位設定への切替を提案」ではなく、必要時に自律委任する規約へ変更。
 - Codexにも専用agentを追加。profileでは同時子agentを2つまでに制限し、reviewは委任無効。
 - 両方に合格条件、変更に応じたテスト、未検証の明記、失敗2回で再評価する規約を追加。
   これはモデルへの指示であり、CIの合格を強制するプログラムではない。
