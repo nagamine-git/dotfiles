@@ -1,0 +1,6 @@
+# Only for bounded tasks with explicit acceptance criteria.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+[agents]
+max_concurrent_threads_per_session = 2

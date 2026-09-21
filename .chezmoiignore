@@ -8,6 +8,9 @@ pkglist.txt
 .pre-commit-config.yaml
 .github
 .github/**
+tests
+tests/**
+docs/agent-workflow.md
 etc
 etc/**
 bin

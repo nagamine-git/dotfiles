@@ -7,6 +7,20 @@ on:
     branches: [main]
 
 jobs:
+  agent-config-check:
+    name: Agent presets (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify launchers and config data without model calls
+        run: |
+          bash -n dot_local/bin/executable_ai-code
+          shellcheck dot_local/bin/executable_ai-code
+          python3 -m unittest discover -s tests -v
+
   template-check:
     name: Template & syntax check
     runs-on: ubuntu-latest
