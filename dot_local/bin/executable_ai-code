@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Native CLI presets; no API proxy, classifier, or implicit model fallback.
+# Native CLI presets; agents assess difficulty using the installed global guidance.
 set -eu
 
 usage() {
   printf '%s\n' \
     'Usage: ai-code [--dry-run] claude|codex [standard|routine|deep|review] [CLI arguments...]' \
-    'Default: standard. Pass -- before a prompt matching a preset name.' \
+    'Default: standard with autonomous specialist delegation; no difficulty option required.' \
+    'Presets optionally select the parent model. Pass -- before a prompt matching a preset name.' \
     'Examples:' \
     '  ai-code claude "Fix the failing test"' \
-    '  ai-code claude deep "Investigate the architecture"' \
-    '  ai-code codex standard exec "Implement the specified change"' \
+    '  ai-code claude "Investigate the architecture"' \
+    '  ai-code codex exec "Implement the specified change"' \
     '  ai-code codex review --base main' \
     '  ai-code --dry-run codex routine "Update the docs"' \
     'Native CLI arguments are forwarded as-is. Explicit overrides are your responsibility.'

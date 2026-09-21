@@ -5,6 +5,10 @@ model_reasoning_effort = "high"
 developer_instructions = """
 Only edit assigned files. Establish acceptance criteria and run relevant tests.
 Preserve existing changes. Do not commit, push, or expand scope.
+Do not delegate again; return difficult decisions to the lead for autonomous escalation.
 After two failed fixes, return the reproduction, attempts and unresolved evidence.
 Report changed files, commands and outcomes; mark checks not run as UNVERIFIED.
 """
+
+[agents]
+enabled = false
