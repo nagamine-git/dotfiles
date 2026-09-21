@@ -45,6 +45,9 @@ chezmoi apply -v
 
 ## 構成ハイライト
 
+- **Claude Code / Codex**: `ai-code claude|codex standard|routine|deep|review` で用途別に起動。
+  カスタムagent、検証規約、モデル/effort、限定apply手順は [運用ガイド](docs/agent-workflow.md) を参照。
+
 - **シェル**: zsh + sheldon + starship (2行プロンプト、`starship.toml.tmpl` で3台配色分岐)
 - **ターミナル**: Ghostty (UDEV Gothic 35NFLG / リガチャ無効 / カーソル点滅無効)
 - **tmux**: prefix は **`C-t`**。TPM (tmux-power / resurrect / continuum / fzf / tilit)。
