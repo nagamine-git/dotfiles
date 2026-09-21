@@ -3,6 +3,7 @@ name: implementer
 description: Implements a bounded change in specified files and returns verification evidence.
 model: opus
 effort: high
+disallowedTools: Agent
 maxTurns: 30
 ---
 

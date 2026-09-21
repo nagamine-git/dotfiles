@@ -237,7 +237,10 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(fields["name"].strip(), role)
             self.assertTrue(fields["description"].strip())
             self.assertLessEqual(int(fields["maxTurns"]), 30)
-            if role != "implementer":
+            if role == "implementer":
+                denied = {tool.strip() for tool in fields["disallowedTools"].split(",")}
+                self.assertIn("Agent", denied)
+            else:
                 tools = {tool.strip() for tool in fields["tools"].split(",")}
                 self.assertTrue(tools.isdisjoint({"Bash", "Write", "Edit", "NotebookEdit", "Agent"}))
 
