@@ -10,7 +10,7 @@ Claude Code >= 2.1.257、Codex CLI >= 0.155.1が必要。確認環境は2.1.273 
 PRを取り込んだchezmoiソースで対象だけを確認・適用する（マシン整理のsetupは実行しない）。
 
 ```bash
-chezmoi diff --parent-dirs -- ~/.local/bin/ai-code ~/.claude/CLAUDE.md ~/.claude/agents ~/.codex/AGENTS.md \
+chezmoi diff --recursive --parent-dirs -- ~/.local/bin/ai-code ~/.claude/CLAUDE.md ~/.claude/agents ~/.codex/AGENTS.md \
   ~/.codex/quality-standard.config.toml ~/.codex/quality-routine.config.toml \
   ~/.codex/quality-deep.config.toml ~/.codex/quality-review.config.toml ~/.codex/agents
 chezmoi apply --parent-dirs --include=files,dirs -- ~/.local/bin/ai-code ~/.claude/CLAUDE.md ~/.claude/agents \
