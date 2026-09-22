@@ -1,13 +1,13 @@
 [Default Applications]
-x-scheme-handler/http=brave-browser.desktop
-x-scheme-handler/https=brave-browser.desktop
-text/html=brave-browser.desktop
-application/octet-stream=brave-browser.desktop
+x-scheme-handler/http=brave-origin.desktop
+x-scheme-handler/https=brave-origin.desktop
+text/html=brave-origin.desktop
+application/octet-stream=brave-origin.desktop
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/claude=com.anthropic.Claude.desktop
 inode/directory=thunar.desktop
 x-scheme-handler/slack=slack.desktop
 
 [Added Associations]
-application/octet-stream=brave-browser.desktop;
+application/octet-stream=brave-origin.desktop;
 text/x-genie=nvim.desktop;vim.desktop;

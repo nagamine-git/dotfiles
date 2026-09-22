@@ -1,0 +1,3 @@
+{{- /* /usr/bin/brave-origin ラッパーが 1 行 1 フラグで読む。Wayland ネイティブ + fcitx5 の IME に必須 */ -}}
+{{ range splitList " " .browser_flags }}{{ . }}
+{{ end -}}
