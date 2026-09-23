@@ -1,6 +1,7 @@
 {
   "env": {
-    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}"
+    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
   "permissions": {
     "deny": [
