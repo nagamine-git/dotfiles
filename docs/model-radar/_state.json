@@ -50,7 +50,7 @@
       "Explore/Plan/general-purpose": "リポジトリに定義なし (組み込み既定)"
     },
     "recommended": {
-      "researcher": {"model": "opus", "effort": "low", "reason": "IIv4.3.2 42/$0.55 vs 41/$0.59", "branch": "model-radar/2026-10-01"}
+      "researcher": {"model": "opus", "effort": "low", "reason": "IIv4.3.2 42/$0.55 vs 41/$0.59", "branch": "model-radar/2026-10-01", "pr": "https://github.com/nagamine-git/dotfiles/pull/9"}
     },
     "unchanged": ["main", "implementer", "reviewer", "deep-specialist"],
     "incomparable": ["implementer", "reviewer", "deep-specialist"]
