@@ -1,0 +1,18 @@
+[Unit]
+Description=Claude Code operations gateway ({{ .chezmoi.hostname }})
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ .chezmoi.homeDir }}/.local/share/agent-workspaces/dotfiles
+Environment="PATH={{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart={{ .chezmoi.homeDir }}/.local/bin/agent-gateway {{ .chezmoi.hostname }}/dotfiles/ops
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=45
+KillMode=control-group
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

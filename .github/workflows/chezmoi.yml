@@ -40,6 +40,12 @@ jobs:
           EOF
           sudo chmod +x /usr/local/bin/op
 
+      - name: Verify agent lifecycle without model calls
+        run: |
+          bash -n dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
+          shellcheck dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
+          python3 tests/agent-lifecycle.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)

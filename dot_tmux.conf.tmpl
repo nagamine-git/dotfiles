@@ -127,3 +127,7 @@ set-hook -g after-split-window 'if-shell -F "#{==:#{@layout_mode},on}" "if-shell
 set-hook -g pane-exited        'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
 set-hook -g after-kill-pane    'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
 set-hook -g client-resized     'if-shell -F "#{==:#{@layout_mode},on}" "if-shell -F \"#{<=:#{window_panes},3}\" \"select-layout main-vertical\" \"select-layout tiled\""'
+
+# Stable role labels; application OSC titles continue to show when no role is set.
+set -g pane-border-status top
+set -g pane-border-format ' #{?@agent-role,#{@agent-role},#{pane_title}} | #{pane_current_command} '

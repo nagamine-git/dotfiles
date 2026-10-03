@@ -90,3 +90,9 @@ wolow-companion
 .local/bin/unified_launcher.sh
 .local/bin/security-update-check.sh
 {{- end }}
+
+# Agent lifecycle documentation and OS-specific service
+docs/agent-lifecycle.md
+{{ if ne .chezmoi.os "darwin" }}
+Library/LaunchAgents/com.efg.claude-ops-gateway.plist
+{{ end }}
