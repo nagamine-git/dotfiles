@@ -1,8 +1,8 @@
 ---
 name: researcher
 description: Collects focused code and official documentation evidence without modifying files or executing code.
-model: sonnet
-effort: medium
+model: opus
+effort: low
 tools: Read, Grep, Glob, WebSearch, WebFetch
 maxTurns: 15
 ---
