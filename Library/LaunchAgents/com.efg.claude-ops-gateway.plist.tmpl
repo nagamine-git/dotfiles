@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.efg.claude-ops-gateway</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{ .chezmoi.homeDir }}/.local/bin/agent-gateway</string>
+    <string>{{ .chezmoi.hostname }}/dotfiles/ops</string>
+  </array>
+  <key>WorkingDirectory</key><string>{{ .chezmoi.homeDir }}/.local/share/agent-workspaces/dotfiles</string>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>{{ .chezmoi.homeDir }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>ExitTimeOut</key><integer>45</integer>
+  <key>StandardOutPath</key><string>{{ .chezmoi.homeDir }}/Library/Logs/claude-ops-gateway.log</string>
+  <key>StandardErrorPath</key><string>{{ .chezmoi.homeDir }}/Library/Logs/claude-ops-gateway.error.log</string>
+</dict>
+</plist>

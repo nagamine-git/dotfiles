@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# OS のサービス管理から起動する接続受付。モデル・effort・権限は既存設定を使う。
+set -eu
+
+if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+  printf '%s\n' 'usage: agent-gateway <host/project/role>' >&2
+  exit 2
+fi
+name="$1"
+claude_bin=""
+for candidate in "$HOME/.local/bin/claude" "$HOME/.local/share/mise/installs/node/lts/bin/claude"; do
+  if [ -x "$candidate" ]; then
+    claude_bin="$candidate"
+    break
+  fi
+done
+if [ -z "$claude_bin" ]; then claude_bin="$(command -v claude || true)"; fi
+if [ -z "$claude_bin" ]; then
+  printf '%s\n' 'Claude Code executable was not found' >&2
+  exit 127
+fi
+
+# パイプ入力では古い CLI の spawn 選択ダイアログにも到達しないよう、全項目を指定する。
+# プロンプトや --continue を渡さず、受付の起動だけで会話を作らない。
+exec "$claude_bin" remote-control --name "$name" --spawn worktree --capacity 1 --no-create-session-in-dir
