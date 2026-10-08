@@ -43,6 +43,33 @@ chezmoi init --apply nagamine-git
 chezmoi apply -v
 ```
 
+### AIの共通回答形式
+
+回答形式の正本は `private_dot_codex/AGENTS.md` です。
+LinuxとmacOSで `~/.codex/AGENTS.md` に展開します。
+このファイルはOS・ホスト別の除外対象ではありません。
+
+既存のchezmoi環境では、sourceを更新して対象だけ適用します。
+作業中の変更があれば、先に保存してください。
+
+```bash
+git -C "$(chezmoi source-path)" pull --ff-only origin main
+chezmoi diff ~/.codex/AGENTS.md
+chezmoi apply --dry-run --verbose ~/.codex/AGENTS.md
+chezmoi apply --verbose ~/.codex/AGENTS.md
+```
+
+新規環境は上記セットアップ後に反映されます。
+適用後、新しいCodexセッションを開始してください。
+`CODEX_HOME` 指定時は、その配下へ指示を配置します。
+`AGENTS.override.md` とプロジェクト指示は優先されます。
+
+ChatGPTとdotsの設定はchezmoiから自動同期されません。
+`回答形式` の5項目を、同じアカウントの指示にも記録します。
+別アカウントではカスタム指示とdotsに再登録してください。
+
+参考: [OpenAI公式の指示読込仕様](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+
 ## 構成ハイライト
 
 - **Claude Code / Codex**: `ai-code claude` / `ai-code codex` で起動。AIが難易度を判断し、必要なときだけ上位モデルの専門担当へ委任。
