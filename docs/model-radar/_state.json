@@ -155,7 +155,7 @@
         "effort": "max",
         "reason": "IIv4.3.2 43/$0.21 vs 41/$0.59",
         "branch": "model-radar/2026-10-15",
-        "pr": null,
+        "pr": "https://github.com/nagamine-git/dotfiles/pull/12",
         "supersedes": "https://github.com/nagamine-git/dotfiles/pull/9"
       }
     },
