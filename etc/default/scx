@@ -1,0 +1,5 @@
+# sched-ext (scx) スケジューラ設定。scx.service が読む。
+# scx_bpfland: 対話的プロセス (入力・描画) をビルドやエミュレータより優先する。
+# 止めたいときは `sudo systemctl stop scx` で即座に既定スケジューラ (BORE/EEVDF) に戻る。
+SCX_SCHEDULER=scx_bpfland
+SCX_FLAGS=

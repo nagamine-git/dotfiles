@@ -1,0 +1,11 @@
+{{- /* sccache が PATH にあるホストだけ有効化する。無いホストでは空になりファイルを作らない (入れ忘れでビルドが壊れない)。 */ -}}
+{{ if lookPath "sccache" -}}
+[build]
+rustc-wrapper = "sccache"
+# 32 並列だと rustc/rust-lld だけで 13GB 近く食い OOM でセッションごと落ちた (2026-10-03)
+jobs = 16
+
+# キャッシュ上限 (sccache 既定は 10G)。cargo 経由のビルドにだけ効く
+[env]
+SCCACHE_CACHE_SIZE = "30G"
+{{ end -}}

@@ -1,7 +1,7 @@
 hyprland
 linux-headers
 greetd-tuigreet
-waybar-git
+waybar
 swaync
 git
 git-delta
@@ -41,7 +41,7 @@ yq
 ripgrep
 fd
 eza
-obs-studio
+obs-studio-git
 hyprpaper
 btop
 wl-clipboard
@@ -51,12 +51,10 @@ cliphist
 atuin
 hypridle
 hyprlock
-hyprsession-sh
 irqbalance
 powertop
 corectrl
 lazydocker
-wavemon
 hyprsunset
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
@@ -67,7 +65,7 @@ nm-connection-editor
 wtype
 grim
 slurp
-swappy
+satty
 imagemagick
 base-devel
 libevdev
@@ -80,7 +78,6 @@ nwg-displays
 tailscale
 trayscale
 mosh
-python-pipx
 lm_sensors
 bat
 bc
@@ -102,5 +99,21 @@ ethtool
 
 # security / firewall / update-audit
 arch-audit
-ufw
+firewalld
 pacman-contrib
+scx-scheds
+fwupd
+trivy
+
+# btrfs snapshots / encrypted off-site backup
+snapper
+snap-pac
+grub-btrfs
+restic
+
+# Rust 製開発ツール (prek-bin は AUR。ソースビルドの prek は pacman の rust を引き込み rustup と衝突する)
+sccache
+difftastic
+prek-bin
+swayosd
+polkit-gnome
