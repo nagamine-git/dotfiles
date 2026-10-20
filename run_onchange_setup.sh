@@ -171,6 +171,10 @@ sudo tailscale set --operator="$USER" 2>/dev/null || true
 # 未ログイン時は静かにスキップし、Tailscale 認証後の再実行で有効になる。
 sudo tailscale set --ssh 2>/dev/null || true
 
+# パッケージ更新後に tailscaled とクライアントのバージョンがずれるのを防ぐ自動更新。
+# pacman 管理など自動更新が使えない環境ではエラーを無視して何もしない。
+sudo tailscale set --auto-update 2>/dev/null || true
+
 # === ファイアウォール: firewalld に一本化 ===
 # Tailscale は認証済みなので trusted。物理LAN側は既定拒否を維持する。
 # Wolow Companion (無認証の電源操作, 20388) は Tailscale 経由だけで使うので LAN には開けない。
@@ -258,7 +262,7 @@ elif [ -f "$WALLPAPER_DIR/wallpaper-day.jpg" ]; then
   cp -f "$WALLPAPER_DIR/wallpaper-day.jpg" "$WALLPAPER_DIR/wallpaper.jpg"
 fi
 
-# 壁紙の上部輝度に合わせて waybar を明/暗テーマ化 (apply で style.css が既定に戻るため再適用)
+# 壁紙の上部輝度に合わせて waybar を明/暗テーマ化 (colors.css は create_ で初回のみ既定 dark を作るため、初回 apply 後に再適用)
 if [ -x "$HOME/.local/bin/waybar-auto-theme.sh" ]; then
   "$HOME/.local/bin/waybar-auto-theme.sh" || true
 fi
