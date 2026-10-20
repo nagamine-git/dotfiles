@@ -9,7 +9,8 @@ set -eu
 cd "${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
 
 # Windowsと時刻が合わないので、システム時刻をUTCに変更する
-timedatectl set-local-rtc 1 --adjust-system-clock
+# 設定済みなら触らない (polkit 認証待ちでタイムアウトし set -e で setup 全体が止まるため)
+[ "$(timedatectl show -p LocalRTC --value 2>/dev/null)" = yes ] || sudo timedatectl set-local-rtc 1 --adjust-system-clock
 
 # 汎用インストール関数
 install_if_missing() {
