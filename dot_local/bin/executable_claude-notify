@@ -1,4 +1,11 @@
 #!/bin/bash
+# Claude Code のフック (Stop / Notification) から呼ばれる通知スクリプト。
+#   claude-notify stop [summary] [body]
+#   claude-notify notification [summary] [body]
+#   claude-notify idle30 [summary] [body]
+# フックの stdin JSON (message / title / cwd / transcript_path) を読み、
+# デスクトップ通知 (notify-send / osascript) に加えて ntfy でスマホへ送る。
+# スマホへ送る条件は ~/.config/claude-notify/config の PHONE_MODE で決める。
 set -euo pipefail
 
 mode="${1:-stop}"
@@ -8,30 +15,52 @@ body_arg="${3:-}"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify"
 mkdir -p "$runtime_dir"
 
-session=""
-window=""
-pane=""
-pane_target=""
-cwd="${PWD:-}"
+# ---- フックの stdin JSON --------------------------------------------------
+hook_message=""
+hook_title=""
+hook_cwd=""
+transcript=""
+if [ ! -t 0 ] && command -v jq >/dev/null 2>&1; then
+  hook_json="$(cat 2>/dev/null || true)"
+  if [ -n "$hook_json" ]; then
+    hook_message="$(printf '%s' "$hook_json" | jq -r '.message // empty' 2>/dev/null || true)"
+    hook_title="$(printf '%s' "$hook_json" | jq -r '.title // empty' 2>/dev/null || true)"
+    hook_cwd="$(printf '%s' "$hook_json" | jq -r '.cwd // empty' 2>/dev/null || true)"
+    transcript="$(printf '%s' "$hook_json" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
+  fi
+fi
 
+# Stop 時は transcript の最後のアシスタント発言を要約代わりに使う
+last_assistant_text() {
+  [ -n "$transcript" ] && [ -r "$transcript" ] || return 0
+  tail -n 200 "$transcript" 2>/dev/null \
+    | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null \
+    | grep -v '^\s*$' | tail -n 1 | tr -s '[:space:]' ' ' | cut -c1-160 || true
+}
+
+# ---- tmux の位置 ----------------------------------------------------------
+session=""; window=""; pane=""; pane_target=""
+cwd="${hook_cwd:-${PWD:-}}"
 if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
   session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
   window="$(tmux display-message -p '#{window_index}' 2>/dev/null || true)"
   pane="$(tmux display-message -p '#{pane_index}' 2>/dev/null || true)"
   pane_target="$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || true)"
 fi
+[ -n "$pane_target" ] || pane_target="no-tmux"
 
-if [ -z "$pane_target" ]; then
-  pane_target="no-tmux"
-fi
-
+# ---- 本文 -------------------------------------------------------------------
 summary="Claude Code"
 body=""
-
 case "$mode" in
   stop)
     summary="Claude Code: 完了"
-    body="${summary_arg:-作業が完了しました}"
+    body="${summary_arg:-$(last_assistant_text)}"
+    body="${body:-作業が完了しました}"
+    ;;
+  notification)
+    summary="Claude Code: ${hook_title:-入力待ち}"
+    body="${summary_arg:-${hook_message:-確認や許可を待っています}}"
     ;;
   idle30)
     summary="Claude Code: 30秒入力待ち"
@@ -39,18 +68,14 @@ case "$mode" in
     ;;
   *)
     summary="Claude Code"
-    body="${summary_arg:-通知}"
+    body="${summary_arg:-${hook_message:-通知}}"
     ;;
 esac
+[ -n "$body_arg" ] && body="$body_arg"
 
-if [ -n "$body_arg" ]; then
-  body="$body_arg"
-fi
-
+project="$(basename "${cwd:-/}")"
 meta="target: ${pane_target}"
-if [ -n "$cwd" ]; then
-  meta="$meta\ncwd: $cwd"
-fi
+[ -n "$cwd" ] && meta="$meta\ncwd: $cwd"
 full_body="$body\n$meta"
 
 echo "$session" > "$runtime_dir/last_session"
@@ -58,6 +83,40 @@ echo "$window" > "$runtime_dir/last_window"
 echo "$pane" > "$runtime_dir/last_pane"
 printf '%b\n' "$full_body" > "$runtime_dir/last_body"
 
+# ---- スマホ (ntfy) ----------------------------------------------------------
+NTFY_SERVER="https://ntfy.sh"; NTFY_TOPIC=""; PHONE_MODE="locked"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/claude-notify/config"
+# shellcheck disable=SC1090
+[ -r "$config" ] && . "$config"
+PHONE_MODE="${CLAUDE_NOTIFY_PHONE:-$PHONE_MODE}"
+
+screen_locked() {
+  if command -v pgrep >/dev/null 2>&1 && pgrep -x hyprlock >/dev/null 2>&1; then return 0; fi
+  if [ "$(uname -s)" = "Darwin" ] && ioreg -n Root -d1 -a 2>/dev/null | grep -q CGSSessionScreenIsLocked; then return 0; fi
+  return 1
+}
+
+push_phone() {
+  [ -n "$NTFY_TOPIC" ] || return 0
+  case "$PHONE_MODE" in
+    never) return 0 ;;
+    locked) screen_locked || return 0 ;;
+    always) ;;
+    *) return 0 ;;
+  esac
+  local prio="default" tags="white_check_mark"
+  case "$mode" in
+    notification) prio="high"; tags="raising_hand" ;;
+  esac
+  curl -fsS -m 8 \
+    -H "Title: ${summary} [${project} @ $(hostname -s)]" \
+    -H "Priority: ${prio}" -H "Tags: ${tags}" \
+    -d "$(printf '%b' "$body")" \
+    "${NTFY_SERVER%/}/${NTFY_TOPIC}" >/dev/null 2>&1 || true
+}
+push_phone &
+
+# ---- デスクトップ ----------------------------------------------------------
 if command -v notify-send >/dev/null 2>&1; then
   # Linux: アクション付き通知。action ファイルはペイン単位で一意化
   # (固定パスだと複数ペイン同時通知で他ペインの Focus クリックを誤読するレース)
@@ -73,9 +132,9 @@ if command -v notify-send >/dev/null 2>&1; then
     notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
   fi
 elif command -v osascript >/dev/null 2>&1; then
-  # macOS: これまで notify-send 不在で無音だった通知を osascript で表示
-  # (argv 渡しでクオート問題を回避。アクションボタンは非対応)
+  # macOS: osascript で表示 (argv 渡しでクオート問題を回避。アクションボタンは非対応)
   osascript -e 'on run argv' \
             -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
             -e 'end run' "$summary" "$(printf '%b' "$full_body")" >/dev/null 2>&1 || true
 fi
+wait

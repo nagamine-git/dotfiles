@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Claude Code の標準データだけを表示する。モデル・ネットワーク・要約キャッシュを使わない。
+set -eu
+
+command -v jq >/dev/null 2>&1 || exit 0
+input="$(cat)"
+us=$'\037'
+fields="$(printf '%s' "$input" | jq -r '
+  [ (.model.display_name // .model.id // ""),
+    (.effort.level // ""),
+    (.context_window.used_percentage // "" | if type == "number" then floor else . end),
+    (.workspace.current_dir // .cwd // ""),
+    (.session_id // ""),
+    (.session_name // "") ]
+  | map(tostring | gsub("\\p{Cc}"; "")) | join("\u001f")' 2>/dev/null)" || exit 0
+IFS="$us" read -r model effort pct cwd sid name <<EOF || true
+$fields
+EOF
+
+branch=""
+if [ -n "$cwd" ] && [ -d "$cwd" ]; then
+  branch="$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" symbolic-ref --short -q HEAD 2>/dev/null \
+    || GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --short HEAD 2>/dev/null || true)"
+fi
+
+dim="" yel="" red="" cyn="" rst=""
+if [ -z "${NO_COLOR:-}" ]; then
+  dim=$'\033[2m' yel=$'\033[33m' red=$'\033[31m' cyn=$'\033[36m' rst=$'\033[0m'
+fi
+sep=" ${dim}|${rst} "
+line=""
+add() { if [ -n "$line" ]; then line="$line$sep$1"; else line="$1"; fi; }
+if [ -n "$model" ]; then
+  seg="$model"
+  [ -z "$effort" ] || seg="$seg ${dim}${effort}${rst}"
+  add "$seg"
+fi
+case "$pct" in
+  ''|*[!0-9]*) ;;
+  *)
+    c=""
+    if [ "$pct" -ge 90 ]; then c="$red"; elif [ "$pct" -ge 70 ]; then c="$yel"; fi
+    add "${c}ctx ${pct}%${c:+$rst}"
+    ;;
+esac
+[ -z "$branch" ] || add "${cyn}${branch}${rst}"
+[ -z "$cwd" ] || add "$(basename -- "$cwd")"
+if [ -n "$name" ]; then
+  add "$name"
+elif [ -n "$sid" ]; then
+  add "${sid:0:8}"
+fi
+[ -z "$line" ] || printf '%s\n' "$line"
+exit 0
