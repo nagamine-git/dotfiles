@@ -6,3 +6,5 @@
 *.p12
 credentials.json
 .DS_Store
+
+**/.claude/settings.local.json

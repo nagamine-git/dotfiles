@@ -4,6 +4,7 @@ rust = 'latest'
 go   = 'latest'
 node = 'lts'
 python = 'latest'
+bun = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]

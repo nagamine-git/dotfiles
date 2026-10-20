@@ -10,7 +10,9 @@ pkglist.txt
 .github/**
 tests
 tests/**
-docs/agent-workflow.md
+# リポジトリ用の資料 (radar / model-radar のレポート等)。ホームには置かない
+docs
+docs/**
 etc
 etc/**
 bin
@@ -96,7 +98,8 @@ wolow-companion
 # Agent lifecycle documentation and OS-specific service
 docs/agent-lifecycle.md
 {{ if ne .chezmoi.os "darwin" }}
-Library/LaunchAgents/com.efg.claude-ops-gateway.plist
+Library
+Library/**
 {{ end }}
 
 # Repository-only desktop launcher documentation and tests.
