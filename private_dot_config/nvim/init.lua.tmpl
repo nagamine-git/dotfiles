@@ -497,9 +497,10 @@ require('neo-tree').setup({
       expander_highlight = 'NeoTreeExpander',
     },
     git_status = {
+      -- VS Code の SCM と同じ 1 文字略号。形の似た記号 (□ など) は豆腐と見分けにくいので使わない
       symbols = {
-        added = '✚', modified = '', deleted = '✖', renamed = '󰁕',
-        untracked = '', ignored = '', unstaged = '󰄱', staged = '', conflict = '',
+        added = 'A', modified = 'M', deleted = 'D', renamed = 'R',
+        untracked = 'U', ignored = '', unstaged = '', staged = 'S', conflict = 'C',
       },
     },
   },

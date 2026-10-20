@@ -35,7 +35,7 @@ chezmoi init --apply nagamine-git
 ```
 
 - Linux では `pkglist.txt` のパッケージが `run_onchange_setup.sh` により自動導入されます
-- 開発時は `pre-commit install` を推奨 (gitleaks / shellcheck 等がコミット時に走る)
+- 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck 等がコミット時に走る)
 
 ### 更新
 
