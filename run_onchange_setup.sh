@@ -138,8 +138,12 @@ for pair in "${replaced_pkgs[@]}"; do
     sudo pacman -Rdd --noconfirm "$old" && sudo pacman -S --needed --noconfirm "$new" || echo "⚠ $old → $new の入れ替えに失敗 (継続)"
   fi
 done
-mapfile -t pkgs < <(grep -vE '^[[:space:]]*(#|$)' pkglist.txt)
-if ! paru -S --needed --noconfirm "${pkgs[@]}"; then
+# 入っていないものだけ入れる。--needed でも AUR の更新版 (obs-studio-git 等) をビルドしに行き、
+# ネットワークの瞬断で失敗したり長時間かかったりするため。更新は普段の paru -Syu に任せる。
+mapfile -t pkgs < <(grep -vE '^[[:space:]]*(#|$)' pkglist.txt | xargs pacman -T 2>/dev/null || true)
+if [ "${#pkgs[@]}" -eq 0 ]; then
+  echo "pkglist のパッケージはすべて導入済み"
+elif ! paru -S --needed --noconfirm "${pkgs[@]}"; then
   # 1 つの衝突・ビルド失敗で他まで入らないのを防ぐため、1 つずつ入れ直す
   echo "⚠ 一括インストールに失敗。1 つずつ入れ直す"
   for pkg in "${pkgs[@]}"; do
