@@ -38,6 +38,10 @@ jobs:
           python3 tests/agent-memory-dir.py
           python3 tests/codex-config.py
 
+      - name: Verify Slack bot logic without network or model calls
+        run: |
+          python3 tests/slack-claude.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)

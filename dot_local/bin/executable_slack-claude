@@ -1,0 +1,513 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["slack-bolt>=1.20,<2"]
+# ///
+"""Slack から am5-itx の Claude Code に依頼する bot。
+
+  slack-claude serve   Socket Mode で常駐する (SLACK_APP_TOKEN / SLACK_BOT_TOKEN が必要)
+  slack-claude dm TXT  本人 (OWNER_USER) に DM を 1 通送る (SLACK_BOT_TOKEN のみ)
+
+実行するのは OWNER_USER かつ OWNER_TEAM の発言だけ。トークンの値は出力しない。
+slack_bolt は serve の中で import する。ロジックは依存なしの python3 から import できる。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import urllib.request
+from collections import OrderedDict, deque
+from dataclasses import dataclass
+from pathlib import Path
+
+OWNER_USER = "U03L2HM8Q4X"
+OWNER_TEAM = "T03LKHSP0TW"
+SLACK_API = "https://slack.com/api/"
+SLACK_CHUNK_LIMIT = 3500  # Slack の text は 4000 字を超えると読みづらいので余裕を見る
+DEFAULT_TIMEOUT_SEC = 30 * 60
+SECRET_ENV = ("SLACK_APP_TOKEN", "SLACK_BOT_TOKEN", "OP_SERVICE_ACCOUNT_TOKEN")
+CHANNEL_TYPES = ("im", "mpim", "channel", "group")
+
+log = logging.getLogger("slack-claude")
+
+
+# --- 発言の選別 ---------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Request:
+    channel: str
+    ts: str
+    thread_ts: str
+    text: str
+    dedup_keys: tuple
+
+    @property
+    def key(self):
+        return thread_key(self.channel, self.thread_ts)
+
+
+def thread_key(channel, thread_ts):
+    return "%s:%s" % (channel, thread_ts)
+
+
+def select_request(event, bot_user_id, is_active_thread, envelope_team=None):
+    """実行すべき発言なら Request、黙って無視するなら None。"""
+    kind = event.get("type")
+    if kind not in ("message", "app_mention"):
+        return None
+    if event.get("subtype") or event.get("bot_id") or event.get("bot_profile"):
+        return None
+    user = event.get("user")
+    if user != OWNER_USER or user == bot_user_id:
+        return None
+    teams = {event.get("team"), event.get("user_team")} - {None, ""}
+    if not teams and envelope_team:
+        teams = {envelope_team}
+    if teams != {OWNER_TEAM}:
+        return None
+    channel, ts = event.get("channel"), event.get("ts")
+    if not channel or not ts:
+        return None
+
+    mention = re.compile(r"<@%s(?:\|[^>]*)?>" % re.escape(bot_user_id))
+    raw = event.get("text") or ""
+    thread_ts = event.get("thread_ts") or ts
+    if kind == "message":
+        ctype = event.get("channel_type")
+        if ctype not in CHANNEL_TYPES:
+            return None
+        if ctype != "im" and not mention.search(raw) and not is_active_thread(thread_key(channel, thread_ts)):
+            return None
+    text = unescape_slack(mention.sub("", raw)).strip()
+    if not text:
+        return None
+    keys = [("ts", channel, ts), ("ts", channel, event.get("event_ts") or ts)]
+    if event.get("client_msg_id"):
+        keys.append(("msg", event["client_msg_id"]))
+    return Request(channel, ts, thread_ts, text, tuple(dict.fromkeys(keys)))
+
+
+def unescape_slack(text):
+    table = {"lt": "<", "gt": ">", "amp": "&"}
+    return re.sub(r"&(lt|gt|amp);", lambda m: table[m.group(1)], text)
+
+
+class Dedup:
+    """app_mention と message.channels が同じ発言で二重に来るのを 1 回にする。"""
+
+    def __init__(self, capacity=2048):
+        self.capacity = capacity
+        self._seen = OrderedDict()
+        self._lock = threading.Lock()
+
+    def check_and_add(self, keys):
+        with self._lock:
+            duplicate = any(k in self._seen for k in keys)
+            for k in keys:
+                self._seen[k] = None
+                self._seen.move_to_end(k)
+            while len(self._seen) > self.capacity:
+                self._seen.popitem(last=False)
+            return duplicate
+
+
+# --- セッション保存 -----------------------------------------------------------
+
+class SessionStore:
+    """スレッドの鍵 -> Claude のセッション ID。変更のたびに原子的に書く。"""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self._lock = threading.Lock()
+        self._threads = self._load()
+
+    def _load(self):
+        try:
+            threads = json.loads(self.path.read_text()).get("threads")
+        except (OSError, ValueError, AttributeError):
+            return {}
+        if not isinstance(threads, dict):
+            return {}
+        return {k: v for k, v in threads.items() if isinstance(k, str) and isinstance(v, str)}
+
+    def __contains__(self, key):
+        with self._lock:
+            return key in self._threads
+
+    def get(self, key):
+        with self._lock:
+            return self._threads.get(key)
+
+    def set(self, key, session_id):
+        with self._lock:
+            self._threads[key] = session_id
+            self._write()
+
+    def _write(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".sessions-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump({"version": 1, "threads": self._threads}, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, self.path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+
+
+# --- claude の呼び出し --------------------------------------------------------
+
+@dataclass(frozen=True)
+class ClaudeResult:
+    session_id: str | None
+    text: str
+    is_error: bool
+
+
+def build_claude_command(claude_bin, prompt, session_id=None):
+    # 権限は上書きしない (agent-gateway と同じく ~/.claude/settings.json に従う)。
+    # -p では承認を答える人がいないので none にして、確認待ちで止まらず拒否にする。
+    # 本文が "-" で始まっても 1 つの引数として渡るよう、本文は -- の後ろに置く。
+    cmd = [claude_bin, "-p", "--output-format", "json", "--permission-prompts", "none"]
+    if session_id:
+        cmd += ["--resume", session_id]
+    return cmd + ["--", prompt]
+
+
+def claude_env(environ):
+    return {k: v for k, v in environ.items() if k not in SECRET_ENV}
+
+
+def summarize_error(text, limit=300):
+    flat = " ".join(str(text).split())
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
+def parse_claude_result(stdout, returncode, stderr=""):
+    try:
+        data = json.loads(stdout)
+    except ValueError:
+        data = None
+    if isinstance(data, list):
+        data = next((d for d in reversed(data) if isinstance(d, dict) and d.get("type") == "result"), None)
+    if not isinstance(data, dict):
+        detail = stderr.strip() or stdout.strip() or "終了コード %s" % returncode
+        return ClaudeResult(None, summarize_error(detail), True)
+    text = data.get("result") if isinstance(data.get("result"), str) else ""
+    session_id = data.get("session_id") if isinstance(data.get("session_id"), str) else None
+    is_error = bool(data.get("is_error")) or returncode != 0
+    if is_error and not text.strip():
+        text = summarize_error(stderr.strip() or str(data.get("subtype") or "終了コード %s" % returncode))
+    return ClaudeResult(session_id, text, is_error)
+
+
+def run_claude(claude_bin, prompt, session_id, cwd, timeout, environ):
+    cmd = build_claude_command(claude_bin, prompt, session_id)
+    try:
+        proc = subprocess.Popen(cmd, cwd=cwd, env=claude_env(environ), stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                encoding="utf-8", errors="replace", start_new_session=True)
+    except OSError as exc:
+        return ClaudeResult(None, "claude を起動できません: %s" % type(exc).__name__, True)
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        span = "%d 分" % round(timeout / 60) if timeout >= 60 else "%g 秒" % timeout
+        return ClaudeResult(None, "タイムアウト (%s) で中断しました" % span, True)
+    return parse_claude_result(stdout, proc.returncode, stderr)
+
+
+def _kill_group(proc):
+    for sig, grace in ((signal.SIGTERM, 5), (signal.SIGKILL, 10)):
+        try:
+            os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=grace)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
+def find_claude():
+    home = Path.home()
+    for candidate in (home / ".local/bin/claude", home / ".local/share/mise/installs/node/lts/bin/claude"):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return shutil.which("claude")
+
+
+# --- 返信 ---------------------------------------------------------------------
+
+def split_message(text, limit=SLACK_CHUNK_LIMIT):
+    """上限に収まるよう、段落 -> 行 -> 空白 -> 文字数の順に境目を探して分割する。"""
+    return [c for c in _split(text, limit, ("\n\n", "\n")) if c.strip()]
+
+
+def _split(text, limit, seps):
+    if len(text) <= limit:
+        return [text]
+    if not seps:
+        return _hard_cut(text, limit)
+    pieces = []
+    for part in text.split(seps[0]):
+        pieces += _split(part, limit, seps[1:])
+    chunks, current = [], ""
+    for piece in pieces:
+        if current and len(current) + len(seps[0]) + len(piece) <= limit:
+            current += seps[0] + piece
+        else:
+            if current:
+                chunks.append(current)
+            current = piece
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _hard_cut(text, limit):
+    chunks = []
+    while len(text) > limit:
+        cut = text.rfind(" ", 0, limit)
+        if cut < limit // 2:
+            chunks.append(text[:limit])
+            text = text[limit:]
+        else:
+            chunks.append(text[:cut])
+            text = text[cut:].lstrip(" ")
+    return chunks + [text]
+
+
+class SerialRunner:
+    """同じ鍵の仕事は到着順に 1 つずつ、別の鍵は並列で動かす。"""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._queues = {}
+
+    def submit(self, key, fn):
+        with self._lock:
+            queue = self._queues.get(key)
+            if queue is not None:
+                queue.append(fn)
+                return
+            self._queues[key] = deque([fn])
+        threading.Thread(target=self._drain, args=(key,), daemon=True).start()
+
+    def _drain(self, key):
+        while True:
+            with self._lock:
+                queue = self._queues[key]
+                if not queue:
+                    del self._queues[key]
+                    return
+                fn = queue.popleft()
+            try:
+                fn()
+            except Exception:
+                log.exception("task failed key=%s", key)
+
+
+class Bot:
+    def __init__(self, slack, store, claude, bot_user_id, runner=None):
+        self.slack = slack
+        self.store = store
+        self.claude = claude
+        self.bot_user_id = bot_user_id
+        self.runner = runner or SerialRunner()
+        self.dedup = Dedup()
+        self._engaged = set()
+        self._lock = threading.Lock()
+
+    def is_active(self, key):
+        with self._lock:
+            engaged = key in self._engaged
+        return engaged or key in self.store
+
+    def handle_event(self, event, envelope_team=None):
+        req = select_request(event, self.bot_user_id, self.is_active, envelope_team)
+        if req is None or self.dedup.check_and_add(req.dedup_keys):
+            return
+        with self._lock:
+            self._engaged.add(req.key)
+        log.info("accepted key=%s chars=%d", req.key, len(req.text))
+        self.slack.react(req.channel, req.ts, "eyes")
+        self.runner.submit(req.key, lambda: self.process(req))
+
+    def process(self, req):
+        started = time.monotonic()
+        try:
+            result = self.claude(req.text, self.store.get(req.key))
+        except Exception as exc:
+            log.exception("claude runner failed key=%s", req.key)
+            result = ClaudeResult(None, str(exc) or type(exc).__name__, True)
+        if result.session_id:
+            self.store.set(req.key, result.session_id)
+        if result.is_error:
+            self.slack.post(req.channel, req.thread_ts, ":x: 失敗しました: " + summarize_error(result.text))
+            mark = "x"
+        else:
+            for chunk in split_message(result.text.strip() or "(出力なし)"):
+                self.slack.post(req.channel, req.thread_ts, chunk)
+            mark = "white_check_mark"
+        self.slack.unreact(req.channel, req.ts, "eyes")
+        self.slack.react(req.channel, req.ts, mark)
+        log.info("finished key=%s error=%s seconds=%.0f", req.key, result.is_error, time.monotonic() - started)
+
+
+class BoltSlack:
+    """bolt の WebClient を Bot が使う 3 操作に絞る。失敗はログに残すだけで処理は止めない。"""
+
+    def __init__(self, client):
+        self.client = client
+
+    def react(self, channel, ts, name):
+        self._call("reactions.add", self.client.reactions_add, channel=channel, timestamp=ts, name=name)
+
+    def unreact(self, channel, ts, name):
+        self._call("reactions.remove", self.client.reactions_remove, channel=channel, timestamp=ts, name=name)
+
+    def post(self, channel, thread_ts, text):
+        self._call("chat.postMessage", self.client.chat_postMessage, channel=channel, thread_ts=thread_ts, text=text)
+
+    @staticmethod
+    def _call(operation, fn, /, **kwargs):
+        try:
+            fn(**kwargs)
+        except Exception as exc:
+            response = getattr(exc, "response", None)
+            code = response.get("error") if hasattr(response, "get") else type(exc).__name__
+            log.warning("%s failed: %s", operation, code)
+
+
+# --- DM (標準ライブラリだけ) --------------------------------------------------
+
+class SlackError(Exception):
+    pass
+
+
+def slack_api(token, method, payload, urlopen=urllib.request.urlopen):
+    request = urllib.request.Request(
+        SLACK_API + method, data=json.dumps(payload).encode("utf-8"), method="POST",
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json; charset=utf-8"})
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError) as exc:
+        code = getattr(exc, "code", None)
+        raise SlackError("%s: %s%s" % (method, type(exc).__name__, " %s" % code if code else "")) from None
+
+
+def _checked(response, method):
+    if not isinstance(response, dict) or not response.get("ok"):
+        error = response.get("error", "unknown") if isinstance(response, dict) else "unknown"
+        raise SlackError("%s: %s" % (method, error))
+    return response
+
+
+def send_dm(token, text, api=slack_api):
+    opened = _checked(api(token, "conversations.open", {"users": OWNER_USER}), "conversations.open")
+    channel = opened["channel"]["id"]
+    for chunk in split_message(text):
+        _checked(api(token, "chat.postMessage", {"channel": channel, "text": chunk}), "chat.postMessage")
+
+
+# --- コマンド -----------------------------------------------------------------
+
+def serve(environ=None):
+    environ = os.environ if environ is None else environ
+    missing = [n for n in ("SLACK_APP_TOKEN", "SLACK_BOT_TOKEN") if not environ.get(n)]
+    if missing:
+        print("slack-claude: 環境変数がありません: " + ", ".join(missing), file=sys.stderr)
+        return 1
+    claude_bin = find_claude()
+    if not claude_bin:
+        print("slack-claude: claude が見つかりません", file=sys.stderr)
+        return 127
+    cwd = environ.get("SLACK_CLAUDE_CWD") or str(Path.home())
+    if not os.path.isdir(cwd):
+        print("slack-claude: SLACK_CLAUDE_CWD がディレクトリではありません", file=sys.stderr)
+        return 1
+    try:
+        timeout = float(environ.get("SLACK_CLAUDE_TIMEOUT_SEC") or DEFAULT_TIMEOUT_SEC)
+    except ValueError:
+        print("slack-claude: SLACK_CLAUDE_TIMEOUT_SEC が数値ではありません", file=sys.stderr)
+        return 1
+
+    from slack_bolt import App
+    from slack_bolt.adapter.socket_mode import SocketModeHandler
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    app = App(token=environ["SLACK_BOT_TOKEN"], token_verification_enabled=False)
+    try:
+        bot_user_id = app.client.auth_test()["user_id"]
+    except Exception as exc:
+        response = getattr(exc, "response", None)
+        code = response.get("error") if hasattr(response, "get") else type(exc).__name__
+        print("slack-claude: auth.test に失敗しました: %s" % code, file=sys.stderr)
+        return 1
+
+    store = SessionStore(Path.home() / ".local/state/slack-claude/sessions.json")
+    bot = Bot(BoltSlack(app.client), store,
+              lambda prompt, session_id: run_claude(claude_bin, prompt, session_id, cwd, timeout, environ),
+              bot_user_id)
+
+    @app.event("app_mention")
+    def on_mention(event, body):
+        bot.handle_event(event, body.get("team_id"))
+
+    @app.event("message")
+    def on_message(event, body):
+        bot.handle_event(event, body.get("team_id"))
+
+    log.info("serving as %s cwd=%s claude=%s timeout=%.0fs", bot_user_id, cwd, claude_bin, timeout)
+    SocketModeHandler(app, environ["SLACK_APP_TOKEN"]).start()
+    return 0
+
+
+def dm(text, environ=None):
+    environ = os.environ if environ is None else environ
+    token = environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        print("slack-claude: 環境変数がありません: SLACK_BOT_TOKEN", file=sys.stderr)
+        return 1
+    try:
+        send_dm(token, text)
+    except SlackError as exc:
+        print("slack-claude: %s" % exc, file=sys.stderr)
+        return 1
+    return 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="slack-claude", description="Slack から Claude Code に依頼する bot")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("serve", help="Socket Mode で常駐する")
+    dm_parser = sub.add_parser("dm", help="本人に DM を 1 通送る")
+    dm_parser.add_argument("text", nargs="+", help="本文")
+    args = parser.parse_args(argv)
+    if args.command == "serve":
+        return serve()
+    return dm(" ".join(args.text))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

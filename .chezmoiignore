@@ -111,3 +111,9 @@ tests/desktop-apps-tmux.py
 .local/bin/desktop-apps-tmux
 .config/desktop-apps
 {{ end -}}
+
+# Slack から Claude Code に依頼する bot は am5-itx 専用
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/slack-claude
+.config/systemd/user/slack-claude.service
+{{ end -}}
