@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Keep desktop launch paths in tmux without changing authentication or daemon management.
+set -eu
+
+usage() {
+  printf '%s\n' 'usage: desktop-apps-tmux autostart|chatgpt [URI...]|codex-daemon' >&2
+  exit 2
+}
+
+[ "$#" -gt 0 ] || usage
+action="$1"
+shift
+case "$action" in
+  autostart|codex-daemon) [ "$#" -eq 0 ] || usage ;;
+  chatgpt) ;;
+  --pane)
+    [ "$#" -gt 0 ] || usage
+    role="$1"
+    shift
+    case "$role" in
+      chatgpt) exec chatgpt --ozone-platform=wayland "$@" ;;
+      codex-daemon)
+        [ "$#" -eq 0 ] || usage
+        exec "$HOME/.local/bin/codex" app-server daemon start
+        ;;
+      *) usage ;;
+    esac
+    ;;
+  *) usage ;;
+esac
+
+# Do not retain OP_SESSION_*, service-account tokens, or injected API credentials
+# in a new tmux server. Applications keep their existing on-disk authentication.
+env_args=()
+for name in HOME USER LOGNAME PATH SHELL LANG LC_ALL LC_CTYPE TZ \
+  DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR \
+  XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME XDG_STATE_HOME \
+  XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_ID XDG_SEAT XDG_VTNR \
+  HYPRLAND_INSTANCE_SIGNATURE SSH_AUTH_SOCK XCURSOR_SIZE XCURSOR_THEME \
+  QT_QPA_PLATFORM QT_SCALE_FACTOR GDK_BACKEND GTK_THEME \
+  ELECTRON_OZONE_PLATFORM_HINT LIBVA_DRIVER_NAME GBM_BACKEND __GLX_VENDOR_LIBRARY_NAME; do
+  if [ "${!name+x}" ]; then env_args+=("$name=${!name}"); fi
+done
+
+if ! { [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ] && \
+  [ -O "$XDG_RUNTIME_DIR" ] && [ ! -L "$XDG_RUNTIME_DIR" ]; }; then
+  printf '%s\n' 'desktop-apps-tmux: a user-owned XDG_RUNTIME_DIR is required' >&2
+  exit 1
+fi
+runtime="$XDG_RUNTIME_DIR/desktop-apps-tmux"
+umask 077
+[ ! -L "$runtime" ] || exit 1
+mkdir -p "$runtime"
+chmod 700 "$runtime"
+if ! { [ -O "$runtime" ] && [ "$(stat -c %a "$runtime")" = 700 ]; }; then
+  printf '%s\n' 'desktop-apps-tmux: runtime directory must be private' >&2
+  exit 1
+fi
+socket="$runtime/tmux.sock"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/desktop-apps/tmux.conf"
+[ -r "$config" ] || { printf '%s\n' 'desktop-apps-tmux: tmux config is missing' >&2; exit 1; }
+self="$(readlink -f "$0")"
+tmux_bin="$(command -v tmux)"
+
+tmux_command() {
+  # The lock must not be inherited by the server or a long-lived application.
+  env -i "${env_args[@]}" "$tmux_bin" -S "$socket" -f "$config" "$@" 9>&-
+}
+
+launch() (
+  role="$1"
+  origin="$2"
+  shift 2
+  exec 9>"$runtime/$role.lock" || exit 1
+  flock -x 9 || exit 1
+  if [ "$role" = chatgpt ]; then
+    chatgpt_bin="$(command -v chatgpt)" || exit 127
+    if pgrep -u "$(id -u)" -x ChatGPT >/dev/null; then
+      [ "$origin" != autostart ] || exit 0
+      exec 9>&-
+      # Preserve the app's existing single-instance focus and URI forwarding.
+      exec env -i "${env_args[@]}" "$chatgpt_bin" --ozone-platform=wayland "$@"
+    fi
+  else
+    [ -x "$HOME/.local/bin/codex" ] || {
+      printf '%s\n' 'desktop-apps-tmux: existing Codex binary is missing' >&2
+      exit 127
+    }
+  fi
+  if tmux_command has-session -t "=$role" 2>/dev/null; then
+    if [ "$role" = chatgpt ] && [ "$#" -gt 0 ]; then
+      # Do not discard a URI while the first GUI launch is still pending.
+      for _ in {1..20}; do
+        if pgrep -u "$(id -u)" -x ChatGPT >/dev/null; then
+          exec 9>&-
+          exec env -i "${env_args[@]}" "$chatgpt_bin" --ozone-platform=wayland "$@"
+        fi
+        sleep 0.1
+      done
+      printf '%s\n' 'desktop-apps-tmux: GUI launch is pending; retry the URI after it opens' >&2
+      exit 1
+    fi
+    exit 0
+  fi
+  # Multiple shell-command arguments use tmux's direct execution form: no eval,
+  # shell interpolation, temporary URI files, or secret injection.
+  tmux_command new-session -d -s "$role" -c "$HOME" "$self" --pane "$role" "$@"
+)
+
+case "$action" in
+  autostart)
+    result=0
+    launch chatgpt autostart || result=$?
+    launch codex-daemon autostart || result=$?
+    exit "$result"
+    ;;
+  chatgpt) launch chatgpt launcher "$@" ;;
+  codex-daemon) launch codex-daemon launcher ;;
+esac
