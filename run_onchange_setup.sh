@@ -168,14 +168,15 @@ sudo tailscale set --operator="$USER" 2>/dev/null || true
 sudo tailscale set --ssh 2>/dev/null || true
 
 # === ファイアウォール: firewalld に一本化 ===
-# Tailscale は認証済みなので trusted。物理LAN側は既定拒否を維持し、
-# Wolow Companion の電源操作ポートだけを許可する。通常の SSH は Tailscale SSH を使う。
+# Tailscale は認証済みなので trusted。物理LAN側は既定拒否を維持する。
+# Wolow Companion (無認証の電源操作, 20388) は Tailscale 経由だけで使うので LAN には開けない。
+# 通常の SSH は Tailscale SSH を使う。
 sudo systemctl disable --now ufw.service 2>/dev/null || true
 sudo systemctl enable --now firewalld.service
 sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
 sudo firewall-cmd --permanent --zone=public --remove-service=ssh 2>/dev/null || true
-sudo firewall-cmd --permanent --zone=public --add-port=20388/tcp
-sudo firewall-cmd --permanent --zone=public --add-port=20388/udp
+sudo firewall-cmd --permanent --zone=public --remove-port=20388/tcp 2>/dev/null || true
+sudo firewall-cmd --permanent --zone=public --remove-port=20388/udp 2>/dev/null || true
 sudo firewall-cmd --reload
 
 # taildrop auto-receiver (systemd user service)
