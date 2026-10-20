@@ -1,11 +1,9 @@
 {{- $c := .theme.colors -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
-/* 以下3色は waybar-auto-theme.sh が壁紙上部の輝度で書き換える(既定=dark)。
-   明るい壁紙 → 黒文字/白バー、暗い壁紙 → 白文字/黒バー に自動切替される。 */
-@define-color wbfg #{{ $c.text.hex }};
-@define-color wbbg rgba({{ $c.bg_dark.rgb }}, 0.85);
-@define-color wbsh rgba(0, 0, 0, 0.7);
+/* wbfg / wbbg / wbsh の 3 色は colors.css (waybar-auto-theme.sh が壁紙上部の輝度で書き換える。
+   既定=dark)。ここに書くと自動切替のたびに chezmoi 管理の style.css がずれるため分離している。 */
+@import "colors.css";
 
 * {
   margin: 0;
