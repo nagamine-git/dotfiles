@@ -1,0 +1,5 @@
+# sched-ext スケジューラ設定。scx_loader.service が起動時に読む (旧 scx.service は廃止)。
+# scx_bpfland: 対話的プロセス (入力・描画) をビルドやエミュレータより優先する。
+# 止めたいときは `sudo systemctl stop scx_loader` で即座に既定スケジューラ (BORE/EEVDF) に戻る。
+default_sched = "scx_bpfland"
+default_mode = "Auto"

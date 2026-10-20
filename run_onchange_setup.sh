@@ -80,10 +80,12 @@ if [ "$(hostname)" = "am5-itx" ]; then
 
   # === sched-ext (scx_bpfland): 重い処理中の入力遅延対策 (am5-itx, 2026-09-06) ===
   # linux-cachyos は sched_ext 対応だが既定では無効 (/sys/kernel/sched_ext/state = disabled)。
-  # scx.service で bpfland を載せる。`systemctl stop scx` で即座に既定へ戻る。
-  sudo pacman -S --needed --noconfirm scx-scheds
-  sudo install -D -m 644 etc/default/scx /etc/default/scx
-  sudo systemctl enable --now scx.service
+  # scx_loader.service で bpfland を載せる (scx.service は廃止済み)。`systemctl stop scx_loader` で即座に既定へ戻る。
+  sudo pacman -S --needed --noconfirm scx-scheds scx-tools
+  sudo install -D -m 644 etc/scx_loader/config.toml /etc/scx_loader/config.toml
+  sudo rm -f /etc/default/scx
+  sudo systemctl disable --now scx.service 2>/dev/null || true
+  sudo systemctl enable --now scx_loader.service
 
   # === アイドル省電力: EPP balance_power (am5-itx, 2026-09-22) ===
   # 上限 (PPT / GPU cap / scaling_max_freq) は変えず、アイドル〜軽負荷の周波数選択だけ省電力寄りにする。
@@ -128,9 +130,10 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # パッケージ名扱いするため、生の pkglist.txt を流すと "# security" 等で誤爆する。
 grep -vE '^[[:space:]]*(#|$)' pkglist.txt | paru -S --needed --noconfirm - || echo "Some packages failed to install"
 
-chsh -s "$(which zsh)"
+# 既に zsh なら chsh (パスワード入力) を求めない
+[ "$(getent passwd "$USER" | cut -d: -f7)" = "$(command -v zsh)" ] || chsh -s "$(command -v zsh)"
 
-mise i
+mise i || echo "⚠ mise i 失敗 (継続)"
 
 
 # アプリケーションのインストール
@@ -189,7 +192,8 @@ systemctl --user enable --now security-update-check.timer 2>/dev/null || true
 
 # === Btrfsスナップショット ===
 # pacman更新の前後を snap-pac が自動保存し、grub-btrfs がGRUBへ反映する。
-if [ "$(findmnt -no FSTYPE / 2>/dev/null)" = "btrfs" ]; then
+# snapper はパッケージ導入 (paru) が失敗すると入っていないので、無ければスキップする
+if [ "$(findmnt -no FSTYPE / 2>/dev/null)" = "btrfs" ] && command -v snapper >/dev/null 2>&1; then
   if ! sudo snapper -c root get-config >/dev/null 2>&1; then
     sudo snapper -c root create-config /
   fi

@@ -102,6 +102,7 @@ arch-audit
 firewalld
 pacman-contrib
 scx-scheds
+scx-tools
 fwupd
 trivy
 
