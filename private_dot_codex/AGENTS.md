@@ -3,6 +3,7 @@
 - モデルと reasoning effort は config.toml の既定のまま。上位モデル・追加課金・外部のモデル振り分けサービスはユーザーが明示したときだけ使う。
 - 変更に応じたテスト・lint・dry-run を実行する。完了報告は「変更 / 実行した検証とその結果 / 未検証」を書き、未実行や失敗を成功と書かない。
 - 費用や精度の数値は自分で測ったものだけ主張する。
+- 秘密が要るコマンドは承認なしで `op-agent run --env-file ~/.config/agents/secrets.env -- <cmd>` で実行する (vault 'Agents' 限定)。無い秘密は本人に Agents vault への追加と secrets.env への参照追加を頼む。値は表示・保存・チャット出力しない。
 
 ## 回答形式
 
