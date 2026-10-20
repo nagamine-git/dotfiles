@@ -45,8 +45,9 @@ chezmoi apply -v
 
 ### AIの共通回答形式
 
-回答形式の正本は `private_dot_codex/AGENTS.md` です。
-LinuxとmacOSで `~/.codex/AGENTS.md` に展開します。
+回答形式の正本は `dot_agents/AGENTS.md` の「Codex のみ」節です。
+Claude Code と Codex の共通指示と同じファイルで、Linux と macOS で `~/.agents/AGENTS.md` と
+`~/.codex/AGENTS.md` に展開します (Claude Code は `~/.claude/CLAUDE.md` から読み込みます)。
 このファイルはOS・ホスト別の除外対象ではありません。
 
 既存のchezmoi環境では、sourceを更新して対象だけ適用します。

@@ -1,0 +1,34 @@
+#!/bin/sh
+# 今のリポジトリ用の Claude Code 自動メモリのディレクトリを 1 行で出力する。
+#   ~/.claude/projects/<リポジトリのパス (英数字以外は -)>/memory
+# Claude Code は自動で読むので、Codex が同じメモリを読み書きするための道しるべ。
+# worktree は本体のリポジトリと同じディレクトリを共有する。実在するものを優先し、
+# どれも無ければ (これから作る場合) 本体のリポジトリ用のパスを返す。Git 管理外は cwd を使う。
+set -eu
+
+base="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+
+dir_for() {
+  printf '%s/%s/memory\n' "$base" "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g')"
+}
+
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [ -z "$top" ]; then
+  dir_for "$(pwd -P)"
+  exit 0
+fi
+
+main=$top
+common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+case "$common" in
+  */.git) main=${common%/.git} ;;
+esac
+
+for root in "$main" "$top"; do
+  dir=$(dir_for "$root")
+  if [ -d "$dir" ]; then
+    echo "$dir"
+    exit 0
+  fi
+done
+dir_for "$main"
