@@ -15,6 +15,8 @@ etc
 etc/**
 bin
 bin/**
+.claude-code-router
+.claude-code-router/**
 
 {{- /*
    macOS 用に Linux 専用の設定を無視する。
@@ -29,10 +31,6 @@ wolow-companion
 50-wolow-companion.rules
 
 .zshenv
-.claude-code-router
-.claude-code-router/**
-.openclaw
-.openclaw/**
 
 .config/hypr
 .config/hypr/**
@@ -40,6 +38,8 @@ wolow-companion
 .config/waybar/**
 .config/rofi
 .config/rofi/**
+.config/satty
+.config/satty/**
 .config/swaync
 .config/swaync/**
 .config/xdg-desktop-portal
@@ -74,6 +74,8 @@ wolow-companion
 .local/share/dark-mode.d/**
 .local/share/light-mode.d
 .local/share/light-mode.d/**
+.local/share/dbus-1
+.local/share/dbus-1/**
 
 .local/bin/hypr_auto_perfmonitor.sh
 .local/bin/hypr_perfmodeswitch.sh
@@ -90,3 +92,19 @@ wolow-companion
 .local/bin/unified_launcher.sh
 .local/bin/security-update-check.sh
 {{- end }}
+
+# Agent lifecycle documentation and OS-specific service
+docs/agent-lifecycle.md
+{{ if ne .chezmoi.os "darwin" }}
+Library/LaunchAgents/com.efg.claude-ops-gateway.plist
+{{ end }}
+
+# Repository-only desktop launcher documentation and tests.
+docs/desktop-apps-tmux.md
+tests/desktop-apps-tmux.py
+
+# Desktop launcher wrapper is enabled only on this Hyprland host.
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/desktop-apps-tmux
+.config/desktop-apps
+{{ end -}}
