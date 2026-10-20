@@ -16,7 +16,7 @@ install_if_missing() {
   local cmd=$1
   local name=${2:-$1}
   local install_cmd=$3
- 
+
   if ! command -v "$cmd" &> /dev/null; then
     echo "Installing $name..."
     # 個別 install の失敗で setup 全体 (set -e) を巻き込まない。
@@ -67,14 +67,32 @@ fi
 # 体制にする。Arch の systemd は Fedora と違い oomd 有効化の drop-in を同梱しないため
 # -.slice / user-.slice を自前で ManagedOOM 化しないと oomd は何も監視しない。
 if [ "$(hostname)" = "am5-itx" ]; then
-  echo "→ am5-itx 検出: zram 16GB + systemd-oomd を設定"
+  echo "→ am5-itx 検出: zram 16GB×2 + systemd-oomd を設定"
   sudo pacman -S --needed --noconfirm zram-generator
   sudo install -D -m 644 etc/systemd/zram-generator.conf /etc/systemd/zram-generator.conf
   sudo install -D -m 644 "etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf" "/etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf"
   sudo install -D -m 644 etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf /etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf
   sudo systemctl daemon-reload
-  sudo systemctl start systemd-zram-setup@zram0.service
+  # zram1 は 2026-09-06 追加 (zram0 満杯対策)。既存 zram0 はサイズ変更せず起動のみ
+  sudo systemctl start systemd-zram-setup@zram0.service systemd-zram-setup@zram1.service
   sudo systemctl enable --now systemd-oomd.service
+
+  # === sched-ext (scx_bpfland): 重い処理中の入力遅延対策 (am5-itx, 2026-09-06) ===
+  # linux-cachyos は sched_ext 対応だが既定では無効 (/sys/kernel/sched_ext/state = disabled)。
+  # scx.service で bpfland を載せる。`systemctl stop scx` で即座に既定へ戻る。
+  sudo pacman -S --needed --noconfirm scx-scheds
+  sudo install -D -m 644 etc/default/scx /etc/default/scx
+  sudo systemctl enable --now scx.service
+
+  # === アイドル省電力: EPP balance_power (am5-itx, 2026-09-22) ===
+  # 上限 (PPT / GPU cap / scaling_max_freq) は変えず、アイドル〜軽負荷の周波数選択だけ省電力寄りにする。
+  # /etc/tmpfiles.d/cpu-epp.conf は以前からあったが power-profiles-daemon (balanced =
+  # balance_performance) が起動後に上書きしていた。ppd は依存元なし・powerprofilesctl も壊れて
+  # いたので mask する。戻すときは `systemctl unmask --now power-profiles-daemon`。
+  sudo install -D -m 644 etc/tmpfiles.d/cpu-epp.conf /etc/tmpfiles.d/cpu-epp.conf
+  sudo systemctl disable --now power-profiles-daemon.service 2>/dev/null || true
+  sudo systemctl mask power-profiles-daemon.service
+  sudo systemd-tmpfiles --create /etc/tmpfiles.d/cpu-epp.conf
 fi
 
 # === sleep / lid 設定 (システム必須。壊れやすい install 群より前に置く) ===
@@ -109,16 +127,12 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # パッケージ名扱いするため、生の pkglist.txt を流すと "# security" 等で誤爆する。
 grep -vE '^[[:space:]]*(#|$)' pkglist.txt | paru -S --needed --noconfirm - || echo "Some packages failed to install"
 
-chsh -s $(which zsh)
+chsh -s "$(which zsh)"
 
 mise i
 
 
 # アプリケーションのインストール
-# システム npm の global prefix (/usr/lib/node_modules) は root 権限が要るため sudo。
-# 失敗しても install_if_missing 側で握りつぶし継続する。
-install_if_missing openclaw openclaw "sudo npm i -g openclaw"
-
 # droidcam
 # v4l2loopback-dkms 未ビルド/未ロードでも setup 全体を止めない（set -e 対策で || true）。
 sudo dkms autoinstall || true
@@ -153,12 +167,17 @@ sudo tailscale set --operator="$USER" 2>/dev/null || true
 # 未ログイン時は静かにスキップし、Tailscale 認証後の再実行で有効になる。
 sudo tailscale set --ssh 2>/dev/null || true
 
-# firewalld を使っている場合 tailscale0 を trusted zone に入れる
-# (WireGuardで既に認証済みなので全通信を許可)
-if systemctl is-active --quiet firewalld; then
-  sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0 2>/dev/null || true
-  sudo firewall-cmd --reload 2>/dev/null || true
-fi
+# === ファイアウォール: firewalld に一本化 ===
+# Tailscale は認証済みなので trusted。物理LAN側は既定拒否を維持する。
+# Wolow Companion (無認証の電源操作, 20388) は Tailscale 経由だけで使うので LAN には開けない。
+# 通常の SSH は Tailscale SSH を使う。
+sudo systemctl disable --now ufw.service 2>/dev/null || true
+sudo systemctl enable --now firewalld.service
+sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
+sudo firewall-cmd --permanent --zone=public --remove-service=ssh 2>/dev/null || true
+sudo firewall-cmd --permanent --zone=public --remove-port=20388/tcp 2>/dev/null || true
+sudo firewall-cmd --permanent --zone=public --remove-port=20388/udp 2>/dev/null || true
+sudo firewall-cmd --reload
 
 # taildrop auto-receiver (systemd user service)
 systemctl --user daemon-reload
@@ -167,15 +186,52 @@ systemctl --user enable --now taildrop.service 2>/dev/null || true
 # === 週次セキュリティ更新チェック (checkupdates + arch-audit → claude-notify) ===
 systemctl --user enable --now security-update-check.timer 2>/dev/null || true
 
-# === ファイアウォール (ufw): inbound 既定拒否 / Tailscale だけ全許可 ===
-# プロンプトインジェクション・侵害時の被害局所化。tailscale0 は WireGuard 認証済みなので全通。
-# tailscale0 を「先に」許可してから enable するので、tailnet 経由 SSH は切れない。
-if command -v ufw >/dev/null 2>&1; then
-  sudo ufw allow in on tailscale0
-  sudo ufw --force default deny incoming
-  sudo ufw --force default allow outgoing
-  sudo ufw --force enable
-  sudo systemctl enable --now ufw.service 2>/dev/null || true
+# === Btrfsスナップショット ===
+# pacman更新の前後を snap-pac が自動保存し、grub-btrfs がGRUBへ反映する。
+if [ "$(findmnt -no FSTYPE / 2>/dev/null)" = "btrfs" ]; then
+  if ! sudo snapper -c root get-config >/dev/null 2>&1; then
+    sudo snapper -c root create-config /
+  fi
+  sudo systemctl enable --now snapper-timeline.timer snapper-cleanup.timer
+  sudo systemctl enable --now grub-btrfsd.service
+fi
+
+# 対応デバイスのファームウェア情報を定期更新する（更新適用自体は確認して手動）。
+sudo systemctl enable --now fwupd-refresh.timer 2>/dev/null || true
+
+# === am5-itx の旧パッケージ整理 ===
+# CachyOSを通常用、LTSを復旧用として残す。ブラウザと言語処理系は用途があるため温存。
+if [ "$(hostname)" = "am5-itx" ]; then
+  stale_packages=(
+    electron39 electron40 electron43
+    yay-bin fuzzel wofi helix niri timeshift ufw
+    linux linux-headers linux-zen linux-zen-headers
+    glances neofetch duf meld wavemon psensor evhz-git hyprsession-sh # 未使用 CLI / GUI
+    nano nano-syntax-highlighting gperf efitools pkgfile ngrok python-pipx # 未使用 CLI / GUI
+    netctl xl2tpd modemmanager usb_modeswitch b43-fwcutter dnsmasq haveged ntp iwd # NetworkManager + wpa_supplicant 構成で未使用のネットワーク関連
+    sg3_utils lsscsi nilfs-utils jfsutils f2fs-tools xfsprogs dmraid # 未使用のファイルシステム・ストレージツール
+    welcome eos-apps-info eos-log-tool eos-quickstart eos-packagelist reflector-simple # EndeavourOS の GUI 残骸
+    xorg-xinit xorg-xkill xorg-xdpyinfo xf86-video-ati # X11 残骸
+    rust # pacman の rust (rustup と mise に一本化済み。共存すると rust-analyzer が壊れる)
+  )
+  installed_stale=()
+  for package in "${stale_packages[@]}"; do
+    pacman -Q "$package" >/dev/null 2>&1 && installed_stale+=("$package")
+  done
+  if [ "${#installed_stale[@]}" -gt 0 ]; then
+    sudo pacman -Rns --noconfirm "${installed_stale[@]}"
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+  fi
+
+  # 上の削除で孤立した依存パッケージも片付ける。
+  mapfile -t orphans < <(pacman -Qdtq || true)
+  if [ "${#orphans[@]}" -gt 0 ]; then
+    sudo pacman -Rns --noconfirm "${orphans[@]}"
+  fi
+
+  # 導入済みパッケージは直近2世代だけ残し、削除済みパッケージのキャッシュは全消去。
+  sudo paccache -r -k 2
+  sudo paccache -ruk 0
 fi
 
 # === 壁紙: 昼/夜の2枚を DL (冪等)。darkman が日の出/日没で自動切替 ===

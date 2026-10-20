@@ -36,3 +36,6 @@ scaphandre/
 # wolow-companion バイナリ (4.4MB ELF)。2026-07 に git 追跡を廃止。
 # ソースツリー内のコピーは新規マシン bootstrap 用の配布マスターとして残してよいが追跡しない
 wolow-companion
+
+# ntfy のトピック名は購読すれば誰でも通知本文を読めるので公開リポジトリに入れない (各ホストにローカル配置)
+private_dot_config/claude-notify/config

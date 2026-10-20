@@ -195,12 +195,26 @@ code() {
 }
 
 
+# ChatGPT はデスクトップと同じ tmux / Wayland 起動を使う。
+chatgpt() {
+  if [[ -x "$HOME/.local/bin/desktop-apps-tmux" ]]; then
+    "$HOME/.local/bin/desktop-apps-tmux" chatgpt "$@"
+  else
+    command chatgpt "$@"
+  fi
+}
+
 # エイリアス
 alias ls='eza --icons --color=always'
 alias ll='ls -l'
 alias la='ls -la'
 alias l='ls -l'
 alias gdm='git diff -w --no-color --ignore-blank-lines --minimal'
+# difftastic (構文木 diff) を diff.external で 1 画面表示。delta との数値比較は diff-compare
+alias gdd='git -c diff.external=difft diff'
+# 端末 (Ghostty) は暗色固定。difft の dark 配色は bright ANSI を使うが Hybrid / Gruvbox Material は bright が通常色より暗く、
+# light 配色 (通常 ANSI) の方がコントラストが高い (Hybrid: 赤 3.6 vs 2.2、緑 9.0 vs 4.4)。darkman には追従させない
+export DFT_BACKGROUND=light
 alias gls='git ls-files'
 alias supabase='npx supabase'
 alias cursor='code'
@@ -328,23 +342,6 @@ wsuspend() {
 EOF
     )"
     printf '%s\n' "$body"
-
-    # Telegram 通知 (openclaw 経由)。送信先は WSUSPEND_TG_TARGET (env) で指定。
-    # 例:  export WSUSPEND_TG_TARGET=@my_personal_alerts_bot
-    #      export WSUSPEND_TG_TARGET=123456789
-    # 未設定なら静かにスキップ。
-    if [[ -n "${WSUSPEND_TG_TARGET:-}" ]] && command -v openclaw >/dev/null 2>&1; then
-        # コードブロック化して iPhone で長押しコピーしやすくする
-        local tg_message=$'```\n'"$body"$'\n```'
-        if openclaw message send \
-              --channel telegram \
-              --target "$WSUSPEND_TG_TARGET" \
-              -m "$tg_message" >/dev/null 2>&1; then
-            echo "✓ Telegram に通知済み ($WSUSPEND_TG_TARGET)"
-        else
-            echo "⚠ Telegram 送信失敗 (target=$WSUSPEND_TG_TARGET)" >&2
-        fi
-    fi
 
     sudo -v || return 1
     printf 'Enter で WoL を有効化して suspend (Ctrl-C で中止) ... '
@@ -496,9 +493,10 @@ if [[ "$OSTYPE" != darwin* ]] && command -v security-update-check.sh >/dev/null 
   }
 fi
 
-# OpenClaw Completion
-[ -f "$HOME/.openclaw/completions/openclaw.zsh" ] && source "$HOME/.openclaw/completions/openclaw.zsh"
-
 # Tailscale: mac でも OSS 版 (brew install --formula tailscale) を使うため
 # /opt/homebrew/bin/tailscale が PATH に入る。GUI アプリへの alias は不要。
 # (App Store / Standalone 版はサンドボックスのため Tailscale SSH サーバーになれない)
+
+# >>> Codex installer >>>
+export PATH="$HOME/.local/bin:$PATH"
+# <<< Codex installer <<<

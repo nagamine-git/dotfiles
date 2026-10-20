@@ -1,6 +1,7 @@
 {
   "env": {
-    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}"
+    "PLAYWRIGHT_MCP_EXECUTABLE_PATH": "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
   "permissions": {
     "deny": [
@@ -11,7 +12,6 @@
       "Bash(git reset --hard origin/main*)",
       "Bash(git reset --hard origin/master*)",
       "Bash(git rebase * --root*)",
-      "Bash(gh repo create*)",
       "Bash(gh repo delete*)",
       "Bash(npm publish*)",
       "Bash(yarn publish*)",
@@ -29,7 +29,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "default",
   "hooks": {
     "PreToolUse": [
       {
@@ -38,6 +37,16 @@
           {
             "type": "command",
             "command": "bash {{ .chezmoi.homeDir }}/.claude/hooks/injection-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-notify notification >/dev/null 2>&1"
           }
         ]
       }
@@ -51,41 +60,32 @@
           },
           {
             "type": "command",
-            "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-notify stop \"作業が完了しました\" >/dev/null 2>&1"
+            "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-notify stop >/dev/null 2>&1"
           }
         ]
       }
     ]
   },
-  "enabledPlugins": {
-    "security-guidance@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "slack@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "freee-mcp@freee-mcp-marketplace": true
+  "statusLine": {
+    "type": "command",
+    "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-statusline"
   },
-  "extraKnownMarketplaces": {
-    "freee-mcp-marketplace": {
-      "source": {
-        "source": "github",
-        "repo": "freee/freee-mcp"
-      }
+  "model": "opus",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5-5": {
+      "effortLevel": "low"
+    },
+    "claude-opus-5": {
+      "effortLevel": "medium"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "medium"
     }
   },
-  "language": "japanese",
-  "editorMode": "vim",
-  "effortLevel": "high",
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
-  "skipDangerousModePermissionPrompt": true,
-  "skipWorkflowUsageWarning": true,
-  "theme": "auto",
-  "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true,
+  "autoUpdatesChannel": "latest",
   "mcpServers": {
     "playwright": {
       "command": "npx",
@@ -115,6 +115,64 @@
       }
     }
   },
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "Organization: EFG Technologies (一人法人, owner nagamine-git). Primary use: 個人開発・自社プロダクト (sim, zeed, lab 等)・dotfiles 運用",
+      "Source control: github.com/nagamine-git と github.com/efg-technologies の全リポジトリ (いずれも本人所有)。https 経由で gh 認証済み",
+      "Trusted internal hosts: 本人所有の 3 台 am5-itx, fp7-e14, m1pro-mbp14 (別名 mac)。Tailscale tailnet (*.ts.net, 100.64.0.0/10) 経由。これらの間の ssh/scp/rsync とリモートコマンド実行は日常作業",
+      "Secrets management: 1Password。本人用の op (item/read/signin/document) は deny。エージェント用 vault 'Agents' を service account 経由で読む ~/.local/bin/op-agent は許可された通常操作",
+      "Host containment: 本人専用の開発機 (CachyOS / macOS)。他者と共有しない。公開インターネットに直結"
+    ],
+    "allow": [
+      "$defaults",
+      "gh repo create --private で nagamine-git / efg-technologies 配下に private リポジトリを作るのは許可",
+      "am5-itx / fp7-e14 / m1pro-mbp14 への ssh・scp・rsync とそこでのコマンド実行は許可 (本人所有機)",
+      "ユーザーが設定変更を依頼したときの ~/.claude, ~/.codex, ~/.local/share/chezmoi の編集と chezmoi apply / chezmoi update は許可",
+      "Bash(gh issue create:*) — scoped to efg-technologies/lab coordination issues assigned to nagamine-git, per pre-existing project authorization dated 2026-04-30"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(flyctl ssh console*) in efg-technologies/* — remote shell exec against production Fly services (zeed-search-api) per hypothesis-guardian.md",
+      "Write/Edit on ops/scripts/scaleway-mac-prod-build.sh and any path matching *prod* under ops/ — matches Sensitive remote targets / Protected IaC heuristic"
+    ]
+  },
+  "enabledPlugins": {
+    "security-guidance@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "slack@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "freee-mcp@freee-mcp-marketplace": false,
+    "figma@claude-plugins-official": true,
+    "cloudflare@cloudflare": true
+  },
+  "extraKnownMarketplaces": {
+    "freee-mcp-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "freee/freee-mcp"
+      }
+    },
+    "cloudflare": {
+      "source": {
+        "source": "github",
+        "repo": "cloudflare/skills"
+      }
+    }
+  },
+  "language": "japanese",
+  "editorMode": "vim",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
+  "theme": "auto",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true,
   "allowCommandExecution": true,
   "autoExecuteCommands": true
 }

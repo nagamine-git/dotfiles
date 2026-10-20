@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# 同じ git 差分を delta と difftastic で順に表示し、出力量を表で比べる。
+#   diff-compare [-q] [-w 幅] [範囲]
+#   範囲: A..B / A...B / 単一 rev R (= R..HEAD)。既定 HEAD~1 (= 直近 1 コミット)
+#   -q: 表示を省いて表だけ  -w: 計測に使う端末幅 (既定: 端末の幅、パイプ時 120)
+set -eu
+
+usage() {
+  sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//' >&2
+  exit 2
+}
+
+quiet=0
+width=
+while getopts qw:h opt; do
+  case $opt in
+    q) quiet=1 ;;
+    w) width=$OPTARG ;;
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+range=${1:-HEAD~1}
+case $range in
+  *..*) ;;
+  *) range="$range..HEAD" ;;
+esac
+
+for cmd in git delta difft; do
+  command -v "$cmd" >/dev/null 2>&1 || { echo "diff-compare: $cmd が見つからない" >&2; exit 1; }
+done
+git rev-parse "$range" >/dev/null || exit 1
+if git diff --quiet "$range"; then
+  echo "diff-compare: $range に差分なし"
+  exit 0
+fi
+
+if [ -z "$width" ]; then
+  if [ -t 1 ]; then width=$(tput cols 2>/dev/null || echo 120); else width=120; fi
+fi
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+# delta は色だけを切る手段がないので、ANSI (CSI) と OSC (hyperlink 含む) を除去して素の文字にする
+esc=$(printf '\033')
+bel=$(printf '\007')
+strip_ansi() {
+  sed -E "s/${esc}\][^${bel}${esc}]*(${bel}|${esc}\\\\)//g; s/${esc}\[[0-9;?]*[A-Za-z]//g"
+}
+
+gdiff() { git --no-pager diff "$@" "$range"; }
+gdiff_difft() { git --no-pager -c diff.external=difft diff "$range"; }
+
+if [ "$quiet" -eq 0 ]; then
+  printf '\n===== delta  (git diff %s | delta) =====\n' "$range"
+  gdiff --color=always | delta --paging=never
+  printf '\n===== difftastic  (git -c diff.external=difft diff %s) =====\n' "$range"
+  gdiff_difft
+fi
+
+# 表示と同じ設定・同じ幅で素の出力を作る (--color=never 相当)
+gdiff --color=always | delta --paging=never --width="$width" | strip_ansi >"$tmp/delta.txt"
+DFT_COLOR=never DFT_WIDTH=$width gdiff_difft >"$tmp/difft.txt"
+
+# 「変更として表示された行」: 文脈行を除いて数えられる形で別に出す。
+#   delta: 設定なし・unified・+/- マーカー付き → 行頭が +/- の行
+#   difft: 文脈 0・inline → 行番号つきの行 (inline は変更行しか出さない)
+delta_changed=$(gdiff --color=always |
+  delta --no-gitconfig --paging=never --width="$width" --keep-plus-minus-markers |
+  strip_ansi | grep -c '^[+-]' || true)
+difft_changed=$(DFT_COLOR=never DFT_WIDTH=$width DFT_CONTEXT=0 DFT_DISPLAY=inline gdiff_difft |
+  grep -Ec '^ *[0-9]+ ' || true)
+
+delta_rows=$(wc -l <"$tmp/delta.txt" | tr -d ' ')
+difft_rows=$(wc -l <"$tmp/difft.txt" | tr -d ' ')
+delta_width=$(wc -L <"$tmp/delta.txt" | tr -d ' ')
+difft_width=$(wc -L <"$tmp/difft.txt" | tr -d ' ')
+
+pct() { awk -v c="$1" -v r="$2" 'BEGIN { printf "%.0f%%", r ? 100 * c / r : 0 }'; }
+ratio() { awk -v a="$1" -v b="$2" 'BEGIN { printf "%.2f", b ? a / b : 0 }'; }
+
+printf '\nrange=%s  width=%s  (git diff --numstat: %s)\n' "$range" "$width" \
+  "$(git diff --numstat "$range" | awk '{ a += $1; d += $2 } END { printf "+%d -%d", a, d }')"
+printf '%-10s %8s %10s %9s %9s\n' tool rows max-width changed changed/rows
+printf '%-10s %8s %10s %9s %9s\n' delta "$delta_rows" "$delta_width" "$delta_changed" "$(pct "$delta_changed" "$delta_rows")"
+printf '%-10s %8s %10s %9s %9s\n' difft "$difft_rows" "$difft_width" "$difft_changed" "$(pct "$difft_changed" "$difft_rows")"
+printf '%-10s %8s %10s %9s\n' difft/delta "$(ratio "$difft_rows" "$delta_rows")" \
+  "$(ratio "$difft_width" "$delta_width")" "$(ratio "$difft_changed" "$delta_changed")"
+cat <<'EOF'
+rows: 出力の総行数 (ヘッダ・文脈・折り返し込み) / max-width: 最長行の表示幅
+changed: 変更として出した行数 (delta = +/- 行、difft = 文脈 0 の inline の行)
+changed/rows: 出力のうち変更が占める割合 (低いほど文脈・装飾が多い)
+EOF

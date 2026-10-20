@@ -35,7 +35,7 @@ chezmoi init --apply nagamine-git
 ```
 
 - Linux では `pkglist.txt` のパッケージが `run_onchange_setup.sh` により自動導入されます
-- 開発時は `pre-commit install` を推奨 (gitleaks / shellcheck 等がコミット時に走る)
+- 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck 等がコミット時に走る)
 
 ### 更新
 
@@ -71,9 +71,6 @@ ChatGPTとdotsの設定はchezmoiから自動同期されません。
 参考: [OpenAI公式の指示読込仕様](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 
 ## 構成ハイライト
-
-- **Claude Code / Codex**: `ai-code claude` / `ai-code codex` で起動。AIが難易度を判断し、必要なときだけ上位モデルの専門担当へ委任。
-  カスタムagent、検証規約、モデル/effort、限定apply手順は [運用ガイド](docs/agent-workflow.md) を参照。
 
 - **シェル**: zsh + sheldon + starship (2行プロンプト、`starship.toml.tmpl` で3台配色分岐)
 - **ターミナル**: Ghostty (UDEV Gothic 35NFLG / リガチャ無効 / カーソル点滅無効)

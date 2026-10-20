@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# エージェント用: service account (vault 'Agents' 限定) で op を呼ぶ。本人の op と Personal vault には触れない。
+set -eu
+token_file="${OP_AGENT_TOKEN_FILE:-$HOME/.config/op/agents-sa-token}"
+[[ -r "$token_file" ]] || { echo "op-agent: $token_file がありません" >&2; exit 1; }
+OP_SERVICE_ACCOUNT_TOKEN="$(<"$token_file")" exec op "$@"

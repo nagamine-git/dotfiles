@@ -38,15 +38,17 @@ source = ~/.config/hypr/workspaces.conf
 $terminal = {{ $terminal }}
 $fileManager = thunar
 $menu = rofi -show drun
-$browser = zeed
+$browser = brave-origin
 
 #################
 ### AUTOSTART ###
 #################
 
 exec-once = fcitx5 -d --replace
-# Secret Service (org.freedesktop.secrets) provider。gog 等の keyring 経由トークン読み書きに必要
-exec-once = gnome-keyring-daemon --start --components=secrets
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+# Start the existing apps after desktop login; reuse any running instances.
+exec-once = ~/.local/bin/desktop-apps-tmux autostart
+{{ end -}}
 exec-once = 1password --silent &
 exec-once = hyprvoice serve &
 # 壁紙の上部輝度で waybar を明/暗テーマに切替えてから waybar を起動 (; で順序保証、
@@ -165,7 +167,7 @@ env = ELECTRON_DISABLE_GPU_SANDBOX,1
 env = MOZ_ENABLE_WAYLAND,1
 
 # Application settings
-env = BROWSER,zeed
+env = BROWSER,brave-origin
 env = QT_QPA_PLATFORMTHEME,qt6ct
 
 # GTK settings
@@ -259,7 +261,7 @@ group {
         col.locked_active = rgba({{ $c.primary.hex }}ff)
         col.locked_inactive = rgba({{ $c.surface.hex }}cc)
     }
-    
+
     col.border_active = rgba(00000000)
     col.border_inactive = rgba(00000000)
     col.border_locked_active = rgba(00000000)
@@ -288,6 +290,17 @@ windowrule {
   name = xwayland-fix
   no_initial_focus = 1
   match:xwayland = 1
+}
+
+# gnome-keyring の「Unlock Keyring」(gcr-prompter)。他ウィンドウの裏に隠れると
+# secrets を待つアプリが解錠待ちで固まるため、全ワークスペースの中央に固定して最前面に出す
+windowrule {
+  name = gcr-prompter-pin
+  float = 1
+  center = 1
+  pin = 1
+  stay_focused = 1
+  match:class = ^(gcr-prompter)$
 }
 
 # Layer rules: blur for waybar
@@ -522,13 +535,18 @@ bind = CTRL $mainMod, V, exec, cliphist list | rofi -dmenu -p "📋 選択→貼
 bind = $mainMod, R, exec, swaync-client -t -sw
 bind = $mainMod SHIFT, R, exec, ~/.local/bin/claude-notify-focus "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_session 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_window 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_pane 2>/dev/null)"
 
+# === SCREENSHOTS (satty) ===
+# grim は ppm (無圧縮) で渡して PNG エンコードを省く。保存先・コピー・early-exit は ~/.config/satty/config.toml。
+# satty は保存先ディレクトリを作らないため、撮影のたびに mkdir -p する。
+$shotdir = ~/Pictures/Screenshots
+
 # === SCREENSHOTS (WINDOWS/LINUX STYLE) ===
-bind = , Print, exec, grim - | swappy -f -
-bind = SHIFT, Print, exec, grim -g "$(slurp)" - | swappy -f -
+bind = , Print, exec, mkdir -p $shotdir; grim -t ppm - | satty --filename -
+bind = SHIFT, Print, exec, mkdir -p $shotdir; grim -g "$(slurp)" -t ppm - | satty --filename -
 
 # === SCREENSHOTS (CORRECTED) ===
-bind = $mainMod SHIFT, P, exec, grim - | swappy -f -  
-bind = $mainMod CTRL SHIFT, P, exec, grim -g "$(slurp)" - | swappy -f -
+bind = $mainMod SHIFT, P, exec, mkdir -p $shotdir; grim -t ppm - | satty --filename -
+bind = $mainMod CTRL SHIFT, P, exec, mkdir -p $shotdir; grim -g "$(slurp)" -t ppm - | satty --filename -
 
 # === RENDERING OPTIMIZATION ===
 render {

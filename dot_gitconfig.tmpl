@@ -9,11 +9,11 @@
     insteadOf = https://github.com/
 
 [credential "https://github.com"]
-       helper = 
+       helper =
        helper = !{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/gh{{ else }}/usr/bin/gh{{ end }} auth git-credential
 
 [credential "https://gist.github.com"]
-       helper = 
+       helper =
        helper = !{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/gh{{ else }}/usr/bin/gh{{ end }} auth git-credential
 [push]
        default = current
@@ -23,7 +23,7 @@
   excludesfile = ~/.gitignore_global
 
 [merge]
-  conflictStyle = zdiff3
+  conflictStyle = zdiff3  # 競合マーカーに共通祖先を出し、両側の共通部分は外へ括り出して競合範囲を最小化
 
 [rebase]
   autoStash = true
@@ -33,20 +33,40 @@
   rebase = true
 
 [interactive]
-  diffFilter = delta --color-only
+  diffFilter = delta --color-only  # git add -p の表示も delta 配色に。--color-only は行数を変えないので対話が壊れない
 
 [delta]
-  features = collared-trogon
-  side-by-side = true
-  line-numbers = true
-  syntax-theme = base16
-  plus-style = "syntax #2f3720"
-  minus-style = "syntax #3a2025"
-  plus-emph-style = "syntax #46512b"
-  minus-emph-style = "syntax #4a2328"
-  hunk-header-style = "syntax #6e90b0"
-  file-style = "syntax #7fbfb4"
-  ignore-whitespace = true
+  # 配色: Ghostty は両 OS とも暗色テーマ固定 (Hybrid / Gruvbox Material) なので dark に固定する
+  dark = true  # 背景色の自動検出 (OSC 11 問い合わせ) を省く。lazygit など検出が外れる経路でも色がぶれない
+  syntax-theme = base16  # ANSI 16 色パレットを使うので、シンタックス色が Ghostty のテーマ配色と一致する
+  side-by-side = true  # 旧/新を横に並べて対応関係を目で追える
+  wrap-max-lines = unlimited  # 既定 2 は幅が狭いと 3 行目以降を黙って切り捨てる。diff では内容を隠さず折り返す
+  line-numbers = true  # 旧/新の行番号。エラー箇所や blame との突き合わせに使う
+  navigate = true  # n / N でファイル間を移動 (多ファイル diff を less 内で巡回)
+  hyperlinks = true  # ファイル名を OSC 8 リンクに (Ghostty で Ctrl/Cmd+クリック)。tmux 内は terminal-features の hyperlinks が必要
+  plus-style = "syntax #2f3720"  # 追加行: 暗オリーブ背景。端末既定 fg とのコントラスト 6.5:1 (Hybrid)
+  minus-style = "syntax #3a2025"  # 削除行: 暗ローズ背景。同 7.7:1
+  plus-emph-style = "syntax #46512b"  # 行内の変更語 (単語単位の強調) を一段明るく
+  minus-emph-style = "syntax #4a2328"  # 同上 (削除側)
+  hunk-header-style = "#6e90b0"  # Hybrid の ANSI blue を前景色に (5.4:1)。"syntax #…" だと背景色になり文字が 1.0:1 で消える
+  file-style = "#7fbfb4"  # Hybrid の ANSI cyan を前景色に (8.6:1)。同上、旧設定は背景色化して 1.1:1 だった
+  # 移動行: [diff] colorMoved=default (= zebra) が出す 4 色を、追加/削除と別系統 (紫/青/シアン/琥珀) の暗い背景へ写す。
+  # 色対応は delta 公式 zebra-dark と同じ。公式の 4 色目 (#222f14) は追加行 #2f3720 と区別できない (ΔE76=6) ので琥珀 #3b2c0f にした。
+  map-styles = bold purple => syntax "#330f29", bold blue => syntax "#271344", bold cyan => syntax "#0d3531", bold yellow => syntax "#3b2c0f"
+
+# `git difftool` で difftastic (構文木ベースの diff) を起動。通常の git diff は delta のまま
+[diff]
+  colorMoved = default  # 移動しただけのブロックを追加/削除と区別して表示する (delta は map-styles で受ける)
+  tool = difftastic
+
+[difftool]
+  prompt = false
+
+[difftool "difftastic"]
+  cmd = difft \"$LOCAL\" \"$REMOTE\"
+
+[pager]
+  difftool = true
 
 [color]
   ui = auto

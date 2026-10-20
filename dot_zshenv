@@ -1,0 +1,3 @@
+# ZEED_TELEMETRY_READ_TOKEN は chezmoi 管理外のファイルから読む (chezmoi が 1Password を呼ばないように)。
+# 新しいホストでは一度だけ: op read 'op://Personal/Zeed Telemetry Read Token/credential' > ~/.config/zeed/telemetry-read-token && chmod 600 ~/.config/zeed/telemetry-read-token
+[[ -r ~/.config/zeed/telemetry-read-token ]] && export ZEED_TELEMETRY_READ_TOKEN="$(<~/.config/zeed/telemetry-read-token)"

@@ -1,0 +1,7 @@
+# Satty (スクリーンショット注釈)。起動は hyprland.conf の Print 系バインド (grim | satty)
+[general]
+# 保存・コピーしたらウィンドウを閉じる
+early-exit = true
+copy-command = "wl-copy"
+# 保存先ディレクトリは作らないので、バインド側で mkdir -p している
+output-filename = "~/Pictures/Screenshots/satty-%Y%m%d-%H%M%S.png"
