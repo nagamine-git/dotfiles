@@ -59,7 +59,7 @@ hyprsunset
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 distrobox
-slack-desktop-wayland
+# slack-desktop-wayland は AUR から消えた (2026-10)。導入済みのものを使い続ける
 thunar
 nm-connection-editor
 wtype

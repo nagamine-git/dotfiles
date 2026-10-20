@@ -133,7 +133,8 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 replaced_pkgs=(waybar-git:waybar)
 for pair in "${replaced_pkgs[@]}"; do
   old="${pair%%:*}"; new="${pair##*:}"
-  if pacman -Q "$old" >/dev/null 2>&1 && ! pacman -Q "$new" >/dev/null 2>&1; then
+  # 旧パッケージが新の名前を provides していると `pacman -Q 新` も成功するので、実体の名前で比べる
+  if pacman -Q "$old" >/dev/null 2>&1 && [ "$(pacman -Qq "$new" 2>/dev/null)" != "$new" ]; then
     sudo pacman -Rdd --noconfirm "$old" && sudo pacman -S --needed --noconfirm "$new" || echo "⚠ $old → $new の入れ替えに失敗 (継続)"
   fi
 done
@@ -142,7 +143,9 @@ if ! paru -S --needed --noconfirm "${pkgs[@]}"; then
   # 1 つの衝突・ビルド失敗で他まで入らないのを防ぐため、1 つずつ入れ直す
   echo "⚠ 一括インストールに失敗。1 つずつ入れ直す"
   for pkg in "${pkgs[@]}"; do
-    paru -S --needed --noconfirm "$pkg" >/dev/null 2>&1 || echo "  ⚠ $pkg のインストールに失敗 (継続)"
+    if ! out="$(paru -S --needed --noconfirm "$pkg" 2>&1)"; then
+      echo "  ⚠ $pkg のインストールに失敗 (継続): $(printf '%s\n' "$out" | grep -v '^[[:space:]]*$' | tail -1)"
+    fi
   done
 fi
 
