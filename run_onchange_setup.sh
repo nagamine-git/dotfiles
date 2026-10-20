@@ -128,7 +128,23 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 # 以前は管理外の ~/pkglist.txt を読んでいて、リポジトリと乖離したまま放置される地雷だった。
 # コメント(#…)と空行を除去してから渡す。paru/pacman は stdin の '#' を
 # パッケージ名扱いするため、生の pkglist.txt を流すと "# security" 等で誤爆する。
-grep -vE '^[[:space:]]*(#|$)' pkglist.txt | paru -S --needed --noconfirm - || echo "Some packages failed to install"
+# pkglist で入れ替えたパッケージ (旧:新)。衝突は --noconfirm だと「N」になり一括インストール全体が失敗するので、
+# 公式リポジトリの新パッケージに替えるものは先に旧を外す。
+replaced_pkgs=(waybar-git:waybar)
+for pair in "${replaced_pkgs[@]}"; do
+  old="${pair%%:*}"; new="${pair##*:}"
+  if pacman -Q "$old" >/dev/null 2>&1 && ! pacman -Q "$new" >/dev/null 2>&1; then
+    sudo pacman -Rdd --noconfirm "$old" && sudo pacman -S --needed --noconfirm "$new" || echo "⚠ $old → $new の入れ替えに失敗 (継続)"
+  fi
+done
+mapfile -t pkgs < <(grep -vE '^[[:space:]]*(#|$)' pkglist.txt)
+if ! paru -S --needed --noconfirm "${pkgs[@]}"; then
+  # 1 つの衝突・ビルド失敗で他まで入らないのを防ぐため、1 つずつ入れ直す
+  echo "⚠ 一括インストールに失敗。1 つずつ入れ直す"
+  for pkg in "${pkgs[@]}"; do
+    paru -S --needed --noconfirm "$pkg" >/dev/null 2>&1 || echo "  ⚠ $pkg のインストールに失敗 (継続)"
+  done
+fi
 
 # 既に zsh なら chsh (パスワード入力) を求めない
 [ "$(getent passwd "$USER" | cut -d: -f7)" = "$(command -v zsh)" ] || chsh -s "$(command -v zsh)"
@@ -179,13 +195,17 @@ sudo tailscale set --auto-update 2>/dev/null || true
 # Tailscale は認証済みなので trusted。物理LAN側は既定拒否を維持する。
 # Wolow Companion (無認証の電源操作, 20388) は Tailscale 経由だけで使うので LAN には開けない。
 # 通常の SSH は Tailscale SSH を使う。
-sudo systemctl disable --now ufw.service 2>/dev/null || true
-sudo systemctl enable --now firewalld.service
-sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
-sudo firewall-cmd --permanent --zone=public --remove-service=ssh 2>/dev/null || true
-sudo firewall-cmd --permanent --zone=public --remove-port=20388/tcp 2>/dev/null || true
-sudo firewall-cmd --permanent --zone=public --remove-port=20388/udp 2>/dev/null || true
-sudo firewall-cmd --reload
+# firewalld が入って起動してから ufw を止める (先に止めるとファイアウォール無しの時間ができる)。
+if sudo pacman -S --needed --noconfirm firewalld && sudo systemctl enable --now firewalld.service; then
+  sudo systemctl disable --now ufw.service 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
+  sudo firewall-cmd --permanent --zone=public --remove-service=ssh 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=public --remove-port=20388/tcp 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=public --remove-port=20388/udp 2>/dev/null || true
+  sudo firewall-cmd --reload
+else
+  echo "⚠ firewalld を有効化できないため ufw のまま (要確認)"
+fi
 
 # taildrop auto-receiver (systemd user service)
 systemctl --user daemon-reload
