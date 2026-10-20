@@ -1,12 +1,14 @@
 [Default Applications]
-x-scheme-handler/http=brave-origin.desktop
-x-scheme-handler/https=brave-origin.desktop
-text/html=brave-origin.desktop
+x-scheme-handler/http=google-chrome.desktop
+x-scheme-handler/https=google-chrome.desktop
+text/html=google-chrome.desktop
 application/octet-stream=brave-origin.desktop
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/claude=com.anthropic.Claude.desktop
 inode/directory=thunar.desktop
 x-scheme-handler/slack=slack.desktop
+x-scheme-handler/codex=chatgpt.desktop
+application/xhtml+xml=google-chrome.desktop
 
 [Added Associations]
 application/octet-stream=brave-origin.desktop;
