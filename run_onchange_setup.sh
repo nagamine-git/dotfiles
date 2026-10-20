@@ -252,11 +252,15 @@ if [ "$(hostname)" = "am5-itx" ]; then
   )
   installed_stale=()
   for package in "${stale_packages[@]}"; do
-    pacman -Q "$package" >/dev/null 2>&1 && installed_stale+=("$package")
+    # rustup が rust を provides しているように、別パッケージが名前を名乗ると -Q が成功するので実体名で比べる
+    [ "$(pacman -Qq "$package" 2>/dev/null)" = "$package" ] && installed_stale+=("$package")
   done
   if [ "${#installed_stale[@]}" -gt 0 ]; then
-    sudo pacman -Rns --noconfirm "${installed_stale[@]}"
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    if sudo pacman -Rns --noconfirm "${installed_stale[@]}"; then
+      sudo grub-mkconfig -o /boot/grub/grub.cfg
+    else
+      echo "⚠ 旧パッケージの削除に失敗 (継続): ${installed_stale[*]}"
+    fi
   fi
 
   # 上の削除で孤立した依存パッケージも片付ける。
