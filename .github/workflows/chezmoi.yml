@@ -32,6 +32,12 @@ jobs:
           shellcheck dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
           python3 tests/agent-lifecycle.py
 
+      - name: Verify shared agent config (Claude Code / Codex) without model calls
+        run: |
+          python3 tests/agents-sync.py
+          python3 tests/agent-memory-dir.py
+          python3 tests/codex-config.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)

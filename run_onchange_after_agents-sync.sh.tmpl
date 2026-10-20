@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Claude Code と Codex の共有設定 (スキルのリンク・Codex 用 subagent・MCP サーバー) を揃える。
+# 本体は ~/.local/bin/agents-sync。下の行が変わったときだけ chezmoi が再実行する。
+# mcp.json: {{ include "dot_agents/mcp.json" | sha256sum }}
+# skills:{{ range glob (joinPath .chezmoi.sourceDir "dot_agents/skills/*") }} {{ base . }}{{ end }}
+# agents:{{ range glob (joinPath .chezmoi.sourceDir "dot_claude/agents/*.md") }} {{ base . }}={{ include . | sha256sum | trunc 12 }}{{ end }}
+set -eu
+
+if [ ! -x "$HOME/.local/bin/agents-sync" ]; then
+  echo "WARN: ~/.local/bin/agents-sync が無いので共有設定の同期をスキップ" >&2
+  exit 0
+fi
+
+# 同期に失敗しても chezmoi apply 全体は止めない。直したら `agents-sync all` で再実行できる。
+"$HOME/.local/bin/agents-sync" all || echo "WARN: agents-sync が失敗した。直してから agents-sync all を実行" >&2

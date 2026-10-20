@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "freee": {
+      "command": "npx",
+      "args": ["-y", "freee-mcp@latest"]
+    },
+    "google-workspace": {
+      "command": "uvx",
+      "args": ["workspace-mcp"],
+      "secrets": ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"]
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp"],
+      "secrets": ["TAVILY_API_KEY"]
+    },
+    "toggl": {
+      "command": "npx",
+      "args": ["-y", "@verygoodplugins/mcp-toggl"],
+      "secrets": ["TOGGL_API_KEY"]
+    },
+    "zeed-atlas": {
+      "type": "http",
+      "url": "https://search.zeed.run/mcp"
+    },
+    "zeed-browser": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--browserUrl", "http://127.0.0.1:9222", "--no-usage-statistics"]
+    }
+  }
+}
