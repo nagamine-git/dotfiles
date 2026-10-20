@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # ~/.codex/config.toml の modify_ スクリプト (stdin=現在の内容 → stdout=新しい内容)。
-# Codex 自身が projects / tui 等を書き込むため丸ごとは管理せず、次の 2 つだけ強制する:
+# Codex 自身が projects / tui 等を書き込むため丸ごとは管理せず、次の 3 つだけ強制する:
 #   - トップレベル           model_reasoning_effort = "medium"
 #   - [profiles.deep] テーブル model_reasoning_effort = "xhigh"
-# 他の行は一切変えない。stdin が空 (新ホスト) なら上の 2 つだけを出力する。
+#   - トップレベル           project_doc_fallback_filenames に "CLAUDE.md" を含める
+#                            (AGENTS.md が無いリポジトリで CLAUDE.md を読ませる。他の名前は残す)
+# 他の行は一切変えない。stdin が空 (新ホスト) なら上の 3 つだけを出力する。
 # macOS 標準の python3 (3.9) でも動くよう標準ライブラリの行単位処理のみ (tomllib 不使用)。
 import re
 import sys
@@ -12,10 +14,14 @@ KEY = "model_reasoning_effort"
 TOP_VALUE = "medium"
 PROFILE = "profiles.deep"
 PROFILE_VALUE = "xhigh"
+FALLBACK_KEY = "project_doc_fallback_filenames"
+FALLBACK_ITEM = "CLAUDE.md"
 
 HEADER_RE = re.compile(r"""^\s*\[\[?\s*((?:"[^"]*"|'[^']*'|[^\[\]"'#])+?)\s*\]\]?\s*(#.*)?$""")
 KEY_RE = re.compile(r'^(\s*)(?:"%s"|%s)\s*=\s*(.*)$' % (KEY, KEY))
 SIMPLE_VALUE_RE = re.compile(r"""^(?:"([^"\\]*)"|'([^']*)')\s*(#.*)?$""")
+FALLBACK_RE = re.compile(r"^(\s*)%s\s*=\s*(.*)$" % FALLBACK_KEY)
+STRING_RE = re.compile(r'"((?:[^"\\]|\\.)*)"' + r"|'([^']*)'")
 
 
 def advance(line, ml, depth):
@@ -93,6 +99,11 @@ def set_key(lines, start, end, value, at_code):
         comment = " " + v.group(3) if v and v.group(3) else ""
         lines[i] = m.group(1) + new + comment
         return
+    insert_line(lines, start, end, new)
+
+
+def insert_line(lines, start, end, new):
+    """lines[start:end] (1 テーブルの本体) の最後のコード行の後ろに new を 1 行足す。"""
     at = start
     for i in range(end - 1, start - 1, -1):
         if is_code(lines[i]):
@@ -110,10 +121,61 @@ def set_key(lines, start, end, value, at_code):
     lines[at:at] = ins
 
 
+def array_end(rest):
+    """rest は "[" で始まる値。対応する "]" の位置 (文字列内は無視)。閉じていなければ -1。"""
+    i, n = 1, len(rest)
+    while i < n:
+        c = rest[i]
+        if c == '"':
+            i += 1
+            while i < n and rest[i] != '"':
+                i += 2 if rest[i] == "\\" else 1
+        elif c == "'":
+            j = rest.find("'", i + 1)
+            if j < 0:
+                return -1
+            i = j
+        elif c == "]":
+            return i
+        elif c == "#":
+            return -1
+        i += 1
+    return -1
+
+
+def ensure_fallback(lines, start, end, at_code):
+    """lines[start:end] (トップレベル) の FALLBACK_KEY に FALLBACK_ITEM を含める。
+    既存の他の名前は残す。1 行で閉じていない配列は壊さないよう触らず警告だけ出す。"""
+    quoted = '"%s"' % FALLBACK_ITEM
+    for i in range(start, end):
+        m = FALLBACK_RE.match(lines[i]) if at_code[i] else None
+        if not m:
+            continue
+        rest = m.group(2)
+        close = array_end(rest) if rest.startswith("[") else -1
+        if close < 0:
+            sys.stderr.write("WARN: %s が 1 行の配列でないため %s を足せません\n" % (FALLBACK_KEY, FALLBACK_ITEM))
+            return
+        body = rest[1:close]
+        if FALLBACK_ITEM in [a or b for a, b in STRING_RE.findall(body)]:
+            return
+        body = body.rstrip()
+        if not body:
+            body = quoted
+        elif body.endswith(","):
+            body += " " + quoted
+        else:
+            body += ", " + quoted
+        lines[i] = "%s%s = [%s]%s" % (m.group(1), FALLBACK_KEY, body, rest[close + 1:])
+        return
+    insert_line(lines, start, end, "%s = [%s]" % (FALLBACK_KEY, quoted))
+
+
 def main():
     text = sys.stdin.buffer.read().decode("utf-8")
     if not text.strip():
-        out = '%s = "%s"\n\n[%s]\n%s = "%s"\n' % (KEY, TOP_VALUE, PROFILE, KEY, PROFILE_VALUE)
+        out = '%s = "%s"\n%s = ["%s"]\n\n[%s]\n%s = "%s"\n' % (
+            KEY, TOP_VALUE, FALLBACK_KEY, FALLBACK_ITEM, PROFILE, KEY, PROFILE_VALUE)
         sys.stdout.buffer.write(out.encode("utf-8"))
         return
 
@@ -138,6 +200,10 @@ def main():
     headers, at_code = scan(lines)
     first = min(headers) if headers else len(lines)
     set_key(lines, 0, first, TOP_VALUE, at_code)
+
+    headers, at_code = scan(lines)  # 行が増えた可能性があるので取り直す
+    first = min(headers) if headers else len(lines)
+    ensure_fallback(lines, 0, first, at_code)
 
     out = "\n".join(lines) + "\n"
     if out.rstrip("\n") == text.rstrip("\n"):
