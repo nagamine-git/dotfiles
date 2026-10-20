@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# am5-itx を Wake-on-LAN で起こす。
+#
+#   wake-am5              # 起きるまで待つ (既に起きていれば即終了)
+#   wake-am5 --force      # 起きていてもパケットを送る (疎通確認用)
+#   wake-am5 --no-relay   # fp7 への中継をしない (中継先で実行される形)
+#
+# 設計メモ:
+#  - ブロードキャストアドレスは**ハードコードしない**。自宅LANは /22
+#    (192.168.68.0/22, brd 192.168.71.255) で /24 と誤認すると届かない。
+#    実行時にインターフェースから brd を読むのでサブネット変更にも追従する。
+#  - 出先など LAN 外から実行した場合は、自宅常駐の fp7 (Tailscale 経由) に
+#    中継して撃つ。magic packet は L2 ブロードキャストなので LAN 内発射が必須。
+set -uo pipefail
+
+MAC="${WAKE_AM5_MAC:-30:56:0F:46:DA:F4}"
+HOST="${WAKE_AM5_HOST:-am5-itx}"
+LAN_IP="${WAKE_AM5_IP:-192.168.68.67}"
+RELAY="${WAKE_AM5_RELAY:-fp7-e14}"
+WAIT="${WAKE_AM5_WAIT:-120}"
+
+FORCE=0 RELAY_OK=1
+for a in "$@"; do
+  case "$a" in
+    --force) FORCE=1 ;;
+    --no-relay) RELAY_OK=0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+  esac
+done
+
+if [ "$(uname)" = "Darwin" ]; then PING="ping -c1 -W1000"; else PING="ping -c1 -W1"; fi
+
+alive() { $PING "$LAN_IP" >/dev/null 2>&1 || $PING "$HOST" >/dev/null 2>&1; }
+
+# 自分の各インターフェースの直接ブロードキャスト + リミテッドブロードキャスト
+broadcasts() {
+  if command -v ip >/dev/null 2>&1; then
+    ip -4 -o addr show scope global 2>/dev/null \
+      | grep -vE '\b(docker[0-9]*|br-[0-9a-f]+|veth|tailscale[0-9]*)\b' \
+      | awk '{for (i=1; i<=NF; i++) if ($i == "brd") print $(i+1)}'
+  else
+    ifconfig 2>/dev/null | awk '/[[:space:]]broadcast /{print $NF}'
+  fi
+  echo 255.255.255.255
+}
+
+send() {
+  local targets; targets=$(broadcasts | sort -u | tr '\n' ' ')
+  [ -n "${targets// /}" ] || return 1
+  echo "[wake-am5] $(hostname -s) から送信: $targets"
+  MAC="$MAC" TARGETS="$targets" python3 - <<'PY'
+import os, socket, time
+pkt = bytes.fromhex("FF" * 6 + os.environ["MAC"].replace(":", "").replace("-", "") * 16)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+for _ in range(5):
+    for dst in os.environ["TARGETS"].split():
+        for port in (9, 7):
+            try:
+                s.sendto(pkt, (dst, port))
+            except OSError:
+                pass
+    time.sleep(0.3)
+PY
+}
+
+wait_up() {  # $1=秒
+  local end=$((SECONDS + $1))
+  while [ $SECONDS -lt $end ]; do
+    alive && return 0
+    sleep 5
+  done
+  return 1
+}
+
+if [ $FORCE -eq 0 ] && alive; then
+  echo "[wake-am5] 既に起動しています"
+  exit 0
+fi
+
+send
+if wait_up $((WAIT / 3)); then
+  echo "[wake-am5] 起動しました (ローカル送信)"
+  exit 0
+fi
+
+# LAN 外だった / 届かなかった場合は自宅常駐機から中継
+if [ $RELAY_OK -eq 1 ] && [ "$(hostname -s)" != "$RELAY" ]; then
+  echo "[wake-am5] $RELAY 経由で再送します"
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes "$RELAY" '.local/bin/wake-am5 --no-relay --force'; then
+    alive && { echo "[wake-am5] 起動しました (中継)"; exit 0; }
+  fi
+  wait_up $((WAIT / 3)) && { echo "[wake-am5] 起動しました (中継)"; exit 0; }
+fi
+
+echo "[wake-am5] 起動を確認できませんでした" >&2
+exit 1
