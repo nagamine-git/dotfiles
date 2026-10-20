@@ -108,10 +108,11 @@ push_phone() {
   case "$mode" in
     notification) prio="high"; tags="raising_hand" ;;
   esac
-  curl -fsS -m 8 \
+  # 本文は外部由来 (返答本文など)。-d だと先頭 @ でローカルファイルを送るため stdin から渡す
+  printf '%s' "$body" | curl -fsS -m 8 \
     -H "Title: ${summary} [${project} @ $(hostname -s)]" \
     -H "Priority: ${prio}" -H "Tags: ${tags}" \
-    -d "$(printf '%b' "$body")" \
+    --data-binary @- \
     "${NTFY_SERVER%/}/${NTFY_TOPIC}" >/dev/null 2>&1 || true
 }
 push_phone &
