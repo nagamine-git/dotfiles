@@ -35,10 +35,12 @@ source = ~/.config/hypr/workspaces.conf
 {{- $terminal := "ghostty" -}}
 {{- if or (ne $virt "none") (eq $disc "no") -}}{{- $terminal = "foot" -}}{{- end -}}
 {{- $terminal = env "CHEZMOI_TERMINAL" | default $terminal -}}
+{{- $browser := "google-chrome-stable" -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $browser = "brave-origin" -}}{{- end -}}
 $terminal = {{ $terminal }}
 $fileManager = thunar
 $menu = rofi -show drun
-$browser = brave-origin
+$browser = {{ $browser }}
 
 #################
 ### AUTOSTART ###
@@ -167,7 +169,7 @@ env = ELECTRON_DISABLE_GPU_SANDBOX,1
 env = MOZ_ENABLE_WAYLAND,1
 
 # Application settings
-env = BROWSER,brave-origin
+env = BROWSER,{{ $browser }}
 env = QT_QPA_PLATFORMTHEME,qt6ct
 
 # GTK settings

@@ -86,6 +86,7 @@ dust
 tree
 onefetch
 vlc
+vlc-plugin-ffmpeg
 darkman
 hyprvoice-bin
 google-cloud-sdk

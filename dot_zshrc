@@ -163,14 +163,6 @@ tm() {
     fi
 }
 
-tmux_fzf_window() {
-    window_list=$(tmux list-windows -a -F '#{session_id}:#{window_index} #{session_name}:#{window_name}')
-    target_index=$(echo "$window_list" | fzf | awk '{ print $1 }')
-    # fzf を Esc/Ctrl-C でキャンセルした場合は何もしない (空の -t で tmux が usage エラーになるのを防ぐ)
-    [ -z "$target_index" ] && return 0
-    tmux switch-client -t "$target_index"
-}
-
 # tmux attachのエイリアス
 alias ta='tmux attach'
 

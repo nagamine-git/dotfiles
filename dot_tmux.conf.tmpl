@@ -54,9 +54,6 @@ set -g message-command-style 'bg=#{{ $c.accent.hex }},fg=#{{ $c.bg_dark.hex }}'
 set -g pane-border-style 'fg=#{{ $c.bg_light.hex }}'
 set -g pane-active-border-style 'fg=#{{ $c.primary.hex }}'
 
-# copy-mode の選択を強調 (公式 issue #1500: モード表示が弱いUX欠落への対応)
-set -g mode-style 'fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.primary.hex }},bold'
-
 # アクティブ pane を「境界色 + 背景明暗」の二重手がかりで識別 (Gestalt figure-ground)。
 # 非アクティブを僅かに暗く。色差だけで十分 or 低スペック機で重い場合はこの2行を消せば戻る。
 set -g window-style 'fg=default,bg=#{{ $c.bg_dark.hex }}'
@@ -76,9 +73,33 @@ set -g @claude-tmux-auto-status "false"
 run '~/.tmux/plugins/tpm/tpm'
 set -ag status-right "#[fg=#{{ $c.accent.hex }},bg=#{{ $c.primary.hex }}]#[fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.accent.hex }},bold] ☁ #(claude-usage-colored)#[fg=#{{ $c.text.hex }},bg=#{{ $c.bg_dark.hex }}]"
 
+# copy-mode / choose-tree の選択を強調 (公式 issue #1500: モード表示が弱いUX欠落への対応)
+# tmux-power が mode-style を上書きするので tpm の後で設定
+set -g mode-style 'fg=#{{ $c.bg_dark.hex }},bg=#{{ $c.primary.hex }},bold'
+# choose-tree は選択行でも枝線等を themelightgrey で描くので青背景だと読めない。tree だけ surface の帯にする
+set -g tree-mode-selection-style 'bg=#{{ $c.surface.hex }},fg=#{{ $c.text.hex }},bold'
+
+# tmux 3.8 の theme 色をパレットに合わせる (コピーモード検索色などに効く)。-q で 3.8 未満の未知オプションは黙殺
+# tree の -/+ は themered/themegreen 固定なので、枝線と同じ無彩色 (text) に寄せる
+# ghostty は背景が暗くても light と報告するため、detect をやめて dark 固定にする
+set -sq theme dark
+set -sq dark-theme-black '#{{ $c.bg_dark.hex }}'
+set -sq dark-theme-white '#{{ $c.text.hex }}'
+set -sq dark-theme-dark-grey '#{{ $c.bg_light.hex }}'
+set -sq dark-theme-red '#{{ $c.text.hex }}'
+set -sq dark-theme-green '#{{ $c.text.hex }}'
+set -sq dark-theme-yellow '#{{ $c.warning.hex }}'
+set -sq dark-theme-blue '#{{ $c.primary.hex }}'
+set -sq dark-theme-cyan '#{{ $c.accent.hex }}'
+set -sq dark-theme-magenta '#{{ $c.warning_alt.hex }}'
+
+# themered/themegreen を既定色に使う他のオプションは、赤緑を無彩色化した影響を受けないよう明示する
+set -g display-panes-active-colour '#{{ $c.accent.hex }}'
+set -gw tree-mode-preview-style "fg=#{?#{||:#{&&:#{pane_format},#{pane_active}},#{&&:#{window_format},#{window_active}}},#{{ $c.accent.hex }},#{{ $c.primary.hex }}}"
+
 
 # Override tmux-tilit's extrakto binding (extrakto not installed)
-bind-key -n M-f run "tmux split-window -l 12 'zsh -ci tmux_fzf_window'"
+bind-key -n M-f split-window -l 12 '~/.local/bin/tmux-fzf-window'
 
 # Override tmux-tilit's M-m (main-vertical layout) → アクティブ pane の最大化トグル
 bind-key -n M-m resize-pane -Z \; display-message "zoom: #{?window_zoomed_flag,on,off}"

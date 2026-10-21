@@ -1,57 +1,36 @@
-#!/bin/bash
-# Claude使用量リセット通知デーモン
-# claude-usageの出力から残り時間をパースし、リセット時に通知を送る
+#!/usr/bin/env bash
+# 保存済みの使用枠リセット予定時刻を通知する。実際のリセットは確認しない。
+set -eu
 
 ICON="☁"
-SLEEP_ON_ERROR=300  # エラー時は5分後に再試行
+POLL_INTERVAL=300
 
 notify() {
     notify-send "${ICON} Claude" "$1" --urgency=normal 2>/dev/null \
         || echo "[claude-usage-notify] $1"
 }
 
-parse_remaining_seconds() {
-    local output="$1"
-    # (Xh) or (XhYm) or (Xm) 形式をパース
-    local hm
-    # 5h/7d 両方が (…) を持つと複数行になり算術展開が壊れるため、最初の1つ (5h側) に限定
-    hm=$(echo "$output" | grep -oP '\(\K[^)]+(?=\))' | head -n1)
-    [ -z "$hm" ] && echo 0 && return
-
-    local hours=0 mins=0
-    hours=$(echo "$hm" | grep -oP '\d+(?=h)' | head -n1 || echo 0)
-    mins=$(echo  "$hm" | grep -oP '\d+(?=m)' | head -n1 || echo 0)
-    echo $(( hours * 3600 + mins * 60 ))
-}
-
+pending_reset=0
+last_notified=0
 while true; do
-    output=$(claude-usage 2>/dev/null)
-
-    if [ -z "$output" ]; then
-        sleep "$SLEEP_ON_ERROR"
-        continue
+    reset=$("${HOME}/.local/bin/claude-usage-cache" --reset-5h 2>/dev/null || echo 0)
+    now=$(date +%s)
+    case "$reset" in
+        ''|*[!0-9]*) reset=0 ;;
+    esac
+    if [ "$reset" -gt "$last_notified" ] && [ "$reset" -gt 0 ]; then
+        pending_reset=$reset
     fi
 
-    secs=$(parse_remaining_seconds "$output")
-
-    if [ "$secs" -le 0 ]; then
-        sleep "$SLEEP_ON_ERROR"
-        continue
+    if [ "$pending_reset" -gt 0 ] && [ "$now" -ge "$pending_reset" ]; then
+        notify "保存済みの5時間枠のリセット予定時刻です。実際の残枠は Claude Code の /usage で確認してください。"
+        last_notified=$pending_reset
+        pending_reset=0
     fi
 
-    # リセット時刻まで待機
-    sleep "$secs"
-
-    # 念のため少し待ってから確認
-    sleep 30
-    new_output=$(claude-usage --refresh 2>/dev/null)
-    pct=$(echo "$new_output" | grep -oP '5h:\K[0-9]+')
-
-    if [ -n "$pct" ] && [ "$pct" -lt 20 ]; then
-        notify "5時間制限がリセットされました！ 現在の使用率: ${pct}%"
-    else
-        notify "5時間制限がリセットされました！"
+    wait_seconds=$POLL_INTERVAL
+    if [ "$pending_reset" -gt "$now" ] && [ $((pending_reset - now)) -lt "$wait_seconds" ]; then
+        wait_seconds=$((pending_reset - now))
     fi
-
-    sleep 60
+    sleep "$wait_seconds"
 done

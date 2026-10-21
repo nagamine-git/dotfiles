@@ -56,10 +56,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-usage --refresh >/dev/null 2>&1"
-          },
-          {
-            "type": "command",
             "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-notify stop >/dev/null 2>&1"
           }
         ]

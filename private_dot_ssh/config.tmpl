@@ -30,11 +30,20 @@ Host *
   ControlPath ~/.ssh/cm-%C
   ControlPersist 10m
 {{- else -}}
-Host mac m1pro-mbp14 mbp14-m1pro zeed-mac tsuyoshis-macbook-pro
-  HostName m1pro-mbp14
+Host mac m1pro-mbp14 mbp14-m1pro zeed-mac tsuyoshis-macbook-pro m1pro-mbp14-agent
+  HostName m1pro-mbp14-agent.tailcda87f.ts.net.
   User tsuyoshi.nagamine
-  IdentityFile ~/.ssh/mac_login.pub
-  IdentitiesOnly yes
+  IdentityAgent none
+  IdentityFile none
+  PubkeyAuthentication no
+  PasswordAuthentication no
+  KbdInteractiveAuthentication no
+  GSSAPIAuthentication no
+  HostbasedAuthentication no
+  BatchMode yes
+  UserKnownHostsFile ~/.config/tailscale/ssh_known_hosts
+  GlobalKnownHostsFile /dev/null
+  StrictHostKeyChecking yes
   ServerAliveInterval 60
 
 Host *

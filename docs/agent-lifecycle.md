@@ -52,7 +52,7 @@ shellcheck dot_local/bin/executable_agent-gateway dot_local/bin/executable_claud
 
 診断TTYと実行プロセスは終了時に回収する。Remote Control はこのプロセスだけの設定で無効にし、永続設定ファイルには書かない。CLI更新で確認済み版から変わったら、読み取り仕様を再確認するまで停止する。
 
-`claude-usage --refresh` は課金確認に使わない。既存実装はモデルを一回呼んでヘッダを得るため、無課金の読み取り確認ではない。Max の表示、`allowed` キャッシュ、`total_cost_usd`、`--max-budget-usd` や追加購入コマンドの非表示も、追加課金がないことの証拠にはしない。
+`claude-usage --refresh` はモデルを一回呼んでヘッダを得るため、課金確認に使わない。Stop hook からも呼ばない。Linux の tmux 表示と使用枠通知は `claude-usage-cache` で既存の `~/.claude/tmux-rate-limit-cache.json` だけを読み、認証情報・会話ログ・モデルには触れない。表示にはキャッシュであることと、5分以上前なら古いことを明記し、欠落・破損時は不明とする。通知は新しいキャッシュから得たリセット予定時刻の到来だけを伝え、リセット成功とは扱わない。現在の残枠は Claude Code の `/usage` で確認する。Max の表示、`allowed` キャッシュ、`total_cost_usd`、`--max-budget-usd` や追加購入コマンドの非表示も、追加課金がないことの証拠にはしない。
 
 ### 準備と回収
 

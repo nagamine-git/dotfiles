@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Isolate an existing Homebrew tailscaled from the macOS GUI VPN."""
+
+import argparse
+import json
+import os
+import platform
+import plistlib
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+PLIST = Path('/Library/LaunchDaemons/homebrew.mxcl.tailscale.plist')
+BACKUP = PLIST.with_suffix('.plist.before-agent-userspace')
+LABEL = 'homebrew.mxcl.tailscale'
+DAEMON = '/opt/homebrew/opt/tailscale/bin/tailscaled'
+CLI = '/opt/homebrew/bin/tailscale'
+SOCKET = '--socket=/var/run/tailscaled.socket'
+TUN = '--tun=userspace-networking'
+LAUNCHCTL = '/bin/launchctl'
+
+
+def load_service(path):
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+        raise ValueError(f'{path}: root-owned regular file without group/other write required')
+    service = plistlib.loads(path.read_bytes())
+    if service.get('Label') != LABEL or service.get('UserName', 'root') != 'root':
+        raise ValueError('Unexpected launchd label or service user')
+    if service.get('Program') not in (None, DAEMON):
+        raise ValueError('Unexpected launchd Program')
+    if service.get('ProgramArguments') not in ([DAEMON], [DAEMON, TUN]):
+        raise ValueError('Unexpected tailscaled arguments; review manually')
+    return service
+
+
+def write_service(path, service):
+    fd, name = tempfile.mkstemp(prefix='.agent-tailscale-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            plistlib.dump(service, stream)
+            os.fchmod(stream.fileno(), 0o644)
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def run(*args):
+    subprocess.run(args, check=True, timeout=30)
+
+
+def service_loaded():
+    result = subprocess.run([LAUNCHCTL, 'print', f'system/{LABEL}'],
+                            capture_output=True, text=True, timeout=5)
+    if result.returncode == 0:
+        return True
+    if 'Could not find service' in result.stderr:
+        return False
+    raise RuntimeError(f'Cannot determine launchd service state (exit {result.returncode})')
+
+
+def wait_until(check, description, timeout=20):
+    deadline = time.monotonic() + timeout
+    while True:
+        if check():
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f'Timed out waiting for {description}')
+        time.sleep(0.25)
+
+
+def stop_service():
+    if service_loaded():
+        run(LAUNCHCTL, 'bootout', f'system/{LABEL}')
+    # bootout may return while launchd is still removing the job.
+    wait_until(lambda: not service_loaded(), 'launchd service removal')
+
+
+def daemon_ready():
+    try:
+        result = subprocess.run([CLI, SOCKET, 'status', '--json'],
+                                capture_output=True, text=True, timeout=2)
+        status = json.loads(result.stdout)
+        return isinstance(status, dict) and isinstance(status.get('BackendState'), str)
+    except (subprocess.TimeoutExpired, ValueError):
+        return False
+
+
+def start_service():
+    if not service_loaded():
+        run(LAUNCHCTL, 'bootstrap', 'system', str(PLIST))
+    wait_until(daemon_ready, 'explicit daemon LocalAPI')
+
+
+def restart_service(service, rollback=None):
+    stop_service()
+    try:
+        write_service(PLIST, service)
+        start_service()
+    except (OSError, RuntimeError, subprocess.SubprocessError) as change_error:
+        if rollback is None:
+            raise
+        try:
+            stop_service()
+            write_service(PLIST, rollback)
+            start_service()
+        except (OSError, RuntimeError, subprocess.SubprocessError) as restore_error:
+            raise RuntimeError(f'Change failed: {change_error}; restore also failed: {restore_error}') from change_error
+        raise RuntimeError(f'Change failed: {change_error}; previous service restored') from change_error
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--apply', action='store_true', help='requires root; restart Homebrew daemon only')
+    mode.add_argument('--restore', action='store_true', help='requires root; restore saved launchd plist')
+    parser.add_argument('--hostname', help='distinct automation node name, required with --apply')
+    args = parser.parse_args(argv)
+    if platform.system() != 'Darwin':
+        parser.error('Run on macOS')
+    if args.apply and (not args.hostname or len(args.hostname) > 63
+                       or not all(c.isascii() and (c.isalnum() or c == '-') for c in args.hostname)
+                       or args.hostname.startswith('-') or args.hostname.endswith('-')):
+        parser.error('--apply needs a valid distinct --hostname (DNS label)')
+    service = load_service(PLIST)
+    if not args.apply and not args.restore:
+        print(f'Service: {LABEL}; arguments: {service["ProgramArguments"]}')
+        print('Plan: back up plist, disable daemon DNS/routes, use userspace networking, restart daemon.')
+        print('The GUI VPN, macOS sshd, SSH keys, and sudo policy are not changed.')
+        print('This check makes no changes. Use --apply --hostname NAME locally with sudo.')
+        return 0
+    if os.geteuid() != 0:
+        parser.error('Run this step locally with sudo; no password is read by this script')
+    if args.restore:
+        original = load_service(BACKUP)
+        restart_service(original)
+        print('Saved launchd plist restored; explicit daemon LocalAPI responds. SSH/login remain unverified.')
+        return 0
+    if not os.access(DAEMON, os.X_OK) or not os.access(CLI, os.X_OK):
+        raise ValueError('Expected Homebrew tailscaled/tailscale executable is unavailable')
+    run('/usr/bin/plutil', '-lint', str(PLIST))
+    if not BACKUP.exists():
+        # Exclusive creation prevents a repeated run from replacing the original.
+        with BACKUP.open('xb') as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            with PLIST.open('rb') as source:
+                shutil.copyfileobj(source, stream)
+    else:
+        load_service(BACKUP)
+    # A previous failed transition may have left the service unloaded.
+    start_service()
+    run(CLI, SOCKET, 'set', '--accept-dns=false', '--accept-routes=false',
+        '--hostname=' + args.hostname, '--ssh=true')
+    if service['ProgramArguments'] != [DAEMON, TUN]:
+        previous = dict(service)
+        service['ProgramArguments'] = [DAEMON, TUN]
+        restart_service(service, rollback=previous)
+    print('\nLaunchd is configured; this does not verify login or remote SSH.')
+    print('Next, reauthenticate the explicit daemon (no reusable auth key needed):')
+    print(shlex.join([CLI, SOCKET, 'login', '--accept-dns=false', '--accept-routes=false',
+                      '--hostname=' + args.hostname, '--advertise-tags=tag:personal',
+                      '--ssh', '--timeout=5m']))
+    print(f'Rollback: sudo /usr/bin/python3 {shlex.quote(str(Path(__file__).resolve()))} --restore')
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+        print(f'agent-mac-ssh-bootstrap: {error}', file=sys.stderr)
+        sys.exit(1)

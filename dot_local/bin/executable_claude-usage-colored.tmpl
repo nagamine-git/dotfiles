@@ -78,9 +78,9 @@ fi
 {{- else }}
 {{- $c := .theme.colors -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end }}
-# Linux: claude-usage wrapper (requires GNU grep with -P for percent parsing)
-output=$(claude-usage 2>/dev/null)
-[ -z "$output" ] && exit 0
+# Linux: display an existing cache without refreshing it or calling a model.
+output=$("${HOME}/.local/bin/claude-usage-cache" 2>/dev/null)
+[ -n "$output" ] || output="usage:不明 (/usage)"
 
 pct5=$(echo "$output" | grep -oP '5h:\K[0-9]+')
 pct7=$(echo "$output" | grep -oP '7d:\K[0-9]+')

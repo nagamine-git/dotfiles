@@ -25,6 +25,13 @@
 - subagent: `dot_claude/agents/<name>.md` を書く。Codex 用 toml は自動生成。
 - 指示: `dot_agents/AGENTS.md` を直す。道具固有の規則は「Claude Code のみ」「Codex のみ」の節に書く。
 
+## 日本語の回答と ChatGPT / dot
+
+回答の書き方は `dot_agents/AGENTS.md` の共通節が正本。文字数の固定上限は設けず、自然な文と必要な説明を優先する。
+ChatGPT の Settings > Personalization にある ChatGPT / Codex の custom instructions は、`agents-sync` の同期対象ではない。「回答の書き方」の本文を両方へ反映し、保存後に開き直して確認する。
+dot の Custom rules に同じ文字数制限を重ねない。書き方は custom instructions、行動の許可は Custom rules に分ける。
+この設定は生成時の指針であり、実際の読みやすさは新しい会話でも確認する。既存会話には古い指示やメモリが残ることがある。
+
 ## 公式の仕様 (確認した内容)
 
 - Claude Code は `AGENTS.md` を標準で読む (v2.1.277 以降)。ただし `CLAUDE.md` がある repo では `CLAUDE.md` だけ。`@path` の読み込みは `~/.claude/CLAUDE.md` から `@~/...` も可 (ユーザー設定なので承認ダイアログなし)。ブロックの HTML コメントは読み込み時に除かれる。<https://code.claude.com/docs/en/memory>
@@ -69,12 +76,12 @@ python3 tests/agents-sync.py              # 他に tests/agent-memory-dir.py, te
 - スレッドごとに Claude のセッションを持つ (`~/.local/state/slack-claude/sessions.json`)。同じスレッドは到着順に 1 つずつ、別スレッドは並列。
 - 権限・モデルは上書きしない (`agent-gateway` と同じく `~/.claude/settings.json` に従う)。`-p` では承認を答える人がいないので `--permission-prompts none` で、確認が要る操作は拒否になる。
 - 作業ディレクトリは既定 `$HOME` (`SLACK_CLAUDE_CWD`)、タイムアウトは既定 30 分 (`SLACK_CLAUDE_TIMEOUT_SEC`)。claude には `SLACK_*` と `OP_SERVICE_ACCOUNT_TOKEN` を渡さない (secrets.env の他の値は渡る)。
-- 鍵: 1Password の vault 'Agents' に `SLACK_APP_TOKEN` (`xapp-`、scope `connections:write`) と `SLACK_BOT_TOKEN` (`xoxb-`) を入れ、`~/.config/agents/secrets.env` に `op://Agents/...` の参照を足す。値は書かない。
+- 鍵: 1Password の vault 'Agents' に `SLACK_APP_TOKEN` (`xapp-`、scope `connections:write`) と `SLACK_BOT_TOKEN` (`xoxb-`) を入れ、専用の `~/.config/agents/slack.env` に `op://Agents/...` の参照を足す。値は書かない。登録・確認手順は [agent-secrets.md](agent-secrets.md)。
 - Slack app: Socket Mode を有効にし、Event Subscriptions に `app_mention` `message.channels` `message.groups` `message.im` `message.mpim`、Bot scope に `app_mentions:read` `channels:history` `groups:history` `im:history` `mpim:history` `chat:write` `reactions:write` `im:write`。
 - サービス: `private_dot_config/systemd/user/slack-claude.service.tmpl`。am5-itx 以外では `.chezmoiignore` で外す。鍵を入れて `chezmoi apply` した後に 1 回だけ起動する。
 
 ```sh
 systemctl --user enable --now slack-claude
-op-agent run --env-file ~/.config/agents/secrets.env -- slack-claude dm "通知テスト"   # 本人に DM が 1 通届く
+op-agent run --env-file ~/.config/agents/slack.env -- slack-claude dm "通知テスト"     # 本人に DM が 1 通届く
 python3 tests/slack-claude.py                                                          # ネットワークも claude も呼ばない
 ```

@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Read the existing rate-limit cache only; never authenticate or refresh it."""
+import json
+import math
+from pathlib import Path
+import sys
+import time
+
+CACHE_TTL = 300
+
+
+def number(value):
+    return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+
+def read_cache(now):
+    try:
+        cache = json.loads((Path.home() / ".claude/tmux-rate-limit-cache.json").read_text())
+        if not isinstance(cache, dict):
+            return None
+        fetched = cache.get("fetched_at")
+        if not number(fetched) or fetched <= 0 or fetched > now:
+            return None
+        if not number(cache.get("util_5h")):
+            return None
+        if "util_7d" in cache and not number(cache["util_7d"]):
+            return None
+        return cache
+    except (OSError, ValueError, OverflowError):
+        return None
+
+
+def main():
+    if sys.argv[1:] not in ([], ["--reset-5h"]):
+        raise SystemExit("usage: claude-usage-cache [--reset-5h]")
+    now = time.time()
+    cache = read_cache(now)
+    if sys.argv[1:]:
+        reset = cache.get("reset_5h") if cache else None
+        if (cache and now - cache["fetched_at"] < CACHE_TTL and number(reset)
+                and reset > cache["fetched_at"]):
+            print(int(reset))
+        else:
+            print(0)
+        return
+    if cache is None:
+        print("usage:不明 (/usage)")
+        return
+    age = now - cache["fetched_at"]
+    label = "cache" if age < CACHE_TTL else "stale"
+    parts = [f"5h:{cache['util_5h'] * 100:.0f}%"]
+    if "util_7d" in cache:
+        parts.append(f"7d:{cache['util_7d'] * 100:.0f}%")
+    parts.append(f"[{label} {int(age // 60)}m]")
+    print(" ".join(parts))
+
+
+if __name__ == "__main__":
+    main()

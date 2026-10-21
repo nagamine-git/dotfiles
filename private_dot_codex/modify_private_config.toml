@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # ~/.codex/config.toml の modify_ スクリプト (stdin=現在の内容 → stdout=新しい内容)。
-# Codex 自身が projects / tui 等を書き込むため丸ごとは管理せず、次の 3 つだけ強制する:
-#   - トップレベル           model_reasoning_effort = "medium"
-#   - [profiles.deep] テーブル model_reasoning_effort = "xhigh"
+# Codex 自身が projects / tui 等を書き込むため丸ごとは管理せず、次だけ補う:
+#   - トップレベル           model_reasoning_effort が無ければ "medium"
+#   - [profiles.deep] テーブル model_reasoning_effort が無ければ "xhigh"
 #   - トップレベル           project_doc_fallback_filenames に "CLAUDE.md" を含める
 #                            (AGENTS.md が無いリポジトリで CLAUDE.md を読ませる。他の名前は残す)
-# 他の行は一切変えない。stdin が空 (新ホスト) なら上の 3 つだけを出力する。
+#   - Linux のトップレベル  mcp_oauth_credentials_store が無ければ "file" (keyring crash の回避)
+# 他の行は一切変えない。stdin が空 (新ホスト) なら上の既定値だけを出力する。
 # macOS 標準の python3 (3.9) でも動くよう標準ライブラリの行単位処理のみ (tomllib 不使用)。
 import re
 import sys
@@ -16,10 +17,9 @@ PROFILE = "profiles.deep"
 PROFILE_VALUE = "xhigh"
 FALLBACK_KEY = "project_doc_fallback_filenames"
 FALLBACK_ITEM = "CLAUDE.md"
+MCP_STORE_KEY = "mcp_oauth_credentials_store"
 
 HEADER_RE = re.compile(r"""^\s*\[\[?\s*((?:"[^"]*"|'[^']*'|[^\[\]"'#])+?)\s*\]\]?\s*(#.*)?$""")
-KEY_RE = re.compile(r'^(\s*)(?:"%s"|%s)\s*=\s*(.*)$' % (KEY, KEY))
-SIMPLE_VALUE_RE = re.compile(r"""^(?:"([^"\\]*)"|'([^']*)')\s*(#.*)?$""")
 FALLBACK_RE = re.compile(r"^(\s*)%s\s*=\s*(.*)$" % FALLBACK_KEY)
 STRING_RE = re.compile(r'"((?:[^"\\]|\\.)*)"' + r"|'([^']*)'")
 
@@ -85,19 +85,16 @@ def is_code(line):
     return bool(s) and not s.startswith("#")
 
 
-def set_key(lines, start, end, value, at_code):
-    """lines[start:end] (1 テーブルの本体) の KEY を value に揃える。
-    既存行があれば置換 (既に同値ならそのまま)、無ければ本体の最後のコード行の後ろに追加。"""
-    new = '%s = "%s"' % (KEY, value)
+def ensure_key(lines, start, end, value, at_code, key=KEY):
+    """lines[start:end] (1 テーブルの本体) に key が無ければ value を追加する。
+    既存行はそのまま残す。追加位置は本体の最後のコード行の後ろ。"""
+    escaped = re.escape(key)
+    pattern = re.compile(r"""^(\s*)(?:"%s"|'%s'|%s)\s*=\s*(.*)$""" % (escaped, escaped, escaped))
+    new = '%s = "%s"' % (key, value)
     for i in range(start, end):
-        m = KEY_RE.match(lines[i]) if at_code[i] else None
+        m = pattern.match(lines[i]) if at_code[i] else None
         if not m:
             continue
-        v = SIMPLE_VALUE_RE.match(m.group(2).strip())
-        if v and (v.group(1) if v.group(1) is not None else v.group(2)) == value:
-            return
-        comment = " " + v.group(3) if v and v.group(3) else ""
-        lines[i] = m.group(1) + new + comment
         return
     insert_line(lines, start, end, new)
 
@@ -174,8 +171,10 @@ def ensure_fallback(lines, start, end, at_code):
 def main():
     text = sys.stdin.buffer.read().decode("utf-8")
     if not text.strip():
-        out = '%s = "%s"\n%s = ["%s"]\n\n[%s]\n%s = "%s"\n' % (
-            KEY, TOP_VALUE, FALLBACK_KEY, FALLBACK_ITEM, PROFILE, KEY, PROFILE_VALUE)
+        defaults = ['%s = "%s"' % (KEY, TOP_VALUE), '%s = ["%s"]' % (FALLBACK_KEY, FALLBACK_ITEM)]
+        if sys.platform.startswith("linux"):
+            defaults.append('%s = "file"' % MCP_STORE_KEY)
+        out = "\n".join(defaults + ["", '[%s]' % PROFILE, '%s = "%s"' % (KEY, PROFILE_VALUE)]) + "\n"
         sys.stdout.buffer.write(out.encode("utf-8"))
         return
 
@@ -191,7 +190,7 @@ def main():
     if deep:
         s = deep[0]
         nxt = [i for i in order if i > s]
-        set_key(lines, s + 1, nxt[0] if nxt else len(lines), PROFILE_VALUE, at_code)
+        ensure_key(lines, s + 1, nxt[0] if nxt else len(lines), PROFILE_VALUE, at_code)
     else:
         if lines and lines[-1].strip():
             lines.append("")
@@ -199,11 +198,16 @@ def main():
 
     headers, at_code = scan(lines)
     first = min(headers) if headers else len(lines)
-    set_key(lines, 0, first, TOP_VALUE, at_code)
+    ensure_key(lines, 0, first, TOP_VALUE, at_code)
 
     headers, at_code = scan(lines)  # 行が増えた可能性があるので取り直す
     first = min(headers) if headers else len(lines)
     ensure_fallback(lines, 0, first, at_code)
+
+    if sys.platform.startswith("linux"):
+        headers, at_code = scan(lines)
+        first = min(headers) if headers else len(lines)
+        ensure_key(lines, 0, first, "file", at_code, MCP_STORE_KEY)
 
     out = "\n".join(lines) + "\n"
     if out.rstrip("\n") == text.rstrip("\n"):

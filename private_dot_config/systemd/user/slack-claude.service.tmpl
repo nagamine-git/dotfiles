@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=%h
 Environment="PATH=%h/.local/bin:%h/.local/share/mise/installs/node/lts/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/secrets.env -- %h/.local/bin/slack-claude serve
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/slack.env -- %h/.local/bin/slack-claude serve
 Restart=on-failure
 # 鍵が vault にまだ無い間は起動に失敗し続けるので、連打しない間隔にする
 RestartSec=120

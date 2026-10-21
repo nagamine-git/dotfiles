@@ -56,6 +56,8 @@ wolow-companion
 .config/fcitx5/**
 .config/hazkey
 .config/hazkey/**
+.config/environment.d
+.config/environment.d/**
 .config/systemd
 .config/systemd/**
 .config/tor

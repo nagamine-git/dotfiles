@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# tmux の全 window を fzf で選んで切り替える (Alt+f)。
+# zsh -i 経由だと job control で fzf が SIGTTOU 停止するため、非対話の bash で動かす
+set -eu
+
+target=$(tmux list-windows -a -F '#{session_id}:#{window_index} #{session_name}:#{window_name}' | fzf | awk '{ print $1 }') || true
+# Esc/Ctrl-C でキャンセルした場合は何もしない (空の -t で tmux が usage エラーになるのを防ぐ)
+[ -z "$target" ] && exit 0
+tmux switch-client -t "$target"

@@ -1,0 +1,2 @@
+# /etc/environment の BROWSER=firefox (CachyOS 既定) を systemd --user 側で上書きする
+BROWSER={{ if eq .chezmoi.hostname "fp7-e14" }}brave-origin{{ else }}google-chrome-stable{{ end }}
