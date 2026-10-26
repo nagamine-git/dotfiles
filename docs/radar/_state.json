@@ -1,61 +1,6 @@
 {
-  "last_run": "2026-10-25",
+  "last_run": "2026-10-26",
   "seen": [
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 最新は依然v0.56.2のまま、0.57未リリース"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 10/8時点で未発表"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 依然tipビルドのみ、安定版1.3.1のまま"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 10月固有の新規発表なし"
-    },
-    {
-      "tool": "niri/river/sway",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 期間内固有の動向なし"
-    },
-    {
-      "tool": "lazygit v0.66.0 最新版確認",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [確認済] 10/5判定から変化なし"
-    },
-    {
-      "tool": "Codex CLI / Antigravity CLI / Gemini CLI / Cursor",
-      "decided_at": "2026-10-08",
-      "decision": "⌀ [推定] 期間内固有の新着を確認できず、通常アップデートの範囲"
-    },
-    {
-      "tool": "Claude Code v2.1.296 (Bash権限チェックBASH_ARGV0バイパス修正)",
-      "decided_at": "2026-10-09",
-      "decision": "★★★ [確認済] [再掲:変化あり] defaultMode:auto + permissions.deny(git push --force/gh repo delete/npm publish等)構成に直撃する回避パターン(環境変数代入してBASH_ARGV0でコマンド名を偽装)を修正、10/3・10/4・10/6に続く同系列バイパス修正の延長"
-    },
-    {
-      "tool": "Claude Code v2.1.296 (Edit/NotebookEditの非UTF-8ファイル(Shift-JIS/GBK/Windows-1252)サイレント破壊防止)",
-      "decided_at": "2026-10-09",
-      "decision": "★★ [確認済] 日本語業務環境(freee等の輸出入CSVがShift-JISであることが多い)で遭遇しうる非UTF-8ファイル編集時の文字破壊を検出して拒否するよう変更、安全性向上"
-    },
-    {
-      "tool": "Claude Code v2.1.296 (Sonnet 5.5キャッシュ読み込み価格半減 $0.20→$0.10/Mtok)",
-      "decided_at": "2026-10-09",
-      "decision": "★★ [確認済] dot_claude/agents/researcher.md(model: sonnet)のキャッシュ多用フローのコストが自動的に半減、対応不要"
-    },
-    {
-      "tool": "freee-mcp v0.36.5 最新版確認",
-      "decided_at": "2026-10-09",
-      "decision": "⌀ [確認済] OpenAPIスキーマ同期のみ、機能変更なし"
-    },
     {
       "tool": "Tailscale v1.104.1最新版確認",
       "decided_at": "2026-10-09",
@@ -1000,6 +945,61 @@
       "tool": "nvimプラグイン動向(blink.cmp/telescope等)",
       "decided_at": "2026-10-25",
       "decision": "⌀ [推定] blink.cmp v2開発進行中(既出情報の延長)以外、期間内固有の新着は確認できず"
+    },
+    {
+      "tool": "Claude Code v2.1.311 (MCP接続完了前にサブエージェントが起動していた場合にツール利用不能だった不具合修正・CLAUDE.md長大リスト項目起動フリーズ修正・isolation:worktree未削除修正・auto mode背面エージェントの新規ターン過多修正)",
+      "decided_at": "2026-10-26",
+      "decision": "★★★ [確認済] 本radar自身の運用パターン(スケジュール実行クラウドセッション+dot_claude/agents配下のサブエージェント+defaultMode:auto)に直撃する信頼性修正シリーズの最新版"
+    },
+    {
+      "tool": "freee-mcp v0.37.6/v0.37.7",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] CHANGELOG.md直接確認、Claudeプラグインディレクトリ警告解消目的のメタデータ変更(ロゴ・homepage・privacyPolicyUrl)のみ、機能変更なし"
+    },
+    {
+      "tool": "Hyprland 0.57マイルストーン",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] git ls-remote直接確認、最新は依然v0.56.2のまま"
+    },
+    {
+      "tool": "Ghostty 1.4.0",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] git ls-remote直接確認、依然v1.3.1のまま未リリース"
+    },
+    {
+      "tool": "niri/helix/jj/zellij",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] git ls-remote直接確認、いずれも前回判定から変化なし(niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1)"
+    },
+    {
+      "tool": "blink.cmp v2",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] git ls-remote直接確認、最新安定はv1.10.2のまま、v2正式リリースなし"
+    },
+    {
+      "tool": "Tailscale v1.104.2",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] git ls-remote直接確認、v1.105.0-preはプレリリースのまま変化なし"
+    },
+    {
+      "tool": "CachyOS 10月リリース",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] WebSearchでも8月リリース情報が最新、10月版の発表確認できず"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] Arch公式リビルドtodoは一部完了、CachyOSリポジトリは依然7.x系のまま"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出の消込Public API・AIエージェントから変化なし"
+    },
+    {
+      "tool": "Codex CLI/Gemini CLI",
+      "decided_at": "2026-10-26",
+      "decision": "⌀ [確認済] Codex CLIはrust-v0.165.0-alpha.3まで進行、Gemini CLIはnightlyビルド継続更新、いずれも通常アップデートの範囲"
     }
   ]
 }
