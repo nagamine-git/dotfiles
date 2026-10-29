@@ -1,91 +1,6 @@
 {
-  "last_run": "2026-10-28",
+  "last_run": "2026-10-29",
   "seen": [
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] GitHubタグ直接確認、依然v1.3.1のまま未リリース"
-    },
-    {
-      "tool": "freee-mcp v0.36.5 最新版確認",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] GitHubタグ直接確認、10/9判定から変化なし"
-    },
-    {
-      "tool": "Tailscale v1.104.1",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [不明] 公式changelogは本日もプロキシ経由でDNS到達不可、実機確認は宿題継続"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] WebSearchでも8月リリースの情報のみ、10月版の発表確認できず"
-    },
-    {
-      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] CachyOSダッシュボードでrocm-cmake 7.1系を確認、10.0系の反映情報なし"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、7〜9月の既出動向から変化なし"
-    },
-    {
-      "tool": "niri/river/sway",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] 期間内固有の動向なし"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
-      "decided_at": "2026-10-11",
-      "decision": "⌀ [確認済] 期間内固有の新着を確認できず、通常アップデートの範囲"
-    },
-    {
-      "tool": "lazygit v0.66.1 最新版確認",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] GitHub Releases直接確認、10/11判定から変化なし"
-    },
-    {
-      "tool": "chezmoi v2.73.1 最新版確認",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] GitHub tags直接確認、10/11判定から変化なし"
-    },
-    {
-      "tool": "Claude Code v2.1.296 最新版確認",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] CHANGELOG.md直接確認、10/10以降の新規リリースなし"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] GitHub tags直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] GitHub tags直接確認、依然v1.3.1のまま未リリース"
-    },
-    {
-      "tool": "freee-mcp v0.36.5 最新版確認",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] GitHub tags(freee/freee-mcp)直接確認、10/9判定から変化なし"
-    },
-    {
-      "tool": "Tailscale v1.104.1",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [不明] 公式changelog(tailscale.com)がDNS到達不可、GitHub ReleasesではLatestのまま変化なし、実機確認は宿題継続"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [確認済] WebSearchでも6月ISOの情報が最新、10月版の発表確認できず"
-    },
-    {
-      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
-      "decided_at": "2026-10-12",
-      "decision": "⌀ [不明] 本日直接確認できず、前回判定を維持"
-    },
     {
       "tool": "freee/マネーフォワード/弥生 AI機能動向",
       "decided_at": "2026-10-12",
@@ -1000,6 +915,91 @@
       "tool": "新規MCPサーバー調査",
       "decided_at": "2026-10-28",
       "decision": "⌀ [推定] WebSearchでも2026年8月以前のまとめ記事止まり、話題性のある新規実用サーバーは確認できず"
+    },
+    {
+      "tool": "Claude Code v2.1.312 最新版確認",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] CHANGELOG.md直接確認、10/27判定から新規リリースなし"
+    },
+    {
+      "tool": "lazygit v0.66.2/chezmoi v2.73.3/niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし(helixは旧非カレンダー版タグによるソート誤認を排除し再確認)"
+    },
+    {
+      "tool": "blink.cmp v2",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] git ls-remote直接確認、最新安定は依然v1.10.2、v2はmainで開発継続のみ"
+    },
+    {
+      "tool": "Hyprland v0.57.0 最新版確認",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、0.57.1等のパッチ版なし、10/28報告から変化なし"
+    },
+    {
+      "tool": "Ghostty v1.4.0 最新版確認",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、新タグなし"
+    },
+    {
+      "tool": "niri/river/sway",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] 10月固有の新着なし"
+    },
+    {
+      "tool": "CachyOS 10月リリース",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] WebSearchでも8月リリース情報が最新、10月版の発表確認できず"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] フォーラム・リポジトリとも新規言及なし、依然6.3〜7.1系の範囲と推定"
+    },
+    {
+      "tool": "Tailscale v1.104.4 最新版確認",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] GitHub Releases直接確認、Latestのまま新タグなし。tailscale.com/changelogは依然プロキシ制限で到達不可"
+    },
+    {
+      "tool": "freee-mcp v0.37.9 最新版確認",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] CHANGELOG.md直接確認、10/27判定から変化なし"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] 10/28〜10/29固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "バクラク/LayerX/invox等 経理DX SaaS",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [不明] 10月固有の新着を特定できず、既出機能の範囲内"
+    },
+    {
+      "tool": "Zapier/Make/n8n",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [不明] 10月固有のリリース確認できず"
+    },
+    {
+      "tool": "Codex CLI/Gemini CLI/Cursor/Antigravity CLI",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [不明] 10/29近辺の更新情報を特定できず、確認可能情報が7月時点のまま古い、継続確認要"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [推定] SEO向けまとめ記事のみ、話題性のある新規実用サーバーは確認できず"
+    },
+    {
+      "tool": "自宅サーバ/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [不明] 日付を絞った検索では10/28-29固有の新着記事は見つからず"
+    },
+    {
+      "tool": "immutable系ディストロ(openSUSE Leap 16.1 RC等)",
+      "decided_at": "2026-10-29",
+      "decision": "⌀ [確認済] CachyOS環境への移行コスト・関連性なし、参考情報レベル"
     }
   ]
 }
