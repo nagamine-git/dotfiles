@@ -1,56 +1,6 @@
 {
-  "last_run": "2026-10-30",
+  "last_run": "2026-10-31",
   "seen": [
-    {
-      "tool": "niri/river/sway",
-      "decided_at": "2026-10-13",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、niriは依然v26.04(4/25)のまま"
-    },
-    {
-      "tool": "Codex CLI rust-v0.163.0-alpha.10 / Gemini CLI / Antigravity CLI / Cursor",
-      "decided_at": "2026-10-13",
-      "decision": "⌀ [確認済] 通常のアルファ更新の範囲、乗り換え動機なし"
-    },
-    {
-      "tool": "Claude Code v2.1.299 (ScheduleWakeupがバックグラウンドタスク実行中に不発火する不具合 + resume時の承認済みツール呼び出し二重実行regression修正)",
-      "decided_at": "2026-10-14",
-      "decision": "★★★ [確認済] 本radar自身が依拠するスケジュールタスク/バックグラウンド実行機構の信頼性修正。10/7に実際に発生した「コンテナ再起動でpending wakeupを失い休止したままになる」実害ケースと同系列の不具合を直接塞ぐ"
-    },
-    {
-      "tool": "Claude Code v2.1.300 (クラウドセッションのコンテナ入れ替わり後にbackground agentがresume不能と誤表示される不具合 + crash時のtranscript先頭行欠落修正)",
-      "decided_at": "2026-10-14",
-      "decision": "★★ [確認済] 本セッションのようなクラウドコンテナ上でのスケジュールタスク運用におけるコンテナ再起動・クラッシュ耐性の強化、v2.1.299のScheduleWakeup修正と同じ信頼性改善シリーズ"
-    },
-    {
-      "tool": "Claude Code v2.1.300 (MCP allow/denyルールの名前空間変更、mcp__aがa__bやa_に誤マッチしないよう厳格化)",
-      "decided_at": "2026-10-14",
-      "decision": "★ [確認済] dot_claude/private_settings.json.tmplのpermissionsにmcp__系ルールは現状未使用のため直接影響なし、freee-mcp/slack等に個別のallow/denyルールを将来追加する際はサーバー名を正確にmcp__<server>__*と書く必要がある点を記録"
-    },
-    {
-      "tool": "freee-mcp v0.36.6 最新版確認",
-      "decided_at": "2026-10-14",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、10/13判定から変化なし"
-    },
-    {
-      "tool": "lazygit v0.66.1 最新版確認",
-      "decided_at": "2026-10-14",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、10/11判定から変化なし"
-    },
-    {
-      "tool": "chezmoi v2.73.1 最新版確認",
-      "decided_at": "2026-10-14",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、10/11判定から変化なし"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-14",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-14",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、依然v1.3.1のまま未リリース"
-    },
     {
       "tool": "Tailscale v1.104.1",
       "decided_at": "2026-10-14",
@@ -1000,6 +950,56 @@
       "tool": "自宅サーバ/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-10-30",
       "decision": "⌀ [不明] 日付を絞った検索では10月固有の新着記事は見つからず、一般論記事のみ"
+    },
+    {
+      "tool": "Claude Code v2.1.316 (auto mode×クラウドスケジュールタスクの失敗判定漏れ修正・サブエージェント起床時のモデル復帰不具合修正・CLAUDE_CODE_SUBAGENT_EFFORT追加・終了時のシェルコマンド放置修正)",
+      "decided_at": "2026-10-31",
+      "decision": "★★★ [確認済] 公式CHANGELOG.md直接確認(v2.1.315は欠番、v2.1.314から直接v2.1.316に進行)。本radar自身のdefaultMode:auto + クラウドスケジュールタスク + dot_claude/agents配下のサブエージェント構成に直撃する信頼性修正シリーズの最新版"
+    },
+    {
+      "tool": "Hyprland v0.57.0/Ghostty v1.4.0/niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1/lazygit v0.66.2/chezmoi v2.73.3/blink.cmp v1.10.2 最新版確認",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし"
+    },
+    {
+      "tool": "Tailscale v1.104.4 最新版確認",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、新タグなし"
+    },
+    {
+      "tool": "freee-mcp v0.37.9 最新版確認",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、変化なし。プラグイン自体は無効化済みのため監視優先度は低いまま"
+    },
+    {
+      "tool": "CachyOS 10月リリース",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] WebSearchでも8月リリース情報が依然最新、10月版の発表確認できず"
+    },
+    {
+      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [不明] WebSearchでも新規言及なし、前回判定(依然7.x系と推定)を維持"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "一人社長/一人法人向けAI SaaS(A-ko san等)",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [確認済] 10月固有の新サービス発表は確認できず、既出(5月発表のA-ko san等)の範囲内"
+    },
+    {
+      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [不明] WebSearchで直近の公式リリース情報を特定できず、確認可能な情報が古い。継続確認要"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-10-31",
+      "decision": "⌀ [推定] WebSearchでも話題性のある新規実用サーバーは確認できず"
     }
   ]
 }
