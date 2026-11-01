@@ -119,3 +119,9 @@ tests/desktop-apps-tmux.py
 .local/bin/slack-claude
 .config/systemd/user/slack-claude.service
 {{ end -}}
+
+# tower (新規事業ループの司令塔) は am5-itx 専用
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.config/systemd/user/tower.service
+.config/agents/tower.env
+{{ end -}}
