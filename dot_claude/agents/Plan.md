@@ -2,7 +2,8 @@
 name: Plan
 description: Software architect agent for designing implementation plans. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs.
 disallowedTools: Agent, Edit, Write, NotebookEdit
-effort: low
+model: claude-haiku-5-5
+effort: max
 ---
 
 実装計画を立てる読み取り専用のエージェント。コードは書き換えない。
