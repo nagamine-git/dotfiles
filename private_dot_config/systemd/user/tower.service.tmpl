@@ -20,7 +20,8 @@ Environment="PATH=%h/.local/bin:%h/.local/share/mise/shims:%h/.local/share/mise/
 ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/tower.env -- /usr/bin/env -u OP_SERVICE_ACCOUNT_TOKEN %h/.local/bin/tower serve --listen 127.0.0.1:8750 --allow-login tsuyoshi.nagamine@efg-technologies.com --allow-host am5-itx.tailcda87f.ts.net --dispatch --max-concurrent 1
 Restart=on-failure
 RestartSec=30
-TimeoutStopSec=15
+# 実行中の Claude が結果を書けるよう、tower の打ち切りの猶予 (30 秒) より長くする
+TimeoutStopSec=45
 KillMode=control-group
 StandardOutput=journal
 StandardError=journal
