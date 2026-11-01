@@ -1,0 +1,23 @@
+[Unit]
+Description=tower (新規事業ループの司令塔。PWA で状況を見る) ({{ .chezmoi.hostname }})
+After=network-online.target
+Wants=network-online.target
+
+# 初回だけ、tailnet の中に出す設定を手で入れる (unit では実行しない。設定は tailscaled に残る):
+#   tailscale serve --bg --https=8750 http://127.0.0.1:8750
+# tower は 127.0.0.1 だけで待ち受け、Tailscale-User-Login が --allow-login と一致する要求だけ通す。
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment="PATH=%h/.local/bin:%h/.local/share/mise/installs/node/lts/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/tower.env -- %h/.local/bin/tower serve --listen 127.0.0.1:8750 --allow-login tsuyoshi.nagamine@efg-technologies.com
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=15
+KillMode=control-group
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
