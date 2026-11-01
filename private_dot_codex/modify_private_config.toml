@@ -5,7 +5,7 @@
 #   - [profiles.deep] テーブル model_reasoning_effort が無ければ "xhigh"
 #   - トップレベル           project_doc_fallback_filenames に "CLAUDE.md" を含める
 #                            (AGENTS.md が無いリポジトリで CLAUDE.md を読ませる。他の名前は残す)
-#   - Linux のトップレベル  mcp_oauth_credentials_store が無ければ "file" (keyring crash の回避)
+#   - Linux のトップレベル  mcp_oauth_credentials_store が無ければ "file" (keyring crash の回避。docs/gnome-keyring.md)
 # 他の行は一切変えない。stdin が空 (新ホスト) なら上の既定値だけを出力する。
 # macOS 標準の python3 (3.9) でも動くよう標準ライブラリの行単位処理のみ (tomllib 不使用)。
 import re
