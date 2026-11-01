@@ -1,50 +1,74 @@
 {
-  "last_run": "2026-10-15",
-  "source_note": "artificialanalysis.ai への直接アクセスは遮断 (2026-10-15 も同じ)。WebSearch の結果に出た AA のページ内容から取得。null は取得できず",
+  "last_run": "2026-11-01",
+  "source_note": "artificialanalysis.ai への直接アクセスは遮断 (2026-11-01 も同じ)。WebSearch の結果に出た AA のページ・記事・X 投稿の文面から取得。null は取得できず。AA のページは effort によって v4.3.2 と v5 の値が混在しており、版を確かめられた値だけを採用",
   "intelligence": {
-    "index_version": "v4.3.2",
+    "index_version": "v5",
+    "index_released": "2026-10-27",
     "claude-opus-5-5": {
       "low": {
-        "score": 42,
-        "cost_per_task_usd": 0.55
+        "score": 35,
+        "cost_per_task_usd": 0.98
       },
       "medium": {
-        "score": 51,
-        "cost_per_task_usd": 1.34
+        "score": 48,
+        "cost_per_task_usd": 2.45
       },
       "high": {
-        "score": 54,
-        "cost_per_task_usd": 1.82
+        "score": 52,
+        "cost_per_task_usd": null
       },
       "xhigh": {
-        "score": 56,
-        "cost_per_task_usd": 3.46
+        "score": 57,
+        "cost_per_task_usd": 6.05
       },
       "max": {
         "score": 58,
-        "cost_per_task_usd": 5.98
-      }
+        "cost_per_task_usd": 10.04
+      },
+      "note": "high のコストは検索結果に $3.46 と出たが v4.3.2 の xhigh と同値で版混在の疑いがあり不採用"
     },
     "claude-sonnet-5-5": {
       "low": {
-        "score": 36,
-        "cost_per_task_usd": 0.41
+        "score": null,
+        "cost_per_task_usd": null
       },
       "medium": {
-        "score": 41,
-        "cost_per_task_usd": 0.59
+        "score": 30,
+        "cost_per_task_usd": null
       },
       "high": {
-        "score": 47,
-        "cost_per_task_usd": 1.08
+        "score": 41,
+        "cost_per_task_usd": null
       },
       "xhigh": {
-        "score": 52,
-        "cost_per_task_usd": 2.74
+        "score": 50,
+        "cost_per_task_usd": null
       },
       "max": {
-        "score": 56,
-        "cost_per_task_usd": 7.6
+        "score": 54,
+        "cost_per_task_usd": 10.02
+      }
+    },
+    "claude-haiku-5-5": {
+      "low": {
+        "score": null,
+        "cost_per_task_usd": null
+      },
+      "medium": {
+        "score": 25,
+        "cost_per_task_usd": null
+      },
+      "high": {
+        "score": 30,
+        "cost_per_task_usd": null
+      },
+      "xhigh": {
+        "score": null,
+        "cost_per_task_usd": null
+      },
+      "max": {
+        "score": 36,
+        "cost_per_task_usd": null
       }
     },
     "claude-fable-5-1": {
@@ -65,110 +89,200 @@
         "cost_per_task_usd": null
       },
       "max": {
-        "score": 53,
+        "score": null,
         "cost_per_task_usd": null
-      },
-      "note": "AA の high ページに 62 / $1.43 とあるが、v4.3.2 より前の指数の値とみなし不採用"
+      }
     },
-    "claude-haiku-5-5": {
-      "low": {
-        "score": 29,
-        "cost_per_task_usd": 0.02
+    "previous_v4_3_2": {
+      "claude-opus-5-5": {
+        "low": {
+          "score": 42,
+          "cost_per_task_usd": 0.55
+        },
+        "medium": {
+          "score": 51,
+          "cost_per_task_usd": 1.34
+        },
+        "high": {
+          "score": 54,
+          "cost_per_task_usd": 1.82
+        },
+        "xhigh": {
+          "score": 56,
+          "cost_per_task_usd": 3.46
+        },
+        "max": {
+          "score": 58,
+          "cost_per_task_usd": 5.98
+        }
       },
-      "medium": {
-        "score": 34,
-        "cost_per_task_usd": 0.05
+      "claude-sonnet-5-5": {
+        "low": {
+          "score": 36,
+          "cost_per_task_usd": 0.41
+        },
+        "medium": {
+          "score": 41,
+          "cost_per_task_usd": 0.59
+        },
+        "high": {
+          "score": 47,
+          "cost_per_task_usd": 1.08
+        },
+        "xhigh": {
+          "score": 52,
+          "cost_per_task_usd": 2.74
+        },
+        "max": {
+          "score": 56,
+          "cost_per_task_usd": 7.6
+        }
       },
-      "high": {
-        "score": 38,
-        "cost_per_task_usd": 0.08
+      "claude-haiku-5-5": {
+        "low": {
+          "score": 29,
+          "cost_per_task_usd": 0.02
+        },
+        "medium": {
+          "score": 34,
+          "cost_per_task_usd": 0.05
+        },
+        "high": {
+          "score": 38,
+          "cost_per_task_usd": 0.08
+        },
+        "xhigh": {
+          "score": 41,
+          "cost_per_task_usd": 0.12
+        },
+        "max": {
+          "score": 43,
+          "cost_per_task_usd": 0.21
+        }
       },
-      "xhigh": {
-        "score": 41,
-        "cost_per_task_usd": 0.12
-      },
-      "max": {
-        "score": 43,
-        "cost_per_task_usd": 0.21
-      },
-      "note": "2026-10-07 公開。指数バージョンはページに明記なし (公開時期から v4.3.2 とみなした)"
+      "claude-fable-5-1": {
+        "max": {
+          "score": 53,
+          "cost_per_task_usd": null
+        }
+      }
     }
   },
   "coding_agent": {
     "harness": "Claude Code",
-    "claude-sonnet-5-5": {
-      "xhigh": {
-        "score": 62.9,
-        "cost_per_task_usd": 3.33
-      },
-      "max": {
-        "score": 68.4,
-        "cost_per_task_usd": 14.19
-      }
-    },
+    "index_version": "v2.0",
+    "index_released": "2026-10-23",
     "claude-opus-5-5": {
       "max": {
-        "score": 66.0,
-        "cost_per_task_usd": 13.04
+        "score": 61.7,
+        "cost_per_task_usd": 11.42
+      }
+    },
+    "claude-sonnet-5-5": {
+      "max": {
+        "score": 59.3,
+        "cost_per_task_usd": 13.3,
+        "note": "コストは AA 比較ページの値で約。v2.0 公開時の表では報告なし"
+      },
+      "xhigh": {
+        "score": null,
+        "cost_per_task_usd": null
       }
     },
     "claude-fable-5-1": {
       "max": {
-        "score": 62.2,
+        "score": 57.6,
         "cost_per_task_usd": null
       }
     },
-    "not_measured": [
+    "claude-haiku-5-5": {
+      "max": {
+        "score": 37.3,
+        "cost_per_task_usd": null,
+        "note": "benchlm.ai の転載 (二次情報)"
+      }
+    },
+    "not_retrieved": [
+      "claude-sonnet-5-5 low/medium/high/xhigh",
       "claude-opus-5-5 low/medium/high/xhigh",
-      "claude-sonnet-5-5 low/medium/high",
-      "claude-fable-5-1 low/medium/high/xhigh",
-      "claude-haiku-5-5 (全 effort)"
-    ]
+      "claude-fable-5-1 low〜xhigh",
+      "claude-haiku-5-5 low〜xhigh"
+    ],
+    "previous_v1_5": {
+      "claude-sonnet-5-5": {
+        "xhigh": {
+          "score": 62.9,
+          "cost_per_task_usd": 3.33
+        },
+        "max": {
+          "score": 68.4,
+          "cost_per_task_usd": 14.19
+        }
+      },
+      "claude-opus-5-5": {
+        "max": {
+          "score": 66.0,
+          "cost_per_task_usd": 13.04
+        }
+      },
+      "claude-fable-5-1": {
+        "max": {
+          "score": 62.2,
+          "cost_per_task_usd": null
+        }
+      }
+    }
   },
   "assignment": {
     "current": {
       "main": {
         "model": "opus (Opus 5.5)",
-        "effort": "high"
+        "effort": "high",
+        "note": "private_settings.json.tmpl の modelSettings は high。依頼文は medium"
       },
-      "researcher": {
-        "model": "sonnet (Sonnet 5.5)",
-        "effort": "medium"
+      "Explore": {
+        "model": "本体を継承 (Opus 5.5)",
+        "effort": "low"
       },
-      "implementer": {
-        "model": "opus (Opus 5.5)",
-        "effort": "high"
+      "Plan": {
+        "model": "本体を継承 (Opus 5.5)",
+        "effort": "low"
       },
-      "reviewer": {
-        "model": "opus (Opus 5.5)",
+      "general-purpose": {
+        "model": "本体を継承 (Opus 5.5)",
+        "effort": "low"
+      },
+      "coder": {
+        "model": "claude-sonnet-5-5",
         "effort": "xhigh"
-      },
-      "deep-specialist": {
-        "model": "claude-fable-5-1",
-        "effort": "high"
-      },
-      "Explore/Plan/general-purpose": "リポジトリに定義なし (組み込み既定)"
-    },
-    "recommended": {
-      "researcher": {
-        "model": "claude-haiku-5-5",
-        "effort": "max",
-        "reason": "IIv4.3.2 43/$0.21 vs 41/$0.59",
-        "branch": "model-radar/2026-10-15",
-        "pr": "https://github.com/nagamine-git/dotfiles/pull/12",
-        "supersedes": "https://github.com/nagamine-git/dotfiles/pull/9"
       }
     },
+    "recommended": {
+      "Explore": {
+        "model": "claude-haiku-5-5",
+        "effort": "max"
+      },
+      "Plan": {
+        "model": "claude-haiku-5-5",
+        "effort": "max"
+      },
+      "general-purpose": {
+        "model": "claude-haiku-5-5",
+        "effort": "max"
+      },
+      "reason": "IIv4.3.2 43/$0.21 vs 42/$0.55 (Opus low)。IIv5 でも 36 vs 35 (Haiku のコストは取得できず)",
+      "branch": "model-radar/2026-11-01",
+      "pr": "https://github.com/nagamine-git/dotfiles/pull/14"
+    },
     "unchanged": [
-      "main",
-      "implementer",
-      "reviewer",
-      "deep-specialist"
+      "main"
     ],
     "incomparable": [
-      "implementer",
-      "reviewer",
-      "deep-specialist"
+      "coder"
+    ],
+    "stale_prs": [
+      "https://github.com/nagamine-git/dotfiles/pull/9",
+      "https://github.com/nagamine-git/dotfiles/pull/12"
     ]
   }
 }
