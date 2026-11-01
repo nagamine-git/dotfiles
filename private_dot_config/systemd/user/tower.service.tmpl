@@ -17,7 +17,7 @@ Type=simple
 WorkingDirectory=%h
 # --dispatch で起動する Claude Code が git・gh・cargo・node などを使えるよう、対話の PATH に近づける
 Environment="PATH=%h/.local/bin:%h/.local/share/mise/shims:%h/.local/share/mise/installs/node/lts/bin:%h/.cargo/bin:/usr/lib/rustup/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/tower.env -- /usr/bin/env -u OP_SERVICE_ACCOUNT_TOKEN %h/.local/bin/tower serve --listen 127.0.0.1:8750 --allow-login tsuyoshi.nagamine@efg-technologies.com --allow-host am5-itx.tailcda87f.ts.net --dispatch --max-concurrent 1
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/tower.env -- /usr/bin/env -u OP_SERVICE_ACCOUNT_TOKEN %h/.local/bin/tower serve --listen 127.0.0.1:8750 --allow-login tsuyoshi.nagamine@efg-technologies.com --allow-host am5-itx.tailcda87f.ts.net --dispatch --max-concurrent 1 --slack-channel U03L2HM8Q4X
 Restart=on-failure
 RestartSec=30
 # 実行中の Claude が結果を書けるよう、tower の打ち切りの猶予 (30 秒) より長くする
