@@ -1,7 +1,7 @@
 ---
 name: coder
 description: コードを書く作業の担当。実装・バグ修正・テスト追加・リファクタなど、リポジトリのファイルを書き換える作業はこのエージェントに任せる。調査だけなら Explore、計画だけなら Plan を使う。
-model: claude-sonnet-5-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 
