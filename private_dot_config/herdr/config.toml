@@ -1,0 +1,45 @@
+# herdr のキー設定。tmux (dot_tmux.conf.tmpl と tmux-tilit) のキーのうち、
+# herdr に同じ操作があり、今の tmux より多くの入力を奪わないものだけを移している。
+# 確認: herdr config check / 反映: herdr server reload-config
+
+# 初回案内を済ませた状態。無いと起動時に案内が出る (進めると herdr がこの行を書き戻す)
+onboarding = false
+
+[keys]
+# tmux と同じ prefix。C-t を2回押すとアプリに C-t が届く (tmux の send-keys C-t と同じ)
+prefix = "ctrl+t"
+
+# tmux と同じく prefix+v でコピーモード (herdr の既定は prefix+[)
+copy_mode = "prefix+v"
+# Alt+Enter で分割する。tmux では hook が並べ直していたので、2枚のときに同じ見た目になる右分割にする。
+# 既定の prefix+v はコピーモードに譲る。下への分割は既定の prefix+minus のまま
+split_vertical = "alt+enter"
+
+# 最大化の切り替え (tmux で設定した M-m と、tilit の M-z)
+zoom = ["prefix+z", "alt+m", "alt+z"]
+
+# ペイン移動 (tilit の M-hjkl と、tmux で設定した M-矢印)。
+# macOS の Ghostty は Option+←/→ を ESC b / ESC f に変えて送るので、Mac では alt+left/right は届かない
+focus_pane_left = ["prefix+h", "alt+h", "alt+left"]
+focus_pane_down = ["prefix+j", "alt+j", "alt+down"]
+focus_pane_up = ["prefix+k", "alt+k", "alt+up"]
+focus_pane_right = ["prefix+l", "alt+l", "alt+right"]
+
+# ペインの大きさ (tmux と同じ Alt+Shift+矢印。移動の Alt+矢印とぶつからない)
+resize_pane_left = "alt+shift+left"
+resize_pane_down = "alt+shift+down"
+resize_pane_up = "alt+shift+up"
+resize_pane_right = "alt+shift+right"
+
+# tmux の window にあたるのが herdr の tab。tilit の M-1..9 と同じく Alt+数字で切り替える
+switch_tab = ["prefix+1..9", "alt+1..9"]
+
+# tmux の Alt+f (fzf で window を選ぶ) を herdr の Go To に割り当てる。Go To はエージェントを状態で絞り込める。
+# Mac では Option+→ も ESC f になるので Go To が開く (tmux で fzf が開くのと同じ)
+goto = ["prefix+g", "alt+f"]
+
+# 移していないもの:
+# - M-Tab (直前の session に戻る): herdr の previous_workspace は並び順で一つ前に動くだけで、直前の workspace には戻らない
+# - M-[ / M-] と S-←/→ (前後の window): Alt+[ は制御シーケンスの頭と同じバイトで、Shift+矢印はエディタの入力で使う
+# - M-x / M-X / M-q / M-D / M-w (閉じる・切り離す): 1打で壊れる操作は直接キーにしない
+# - pane 数で main-vertical / tiled を切り替える hook と prefix M-Enter: herdr の標準機能に自動レイアウトが無い
