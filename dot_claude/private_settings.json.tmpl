@@ -57,7 +57,12 @@
           {
             "type": "command",
             "command": "{{ .chezmoi.homeDir }}/.local/bin/claude-notify stop >/dev/null 2>&1"
-          }
+          }{{ if lookPath "herdr" }},
+          {
+            "type": "command",
+            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-tab-title.sh'",
+            "timeout": 5
+          }{{ end }}
         ]
       }
     ]{{ if stat (joinPath .chezmoi.homeDir ".claude/hooks/herdr-agent-state.sh") }},
