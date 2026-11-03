@@ -43,3 +43,8 @@ goto = ["prefix+g", "alt+f"]
 # - M-[ / M-] と S-←/→ (前後の window): Alt+[ は制御シーケンスの頭と同じバイトで、Shift+矢印はエディタの入力で使う
 # - M-x / M-X / M-q / M-D / M-w (閉じる・切り離す): 1打で壊れる操作は直接キーにしない
 # - pane 数で main-vertical / tiled を切り替える hook と prefix M-Enter: herdr の標準機能に自動レイアウトが無い
+
+# サイドバーの Claude の行。既定の 2 行の下に、実行中のサブエージェントを出す (例: ⧗2 coder, Explore)。
+# 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する
+[ui.sidebar.agents.rows_by_agent]
+claude = [["state_icon", "machine", "workspace", "tab"], ["agent"], ["$subagents"]]

@@ -65,8 +65,36 @@
           }{{ end }}
         ]
       }
-    ]{{ if stat (joinPath .chezmoi.homeDir ".claude/hooks/herdr-agent-state.sh") }},
+    ]
+{{- $herdr := lookPath "herdr" }}
+{{- $herdrAgentState := stat (joinPath .chezmoi.homeDir ".claude/hooks/herdr-agent-state.sh") }}
+{{- if $herdr }},
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-subagents.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-subagents.sh'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+{{- end }}
+{{- if or $herdrAgentState $herdr }},
     "SessionStart": [
+{{- if $herdrAgentState }}
       {
         "matcher": "^(startup|resume|clear|compact|fork)$",
         "hooks": [
@@ -76,8 +104,22 @@
             "timeout": 10
           }
         ]
+      }{{ if $herdr }},{{ end }}
+{{- end }}
+{{- if $herdr }}
+      {
+        "matcher": "^(startup|resume|clear|fork)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-subagents.sh'",
+            "timeout": 5
+          }
+        ]
       }
-    ]{{ end }}
+{{- end }}
+    ]
+{{- end }}
   },
   "statusLine": {
     "type": "command",
