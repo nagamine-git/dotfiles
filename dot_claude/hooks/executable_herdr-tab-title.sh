@@ -36,13 +36,17 @@ label="$(printf '%s' "$tab_json" | jq -r '.result.tab.label // ""' 2>/dev/null)"
 [ "$pane_count" = "1" ] || exit 0
 [ "$label" != "$title" ] || exit 0
 
-state_dir="${XDG_RUNTIME_DIR:-/tmp}/herdr-tab-title"
-state_file="$state_dir/${tab_id//[^A-Za-z0-9._-]/_}"
+# 共有の /tmp には置かない。自分のものでないディレクトリやシンボリックリンクには書かない
+state_dir="${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}}/herdr-tab-title"
+[ -d "$state_dir" ] || (umask 077 && mkdir -p "$state_dir") 2>/dev/null || true
+[ -d "$state_dir" ] && [ ! -L "$state_dir" ] && [ -O "$state_dir" ] || exit 0
+key="${tab_id//[^A-Za-z0-9._-]/_}"
+state_file="$state_dir/$key"
 
 case "$label" in
   ''|*[!0-9]*)
     prev=""
-    if [ -f "$state_file" ]; then
+    if [ -f "$state_file" ] && [ ! -L "$state_file" ]; then
       prev="$(cat "$state_file" 2>/dev/null)" || prev=""
     fi
     [ -n "$prev" ] && [ "$label" = "$prev" ] || exit 0
@@ -50,6 +54,9 @@ case "$label" in
 esac
 
 herdr tab rename "$tab_id" "$title" >/dev/null 2>&1 || exit 0
-[ -d "$state_dir" ] || mkdir -m 700 "$state_dir" 2>/dev/null || true
-{ printf '%s' "$title" >"$state_file"; } 2>/dev/null || true
+[ ! -d "$state_file" ] || exit 0
+tmp="$(mktemp "$state_dir/.$key.XXXXXX" 2>/dev/null)" || exit 0
+if ! { printf '%s' "$title" >"$tmp" && mv -f "$tmp" "$state_file"; } 2>/dev/null; then
+  rm -f "$tmp" 2>/dev/null || true
+fi
 exit 0
