@@ -1,66 +1,6 @@
 {
-  "last_run": "2026-11-03",
+  "last_run": "2026-11-04",
   "seen": [
-    {
-      "tool": "freee-mcp v0.37.0 最新版確認",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] CHANGELOG.md直接確認、10/17判定から変化なし"
-    },
-    {
-      "tool": "lazygit v0.66.2 最新版確認",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、10/17判定から変化なし"
-    },
-    {
-      "tool": "chezmoi v2.73.2 最新版確認",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、10/17判定から変化なし"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、依然v1.3.1のまま未リリース"
-    },
-    {
-      "tool": "Tailscale v1.104.1",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、v1.105.0-preプレリリースのみでLatestは変化なし"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] WebSearchでも8月リリース情報が最新、10月版の発表確認できず"
-    },
-    {
-      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] Arch公式リビルドtodoは進行中だがCachyOSリポジトリへの反映情報なし"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出動向から変化なし"
-    },
-    {
-      "tool": "niri/river/sway",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、niriは依然v26.04のまま"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [確認済] Codex CLIはrust-v0.164.0-alpha.3まで進行(アルファ)、通常アップデートの範囲"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-10-18",
-      "decision": "⌀ [推定] 期間内固有のリリースは見つからず、既存の参照サーバー群から変化なし"
-    },
     {
       "tool": "Claude Code v2.1.304 (scheduled Cowork cloud sessionsがサブエージェントWebFetch承認待ちで5分ブロックされる不具合修正)",
       "decided_at": "2026-10-19",
@@ -1000,6 +940,66 @@
       "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-11-03",
       "decision": "⌀ [不明] 11月固有の新着記事は見つからず、一般論記事のみ"
+    },
+    {
+      "tool": "Claude Code v2.1.318 (クラウドセッション再起動時の承認済みシェルコマンド実行フォルダ修正・失敗APIリクエスト再送順序修正・破損設定ファイル非対話起動時の上書き防止・allowedProviders別ログイン競合修正等)",
+      "decided_at": "2026-11-04",
+      "decision": "★★★ [確認済] 公式CHANGELOG.md直接確認(WebFetch)。本radar自身のクラウドスケジュールタスク+chezmoi管理private_settings.json.tmpl運用に直撃する再起動時信頼性・設定ファイル保護の修正"
+    },
+    {
+      "tool": "jj v0.47.0 最新版確認",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、v0.46.0から進行(revset()テンプレート関数・:editor resolve等追加、非colocated workspaceでのgit fetch/push破壊的変更あり)だが本環境ではjj未導入のため実害なし"
+    },
+    {
+      "tool": "Hyprland v0.57.1/Ghostty v1.4.0/niri v26.04/helix 25.07.1/zellij v0.45.1/lazygit v0.66.2/chezmoi v2.74.0/blink.cmp v1.10.2 最新版確認",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし"
+    },
+    {
+      "tool": "Tailscale v1.104.5 最新版確認",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、新タグなし"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] WebSearchでも11月版の発表は未確認、直近は依然8月版"
+    },
+    {
+      "tool": "ROCm 7.2系 CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [不明] Arch rebuild todoは旧date情報のまま、CachyOS側反映情報は確認できず"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "一人社長/一人法人向けバックオフィスAI SaaS",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] 11月固有の新サービス発表は確認できず(LayerX/バクラクの定期セミナーのみ)"
+    },
+    {
+      "tool": "Codex CLI/Gemini CLI/Cursor/Antigravity CLI",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [不明] WebSearchで直近の公式リリース情報を特定できず、確認可能な情報が4〜6月時点のまま古い。継続確認要"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [推定] 話題性のある新規実用サーバーは確認できず。MCP 2026-07-28仕様改定自体は既出情報の範囲内"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [不明] 11月固有の新着記事は見つからず、一般論記事のみ"
+    },
+    {
+      "tool": "supermaven-nvim",
+      "decided_at": "2026-11-04",
+      "decision": "⌀ [確認済] 10/29判定から新規動きなし、既出情報の範囲内"
     }
   ]
 }
