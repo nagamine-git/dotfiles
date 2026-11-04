@@ -30,8 +30,12 @@ resize_pane_down = "alt+shift+down"
 resize_pane_up = "alt+shift+up"
 resize_pane_right = "alt+shift+right"
 
-# tmux の window にあたるのが herdr の tab。tilit の M-1..9 と同じく Alt+数字で切り替える
-switch_tab = ["prefix+1..9", "alt+1..9"]
+# 数字キーの切り替え。tab は prefix+数字だけ。Alt+数字は N 番目のエージェント (サイドバーの表示順)、Ctrl+数字は N 番目の space (workspace)。
+# 対象が無い番号では何も起きない。Ctrl+数字を区別して送るには端末が kitty keyboard protocol を話す必要がある (foot 1.28 / Ghostty は対応)。
+# Linux の Ghostty は既定で Alt+1..9 を自分のタブ切り替えに使うので、ghostty/config.tmpl で外している
+switch_tab = "prefix+1..9"
+focus_agent = "alt+1..9"
+switch_workspace = "ctrl+1..9"
 
 # tmux の Alt+f (fzf で window を選ぶ) を herdr の Go To に割り当てる。Go To はエージェントを状態で絞り込める。
 # Mac では Option+→ も ESC f になるので Go To が開く (tmux で fzf が開くのと同じ)
@@ -76,7 +80,53 @@ description = "ツリーを開いた Neovim を開く"
 # - M-x / M-X / M-q / M-D / M-w (閉じる・切り離す): 1打で壊れる操作は直接キーにしない
 # - 自動レイアウトとの差分: ペインを閉じたときの再整列はしない。prefix M-Enter のトグルは移していない。手動分割は prefix+shift+v / prefix+minus
 
-# サイドバーの Claude の行。既定の 2 行の下に、実行中のサブエージェントを出す (例: ⧗2 coder, Explore)。
-# 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する
+# タブが 1 つの workspace ではタブの行を出さない
+[ui]
+hide_tab_bar_when_single_tab = true
+
+# サイドバーのエージェント行。先頭に $signal (電波の強さ) を出す。本人の対応が急ぎなほど長く高く、色も変える。
+# 値は ~/.local/share/herdr-plugins/agent-signal (pane.agent_status_changed) がペインの metadata (signal) に報告する。
+# 状態 (herdr の agent_status) と表示の対応表。字形と長さが順序、色は種類。色だけには頼らない:
+#   blocked (入力待ち)  ▁▃▅▇  赤・太字   最優先
+#   done    (完了)      ▁▃▅   緑         次に確認する
+#   working (作業中)    ▁▃    黄         待てる
+#   idle    (待機)      ▁     灰・暗め   急ぎではない
+#   unknown             表示なし
+# 字形は UDEV Gothic 35NFLG にある Block Elements (U+2581 U+2583 U+2585 U+2587)。
+# 色の rules は値の全体一致。字形を変えたら signal.sh の case と揃える
+[ui.sidebar.agents]
+rows = [
+  [
+    "state_icon",
+    { token = "$signal", rules = [
+      { equals = "▁▃▅▇", fg = "#ff5555", bold = true },
+      { equals = "▁▃▅", fg = "#50fa7b" },
+      { equals = "▁▃", fg = "#f1c40f" },
+      { equals = "▁", fg = "#888888", dim = true },
+    ] },
+    "machine",
+    "workspace",
+    "tab",
+  ],
+  ["agent"],
+]
+
+# Claude の行は、既定の 2 行の下に、実行中のサブエージェントを出す (例: ⧗2 coder, Explore)。
+# 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する。rows_by_agent は rows を置き換えるので $signal も書く
 [ui.sidebar.agents.rows_by_agent]
-claude = [["state_icon", "machine", "workspace", "tab"], ["agent"], ["$subagents"]]
+claude = [
+  [
+    "state_icon",
+    { token = "$signal", rules = [
+      { equals = "▁▃▅▇", fg = "#ff5555", bold = true },
+      { equals = "▁▃▅", fg = "#50fa7b" },
+      { equals = "▁▃", fg = "#f1c40f" },
+      { equals = "▁", fg = "#888888", dim = true },
+    ] },
+    "machine",
+    "workspace",
+    "tab",
+  ],
+  ["agent"],
+  ["$subagents"],
+]

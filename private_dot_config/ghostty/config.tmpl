@@ -9,6 +9,12 @@ theme = Gruvbox Material
 macos-option-as-alt = true
 {{- else }}
 theme = Hybrid
+# Linux の Ghostty は既定で Alt+1..9 を自分のタブ切り替えに使う。herdr の N 番目のエージェント (focus_agent) に届くよう外す。
+# Ctrl+1..9 は Ghostty の既定では使われず (Ctrl+0 だけ文字サイズのリセット)、kitty keyboard protocol で herdr に届く
+{{- range $i := untilStep 1 10 1 }}
+keybind = alt+{{ $i }}=unbind
+keybind = alt+digit_{{ $i }}=unbind
+{{- end }}
 {{- end }}
 
 # Hyprland Optimization (Minimal & Clean)

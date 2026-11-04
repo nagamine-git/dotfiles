@@ -2,6 +2,7 @@
 # herdr のローカルプラグインを登録する。下の行が変わったときだけ chezmoi が再実行する。
 # 再実行しても問題なく、動作中の server にも再起動なしで反映される。
 # last-workspace: {{ include "dot_local/share/herdr-plugins/last-workspace/herdr-plugin.toml" | sha256sum }}
+# agent-signal: {{ include "dot_local/share/herdr-plugins/agent-signal/herdr-plugin.toml" | sha256sum }}{{ include "dot_local/share/herdr-plugins/agent-signal/signal.sh" | sha256sum }}
 set -eu
 
 # herdr が無いホストでは何もしない
@@ -9,3 +10,4 @@ command -v herdr >/dev/null 2>&1 || exit 0
 
 # 登録に失敗しても chezmoi apply 全体は止めない。直したら下のコマンドを手で再実行できる。
 herdr plugin link "$HOME/.local/share/herdr-plugins/last-workspace" || echo "WARN: herdr plugin link が失敗した。直してから herdr plugin link ~/.local/share/herdr-plugins/last-workspace を実行" >&2
+herdr plugin link "$HOME/.local/share/herdr-plugins/agent-signal" || echo "WARN: herdr plugin link が失敗した。直してから herdr plugin link ~/.local/share/herdr-plugins/agent-signal を実行" >&2

@@ -1,0 +1,21 @@
+# サイドバーのエージェント行に出す「電波の強さ」($signal) を、エージェントの状態から作るローカルプラグイン。
+# 対応表は private_dot_config/herdr/config.toml の [ui.sidebar.agents] のコメントと、signal.sh の case を揃えて直す。
+# 登録は run_onchange_after_herdr-plugins.sh.tmpl
+id = "nagamine.agent-signal"
+name = "Agent signal"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+platforms = ["linux", "macos"]
+
+# server の起動 / 引き継ぎ後に、いるエージェント全員の表示を作り直す
+[[startup]]
+command = ["sh", "signal.sh", "sync"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["sh", "signal.sh", "event"]
+
+# 新しく検出されたエージェントにも、状態が変わる前から出す
+[[events]]
+on = "pane.agent_detected"
+command = ["sh", "signal.sh", "event"]
