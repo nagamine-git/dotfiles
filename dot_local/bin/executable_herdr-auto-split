@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# herdr の Alt+Enter (config.toml の [[keys.command]]) から呼ばれる分割。
+# tmux の after-split-window hook (3枚までは main-vertical、4枚からは tiled) に近い並びを、既存ペインを動かさずに作る。
+set -eu
+
+h="${HERDR_BIN_PATH:-herdr}"
+
+# shellcheck disable=SC2153 # HERDR_ACTIVE_PANE_ID は herdr が渡す環境変数で、CWD の綴り間違いではない
+layout="$("$h" pane layout --pane "$HERDR_ACTIVE_PANE_ID")"
+
+# 分割先は最大のペインのうち最も右下のもの。分割の端数で面積がずれるので、最大の 90% 以上を同じ大きさとして扱う。
+# 方向は 1枚→右、2〜3枚→下 (左 main+右縦積み、次に 2×2)。4枚からは長い辺を割る (端末のセルは縦長なので高さを 2 倍で比べる)
+choice="$(printf '%s' "$layout" | jq -r '
+  .result.layout.panes
+  | length as $n
+  | (map(.rect.width * .rect.height) | max) as $max
+  | map(select(.rect.width * .rect.height >= $max * 0.9))
+  | sort_by(.rect.x, .rect.y)
+  | last
+  | .pane_id + " " + (
+      if $n == 1 then "right"
+      elif $n <= 3 then "down"
+      elif .rect.width >= .rect.height * 2 then "right"
+      else "down" end)')"
+target="${choice% *}"
+direction="${choice##* }"
+
+# 新ペインは分割先ではなくフォーカス中のペインの cwd を引き継ぐ
+args=(--direction "$direction" --focus)
+if [ -n "${HERDR_ACTIVE_PANE_CWD:-}" ]; then
+  args+=(--cwd "$HERDR_ACTIVE_PANE_CWD")
+fi
+
+"$h" pane split "$target" "${args[@]}" >/dev/null

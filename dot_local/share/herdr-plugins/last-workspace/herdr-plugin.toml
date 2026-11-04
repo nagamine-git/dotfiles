@@ -1,0 +1,18 @@
+# tmux の M-Tab (switch-client -l) を再現するローカルプラグイン。
+# previous_workspace は並び順で動くだけで、last_pane は同じ workspace 内のペイン移動でも履歴が動くので、
+# フォーカスされた workspace の履歴をここで持つ。登録は run_onchange_after_herdr-plugins.sh.tmpl
+id = "nagamine.last-workspace"
+name = "Last workspace"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "workspace.focused"
+command = ["sh", "track.sh"]
+
+[[actions]]
+id = "toggle"
+title = "直前の workspace に戻る"
+contexts = ["workspace"]
+command = ["sh", "toggle.sh"]
