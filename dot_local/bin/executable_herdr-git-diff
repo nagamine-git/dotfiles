@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# herdr の Alt+G (config.toml の popup) から呼ばれる。
+# フォーカス中のペインの前面が Neovim なら、ポップアップは使わずその Neovim で :DiffviewToggle を実行する。
+# それ以外 (sim を含む) や判定に失敗したときは、従来どおり lazygit をポップアップの中で動かす。
+set -u
+
+h="${HERDR_BIN_PATH:-herdr}"
+pane="${HERDR_ACTIVE_PANE_ID:-}"
+
+is_nvim_foreground() {
+  [ -n "$pane" ] || return 1
+  local info
+  info="$("$h" pane process-info --pane "$pane" 2>/dev/null)" || return 1
+  # 名前か argv[0] の basename が nvim のとき (nvim-qt や sim は対象外)
+  printf '%s' "$info" | jq -e '
+    .result.process_info.foreground_processes
+    | any(.[]; (.name == "nvim") or ((.argv[0] // "" | split("/") | last) == "nvim"))' >/dev/null 2>&1
+}
+
+if is_nvim_foreground; then
+  # C-\ C-n は挿入・コマンドライン・ターミナル・演算子待ちのどのモードでもノーマルモードへ戻す (入力は残らない)
+  if "$h" pane send-text "$pane" "$(printf '\034\016:DiffviewToggle\r')" >/dev/null 2>&1; then
+    exit 0
+  fi
+fi
+
+exec lazygit

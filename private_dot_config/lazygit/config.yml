@@ -1,0 +1,9 @@
+# lazygit の diff 表示。0.66 の正しいキーは git.diffRenderers (旧 git.paging.pager は廃止)
+# 配色・side-by-side などは dot_gitconfig.tmpl の [delta] を共有する。
+# Ghostty は暗色テーマ固定で、gitconfig 側が dark = true を固定しているため --dark/--light はここで渡さない
+# (darkman の明暗切替は端末の配色に及ばない)。
+# --width は lazygit の diff ビューの幅 (side-by-side の 1 列の幅がパネルに収まるように渡す)。
+# gitconfig の navigate = true は lazygit では効かず、ファイル名の先頭に Δ が付くだけ (公式文書どおり)。
+git:
+  diffRenderers:
+    - command: delta --paging=never --width={{width}}

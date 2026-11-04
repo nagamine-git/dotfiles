@@ -623,6 +623,14 @@ vim.api.nvim_create_autocmd('InsertLeave', { callback = function() vim.opt.curso
 
 -- ソース管理ビュー (VSCode の Source Control 感覚)
 vim.keymap.set('n', '<leader>gg', ':DiffviewOpen<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを開く' })
+-- 開いていれば閉じ、無ければ開く。herdr の Alt+G (~/.local/bin/herdr-git-diff) が前面の Neovim へ送る入口でもある
+vim.api.nvim_create_user_command('DiffviewToggle', function()
+  if require('diffview.lib').get_current_view() then
+    vim.cmd('DiffviewClose')
+  else
+    vim.cmd('DiffviewOpen')
+  end
+end, { desc = 'ソース管理ビューの開閉' })
 vim.keymap.set('n', '<leader>gc', ':DiffviewClose<CR>', { noremap = true, silent = true, desc = 'ソース管理ビューを閉じる' })
 vim.keymap.set('n', '<leader>gh', function()
   -- 実ファイル上ならそのファイルの履歴、neo-tree 等の特殊バッファ上なら

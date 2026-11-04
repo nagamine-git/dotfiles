@@ -57,14 +57,16 @@ type = "plugin_action"
 command = "nagamine.last-workspace.toggle"
 description = "直前の workspace に戻る"
 
-# tilit の M-g と同じ
+# tilit の M-g と同じ。前面が Neovim のペインでは、ポップアップを出さずその Neovim で :DiffviewToggle を実行する
+# (開いていれば閉じる)。Neovim 以外 (sim を含む) と判定失敗のときは lazygit のポップアップ (~/.local/bin/herdr-git-diff)。
+# Neovim のときもポップアップは一瞬開いてすぐ閉じる (herdr のキー割り当てに前面プロセスで分岐する仕組みが無いため)
 [[keys.command]]
 key = "alt+g"
 type = "popup"
-command = "lazygit"
+command = '"$HOME/.local/bin/herdr-git-diff"'
 width = "90%"
 height = "90%"
-description = "lazygit を開く"
+description = "lazygit を開く (Neovim では diff を開閉)"
 
 # ツリーを開いた Neovim。中では C-p (検索) と Space gg (diffview) も使える
 [[keys.command]]
