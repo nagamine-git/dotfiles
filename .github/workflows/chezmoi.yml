@@ -42,6 +42,11 @@ jobs:
         run: |
           python3 tests/slack-claude.py
 
+      - name: Verify herdr agent summary hook with stubbed claude/herdr
+        run: |
+          shellcheck -S warning dot_claude/hooks/executable_herdr-agent-summary.sh dot_claude/hooks/executable_herdr-tab-title.sh
+          python3 tests/herdr-agent-summary.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)

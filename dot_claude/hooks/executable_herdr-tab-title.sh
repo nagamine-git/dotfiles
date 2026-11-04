@@ -2,10 +2,20 @@
 # Claude Code の Stop フック。herdr のタブ名を、Claude Code が端末タイトルに出す作業内容の要約に合わせる。
 # 変えるのは 1 ペインだけのタブで、名前が自動生成 (数字だけ) か前回このスクリプトが付けたものの場合に限る。
 # 手で付けた名前は変えない。どんな場合も exit 0 で終わり、Claude Code を止めない。
+# 最後に herdr-agent-summary.sh (Haiku による agent 名の要約。毎ターンは呼ばず切り離して動く) を呼ぶ。
+# タブ名の判定で途中で exit しても呼ばれるよう、EXIT trap で動かす。
 # Wired in ~/.claude/settings.json -> hooks.Stop (herdr があるホストだけ)。
 set -eu
 
-cat >/dev/null 2>&1 || true
+input="$(cat 2>/dev/null)" || input=""
+
+# shellcheck disable=SC2317  # EXIT trap から呼ぶ
+run_summary() {
+  local script="${BASH_SOURCE[0]%/*}/herdr-agent-summary.sh"
+  [ -f "$script" ] || return 0
+  printf '%s' "$input" | bash "$script" >/dev/null 2>&1 || true
+}
+trap 'run_summary; exit 0' EXIT
 
 [ "${HERDR_ENV:-}" = "1" ] || exit 0
 [ -n "${HERDR_PANE_ID:-}" ] || exit 0
