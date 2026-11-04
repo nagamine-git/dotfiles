@@ -92,16 +92,17 @@ description = "ツリーを開いた Neovim を開く"
 [ui]
 hide_tab_bar_when_single_tab = true
 
-# サイドバーのエージェント行。1 行目は「状態の点 / 電波アイコンとワークスペース名」(例: ● 󰢼 chezmoi)。
+# サイドバーのエージェント行。1 行目は「状態の点 / 優先度アイコンとワークスペース名」(例: ● ▃ chezmoi)。
 # タブ名は出さない。作業内容は 2 行目の agent (Haiku の要約) が示す。
 # herdr は値と値の間に必ず " · " を入れるので、アイコンと名前を 1 つの値 $signal_workspace にまとめて間の区切りを無くしている。
 # 値は ~/.local/share/herdr-plugins/agent-signal がペインの metadata (signal_workspace) に報告する。
-# 状態 (herdr の agent_status) とアイコン (Nerd Font の md-signal_cellular_*) の対応表。本数が本人の対応の急ぎ度で、色は state_icon が持つ:
-#   blocked (入力待ち)  U+F08BE 󰢾  3 本       最優先
-#   done    (完了)      U+F08BD 󰢽  2 本       次に確認する
-#   working (作業中)    U+F08BC 󰢼  1 本       待てる
-#   idle    (待機)      U+F08BF 󰢿  枠だけ     急ぎではない
+# 状態 (herdr の agent_status) とアイコン (Unicode のブロック文字) の対応表。棒の高さが本人の対応の急ぎ度で、色は state_icon が持つ:
+#   blocked (入力待ち)  U+2587 ▇  高さ 7/8   最優先
+#   done    (完了)      U+2585 ▅  高さ 5/8   次に確認する
+#   working (作業中)    U+2583 ▃  高さ 3/8   待てる
+#   idle    (待機)      U+2581 ▁  高さ 1/8   急ぎではない
 #   unknown             アイコンなしで名前だけ
+# Nerd Font の字形は iPhone の Heeler で文字化け ([?]) するので使わない。
 # 字形は UDEV Gothic 35NFLG にあり、幅は半角 1 文字分。字形を変えたら signal.sh と揃える。
 # 1 つの値には 1 色しか付かず名前まで染まるので、rules で色は付けない。
 # fg と bold は既定の workspace に合わせた値 (カスタム値の既定は暗い #6c7086 で細い)。既定はフォーカス中の行だけ #cdd6f4 になるが、

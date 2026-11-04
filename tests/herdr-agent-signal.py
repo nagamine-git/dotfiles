@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "dot_local/share/herdr-plugins/agent-signal"
 CONFIG = ROOT / "private_dot_config/herdr/config.toml"
 
-BLOCKED, DONE, WORKING, IDLE = "\U000F08BE", "\U000F08BD", "\U000F08BC", "\U000F08BF"
+BLOCKED, DONE, WORKING, IDLE = "▇", "▅", "▃", "▁"
 
 FAKE_HERDR = '''#!/usr/bin/env python3
 import json, os, pathlib, sys

@@ -1,4 +1,4 @@
-# サイドバーのエージェント行に出す「電波アイコンとワークスペース名」($signal_workspace) を、エージェントの状態と名前から作るローカルプラグイン。
+# サイドバーのエージェント行に出す「優先度アイコンとワークスペース名」($signal_workspace) を、エージェントの状態と名前から作るローカルプラグイン。
 # 対応表は private_dot_config/herdr/config.toml の [ui.sidebar.agents] のコメントと、signal.sh を揃えて直す。
 # 登録は run_onchange_after_herdr-plugins.sh.tmpl
 id = "nagamine.agent-signal"
