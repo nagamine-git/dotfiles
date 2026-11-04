@@ -47,6 +47,11 @@ jobs:
           shellcheck -S warning dot_claude/hooks/executable_herdr-agent-summary.sh dot_claude/hooks/executable_herdr-tab-title.sh
           python3 tests/herdr-agent-summary.py
 
+      - name: Verify herdr helpers with stubbed tools
+        run: |
+          python3 tests/herdr-git-diff.py
+          python3 tests/hgh.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)
