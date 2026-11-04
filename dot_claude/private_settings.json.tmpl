@@ -127,11 +127,12 @@
   },
   "model": "opus",
   "modelSettings": {
+    {{- /* am5-itx の値は本人の実機の設定を維持したもの */}}
     "claude-opus-5-5": {
-      "effortLevel": "high"
+      "effortLevel": "{{ if eq .chezmoi.hostname "am5-itx" }}xhigh{{ else }}high{{ end }}"
     },
     "claude-sonnet-5-5": {
-      "effortLevel": "low"
+      "effortLevel": "{{ if eq .chezmoi.hostname "am5-itx" }}medium{{ else }}low{{ end }}"
     },
     "claude-opus-5": {
       "effortLevel": "medium"
