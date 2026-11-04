@@ -166,7 +166,7 @@ class DesktopAppsTmux(unittest.TestCase):
         chezmoi = shutil.which("chezmoi", path="/usr/bin:/bin")
         self.assertIsNotNone(chezmoi)
         desktop = (ROOT / "dot_local/share/applications/chatgpt.desktop.tmpl").read_text()
-        hypr = (ROOT / "private_dot_config/hypr/hyprland.conf.tmpl").read_text()
+        hypr = (ROOT / "private_dot_config/hypr/hyprland.lua.tmpl").read_text()
         start = hypr.index('{{ if eq .chezmoi.hostname "am5-itx" -}}')
         finish = hypr.index('{{ end -}}', start) + len('{{ end -}}')
         block = hypr[start:finish]

@@ -1,4 +1,4 @@
-# Satty (スクリーンショット注釈)。起動は hyprland.conf の Print 系バインド (grim | satty)
+# Satty (スクリーンショット注釈)。起動は hyprland.lua の Print 系バインド (grim | satty)
 [general]
 # 保存・コピーしたらウィンドウを閉じる
 early-exit = true

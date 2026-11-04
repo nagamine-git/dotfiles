@@ -25,7 +25,7 @@ toggle_fcitx5_zenzai() {
 
   # 弱 GPU (iGPU 等) では Zenzai (Vulkan/llama.cpp GPU offload) が SIGILL でクラッシュ
   # するため、要求が True でもディスクリート GPU が無ければ強制 False に落とす。
-  # 判定閾値は hyprland.conf.tmpl の端末振り分けと同一 (NVIDIA/Radeon RX/Navi/Arc=強)。
+  # 判定閾値は hyprland.lua.tmpl の端末振り分けと同一 (NVIDIA/Radeon RX/Navi/Arc=強)。
   # lspci が空 (検出不能) のときは誤って無効化せず要求値を尊重する。
   if [[ "$enable_zenzai" == "True" ]]; then
     local vga
@@ -62,10 +62,10 @@ if [[ -f $state_file ]]; then
   if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
     echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1
   fi
-  
+
   # fcitx5のZenzai機能を有効化（通常モード）
   toggle_fcitx5_zenzai "True"
-  
+
   rm -f "$state_file"
   notify-send "Hyprland" "🌈 通常モード (Zenzai: ON)"
 else
@@ -76,10 +76,10 @@ else
   if [[ -w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]]; then
     echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1
   fi
-  
+
   # fcitx5のZenzai機能を無効化（パフォーマンスモード）
   toggle_fcitx5_zenzai "False"
-  
+
   touch "$state_file"
   notify-send "Hyprland" "🚀 高速モード ON (Zenzai: OFF)"
 fi

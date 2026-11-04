@@ -1,7 +1,7 @@
 hyprland
 linux-headers
 greetd-tuigreet
-waybar
+waybar-git
 swaync
 git
 git-delta

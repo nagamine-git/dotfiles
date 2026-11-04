@@ -4,7 +4,7 @@
 #   暗い上部   → 白文字 / 暗いバー / 黒影 (既定)
 # colors.css (style.css から @import) の @define-color 3 行を sed で書き換え、waybar を SIGUSR2 でリロードする。
 # style.css 自体は触らない (chezmoi 管理のため、書き換えると apply のたびに差分が出る)。
-# 起動時 (hyprland.conf exec-once) と壁紙変更時 (引数で新パスを渡す) に呼ぶ想定。
+# 起動時 (hyprland.lua の hyprland.start) と壁紙変更時 (引数で新パスを渡す) に呼ぶ想定。
 # 失敗しても waybar 起動を妨げないよう、どのスキップ経路でも exit 0 で抜ける。
 set -uo pipefail
 

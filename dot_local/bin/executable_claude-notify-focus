@@ -30,6 +30,6 @@ if command -v hyprctl >/dev/null 2>&1; then
   fi
 
   if [ -n "$target_addr" ]; then
-    hyprctl dispatch focuswindow "address:${target_addr}" >/dev/null 2>&1 || true
+    hyprctl dispatch "hl.dsp.focus({ window = 'address:${target_addr}' })" >/dev/null 2>&1 || true
   fi
 fi

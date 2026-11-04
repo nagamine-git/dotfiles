@@ -121,7 +121,7 @@ focus_or_launch() {
     fi
     if [ -n "${addr:-}" ]; then
       log_debug "Focusing existing window at address: $addr"
-      hyprctl dispatch focuswindow "address:$addr"
+      hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
       return 0
     else
       log_debug "No existing window match; launching: $id"
@@ -181,7 +181,7 @@ focus_or_launch_query() {
     addr=$(awk -F '\t' -v q="$query" 'BEGIN{IGNORECASE=1} $6=="true" { if(index($5,q) || index($3,q) || index($4,q)){print $1; exit} }' /tmp/unified_launcher.clients.tsv)
     if [ -n "${addr:-}" ]; then
       log_debug "Focus by query matched address: $addr"
-      hyprctl dispatch focuswindow "address:$addr"
+      hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
       return 0
     fi
   fi
@@ -314,6 +314,7 @@ list_windows() {
   dump_clients_tsv || return 0
   [ -f /tmp/unified_launcher.clients.tsv ] || return 0
   local addr ws cls icls title mapped hidden t key icon
+  # shellcheck disable=SC2034 # hidden は read の列を受けるだけで使わない
   while IFS=$'\t' read -r addr ws cls icls title mapped hidden; do
     [ "$mapped" = "true" ] || continue
     t=$(printf %s "$title" | tr -d '\t\n')
@@ -324,7 +325,7 @@ list_windows() {
     # label にはワークスペース番号を残す: 同名タイトルが別ワークスペースに
     # 並んだときに見分けがつかなくなるのを防ぐ
     emit_row "$t [$ws]" "$icon" "ウィンドウ" "ウィンドウ window $key" \
-      "hyprctl dispatch focuswindow \"address:$addr\""
+      "hyprctl dispatch \"hl.dsp.focus({ window = 'address:$addr' })\""
   done < /tmp/unified_launcher.clients.tsv
 }
 
@@ -335,7 +336,7 @@ list_workspaces() {
   while read -r id; do
     [ -n "$id" ] || continue
     emit_row "ワークスペース $id" "$ICON_WS" "移動" "ワークスペース workspace ws 移動" \
-      "hyprctl dispatch workspace $id"
+      "hyprctl dispatch \"hl.dsp.focus({ workspace = $id })\""
   done < <(hyprctl workspaces -j 2>/dev/null | jq -r '.[].id' 2>/dev/null || true)
 }
 
@@ -344,12 +345,13 @@ list_actions() {
   clip_cmd='cliphist list | rofi -dmenu -p "貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v'
   emit_row "ロック画面"          "$ICON_LOCK"     "操作" "操作 action lock ロック" "hyprlock"
   emit_row "通知センター"        "$ICON_NOTIFY"   "操作" "操作 action notification 通知" "swaync-client -t -sw"
+  # shellcheck disable=SC2088 # 後で実行されるコマンド文字列なので、ここではチルダを展開しない
   emit_row "パフォーマンスモード切替" "$ICON_PERF" "操作" "操作 action perf performance" "~/.local/bin/hypr_perfmodeswitch.sh"
   emit_row "クリップボード履歴"  "$ICON_CLIP"     "操作" "操作 action clipboard クリップボード" "bash -lc '$clip_cmd'"
   emit_row "コマンド実行…"       "$ICON_RUN"      "操作" "操作 action run exec コマンド" "rofi -show run"
   emit_row "電卓"                "$ICON_CALC"     "操作" "操作 action calc calculator 計算" "rofi -show calc -modi calc"
   emit_row "絵文字ピッカー"      "$ICON_EMOJI"    "操作" "操作 action emoji 絵文字" "rofi -show emoji -modi emoji"
-  emit_row "サインアウト"        "$ICON_LOGOUT"   "電源" "電源 power logout サインアウト" "hyprctl dispatch exit"
+  emit_row "サインアウト"        "$ICON_LOGOUT"   "電源" "電源 power logout サインアウト" "hyprctl dispatch 'hl.dsp.exit()'"
   emit_row "再起動"              "$ICON_REBOOT"   "電源" "電源 power reboot 再起動" "systemctl reboot"
   emit_row "シャットダウン"      "$ICON_SHUTDOWN" "電源" "電源 power shutdown 電源オフ" "systemctl poweroff"
 }

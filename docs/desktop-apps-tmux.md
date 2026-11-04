@@ -23,7 +23,7 @@ Wayland / DBus 環境を更新するものではない。ログアウト後の G
 
 ## source と反映
 
-- `private_dot_config/hypr/hyprland.conf.tmpl`: 既存 am5-itx 条件内の二つの起動を一つへ統合。
+- `private_dot_config/hypr/hyprland.lua.tmpl`: 既存 am5-itx 条件内の二つの起動を一つへ統合。
 - `dot_local/share/applications/chatgpt.desktop.tmpl`: am5-itx だけ wrapper を選択。URI/MIME を保持。
 - `dot_local/bin/executable_desktop-apps-tmux`: 引数を shell 展開せず直接渡し、role ごとの lock を使用。
 - `private_dot_config/desktop-apps/tmux.conf`: 専用 server の最小設定。
@@ -33,8 +33,8 @@ Wayland / DBus 環境を更新するものではない。ログアウト後の G
 bash -n dot_local/bin/executable_desktop-apps-tmux
 python3 tests/desktop-apps-tmux.py
 shellcheck dot_local/bin/executable_desktop-apps-tmux
-chezmoi diff --exclude=scripts ~/.config/hypr/hyprland.conf ~/.local/share/applications/chatgpt.desktop ~/.local/bin/desktop-apps-tmux ~/.config/desktop-apps/tmux.conf
-chezmoi apply --dry-run --force --exclude=scripts ~/.config/hypr/hyprland.conf ~/.local/share/applications/chatgpt.desktop ~/.local/bin/desktop-apps-tmux ~/.config/desktop-apps/tmux.conf
+chezmoi diff --exclude=scripts ~/.config/hypr/hyprland.lua ~/.local/share/applications/chatgpt.desktop ~/.local/bin/desktop-apps-tmux ~/.config/desktop-apps/tmux.conf
+chezmoi apply --dry-run --force --exclude=scripts ~/.config/hypr/hyprland.lua ~/.local/share/applications/chatgpt.desktop ~/.local/bin/desktop-apps-tmux ~/.config/desktop-apps/tmux.conf
 ```
 
 上の `--force` は、変更済み実ファイルの TTY 確認を省く dry-run 専用。実 apply に付けない。

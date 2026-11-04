@@ -1,0 +1,8 @@
+{{/*
+  Workspace ルール。special workspace (scratchpad 系) の定義。
+  hyprland.lua の window_rule で name:special:* を参照しているので整合させる。
+*/ -}}
+hl.workspace_rule({ workspace = "special:magic", gaps_in = 0, gaps_out = 0 })
+hl.workspace_rule({ workspace = "special:term", gaps_in = 0, gaps_out = 0 })
+hl.workspace_rule({ workspace = "special:notes", gaps_in = 0, gaps_out = 0 })
+hl.workspace_rule({ workspace = "special:desktop", gaps_in = 0, gaps_out = 0 })

@@ -1,42 +1,38 @@
 # shellcheck shell=bash
-# Shared Hyprland performance/normal mode keyword batches.
+# Shared Hyprland performance/normal mode batches.
+# Hyprland 0.57 の Lua 設定では `hyprctl keyword` が使えないので、1 行ずつ hl.config を eval する。
+# render:max_fps / decoration:multisample_edges / cursor:animate / misc:vfr は 0.56 の時点で
+# 既に存在せず効いていなかったので移していない。
+# VRR は 4K@120Hz HDMI でパネルが黒落ちするため常時オフ (config 既定 vrr=0)。
 
+# shellcheck disable=SC2034 # source 先 (hypr_perfmodeswitch.sh など) が使う
 readonly HYPR_PERFORMANCE_BATCH=$(cat <<'EOF'
-keyword animations:enabled false;
-keyword decoration:blur:enabled false;
-keyword decoration:shadow:enabled false;
-keyword decoration:rounding 0;
-keyword decoration:active_opacity 1;
-keyword decoration:inactive_opacity 1;
-keyword general:border_size 6;
-keyword render:max_fps 60;
-keyword general:gaps_in 0;
-keyword general:gaps_out 0;
-keyword decoration:multisample_edges false;
-keyword cursor:animate false;
-# VRR は 4K@120Hz HDMI でパネルが黒落ちするため常時オフ (config 既定 vrr=0)
-keyword misc:vrr 0;
-keyword misc:vfr true;
-keyword misc:animate_manual_resizes false;
+eval hl.config({ animations = { enabled = false } });
+eval hl.config({ decoration = { blur = { enabled = false } } });
+eval hl.config({ decoration = { shadow = { enabled = false } } });
+eval hl.config({ decoration = { rounding = 0 } });
+eval hl.config({ decoration = { active_opacity = 1 } });
+eval hl.config({ decoration = { inactive_opacity = 1 } });
+eval hl.config({ general = { border_size = 6 } });
+eval hl.config({ general = { gaps_in = 0 } });
+eval hl.config({ general = { gaps_out = 0 } });
+eval hl.config({ misc = { vrr = 0 } });
+eval hl.config({ misc = { animate_manual_resizes = false } })
 EOF
 )
 
+# shellcheck disable=SC2034 # source 先 (hypr_perfmodeswitch.sh など) が使う
 readonly HYPR_NORMAL_BATCH=$(cat <<'EOF'
-keyword animations:enabled true;
-keyword decoration:blur:enabled true;
-keyword decoration:shadow:enabled true;
-keyword decoration:rounding 8;
-keyword decoration:active_opacity 1;
-keyword decoration:inactive_opacity 0.8;
-keyword general:border_size 1;
-keyword render:max_fps 0;
-keyword general:gaps_in 5;
-keyword general:gaps_out 5;
-keyword decoration:multisample_edges true;
-keyword cursor:animate true;
-# VRR は 4K@120Hz HDMI でパネルが黒落ちするため常時オフ (config 既定 vrr=0)
-keyword misc:vrr 0;
-keyword misc:vfr true;
-keyword misc:animate_manual_resizes true;
+eval hl.config({ animations = { enabled = true } });
+eval hl.config({ decoration = { blur = { enabled = true } } });
+eval hl.config({ decoration = { shadow = { enabled = true } } });
+eval hl.config({ decoration = { rounding = 8 } });
+eval hl.config({ decoration = { active_opacity = 1 } });
+eval hl.config({ decoration = { inactive_opacity = 0.8 } });
+eval hl.config({ general = { border_size = 1 } });
+eval hl.config({ general = { gaps_in = 5 } });
+eval hl.config({ general = { gaps_out = 5 } });
+eval hl.config({ misc = { vrr = 0 } });
+eval hl.config({ misc = { animate_manual_resizes = true } })
 EOF
 )

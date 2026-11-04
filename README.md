@@ -110,7 +110,7 @@ scp am5-itx:/usr/local/bin/wolow-companion ~/wolow-companion && chezmoi apply
 1. `.chezmoidata/data.yaml` に配色パレットを追加 (既存3台と CIEDE2000 で色相分離を確認)
 2. hostname 分岐を持つファイルに分岐を追加:
    `private_dot_config/nvim/init.lua.tmpl` / `dot_tmux.conf.tmpl` /
-   `private_dot_config/starship.toml.tmpl` / `private_dot_config/hypr/hyprland.conf.tmpl` /
+   `private_dot_config/starship.toml.tmpl` / `private_dot_config/hypr/hyprland.lua.tmpl` /
    `private_dot_ssh/config.tmpl` / `run_onchange_fp7-sleep-mask.sh.tmpl` (該当時)
 3. `pkglist.txt` と `.chezmoiignore` の OS 分岐を確認
 4. `chezmoi apply --dry-run -v` で差分を確認してから適用

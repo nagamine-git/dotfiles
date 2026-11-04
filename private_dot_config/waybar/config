@@ -24,7 +24,7 @@
       "active": "●",
       "default": "○"
     },
-    "on-click": "hyprctl dispatch workspace {name}",
+    "on-click": "hyprctl dispatch \"hl.dsp.focus({ workspace = '{name}' })\"",
   },
 
   "hyprland/window": {
