@@ -1,5 +1,5 @@
-# herdr のキー設定。tmux (dot_tmux.conf.tmpl と tmux-tilit) のキーのうち、
-# herdr に同じ操作があり、今の tmux より多くの入力を奪わないものだけを移している。
+# herdr のキー設定。tmux (dot_tmux.conf.tmpl と tmux-tilit) のよく使うキーのうち、今の tmux より多くの入力を
+# 奪わないものだけを移している。herdr に同じ操作が無い自動整列・直前の workspace・ポップアップは [[keys.command]] で足す。
 # 確認: herdr config check / 反映: herdr server reload-config
 
 # 初回案内を済ませた状態。無いと起動時に案内が出る (進めると herdr がこの行を書き戻す)
@@ -11,9 +11,8 @@ prefix = "ctrl+t"
 
 # tmux と同じく prefix+v でコピーモード (herdr の既定は prefix+[)
 copy_mode = "prefix+v"
-# Alt+Enter で分割する。tmux では hook が並べ直していたので、2枚のときに同じ見た目になる右分割にする。
-# 既定の prefix+v はコピーモードに譲る。下への分割は既定の prefix+minus のまま
-split_vertical = "alt+enter"
+# 手動で右に分割する。既定の prefix+v はコピーモードに譲る。下への手動分割は既定の prefix+minus のまま
+split_vertical = "prefix+shift+v"
 
 # 最大化の切り替え (tmux で設定した M-m と、tilit の M-z)
 zoom = ["prefix+z", "alt+m", "alt+z"]
@@ -38,11 +37,44 @@ switch_tab = ["prefix+1..9", "alt+1..9"]
 # Mac では Option+→ も ESC f になるので Go To が開く (tmux で fzf が開くのと同じ)
 goto = ["prefix+g", "alt+f"]
 
+# tmux の after-split-window hook 相当の自動整列。Alt+Enter で枚数に応じて main-vertical / tiled に近い並びになるよう分割する。
+# herdr に自動レイアウトが無いので、既存ペインは動かさず分割先と方向を選ぶ (~/.local/bin/herdr-auto-split)
+[[keys.command]]
+key = "alt+enter"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-auto-split"'
+description = "自動整列で分割する"
+
+# tmux の M-Tab (switch-client -l) と同じく直前の workspace に戻る。
+# herdr の previous_workspace は並び順で動くだけなので、履歴をプラグインで持つ (~/.local/share/herdr-plugins/last-workspace)
+[[keys.command]]
+key = "alt+tab"
+type = "plugin_action"
+command = "nagamine.last-workspace.toggle"
+description = "直前の workspace に戻る"
+
+# tilit の M-g と同じ
+[[keys.command]]
+key = "alt+g"
+type = "popup"
+command = "lazygit"
+width = "90%"
+height = "90%"
+description = "lazygit を開く"
+
+# ツリーを開いた Neovim。中では C-p (検索) と Space gg (diffview) も使える
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+command = "nvim +Neotree"
+width = "90%"
+height = "90%"
+description = "ツリーを開いた Neovim を開く"
+
 # 移していないもの:
-# - M-Tab (直前の session に戻る): herdr の previous_workspace は並び順で一つ前に動くだけで、直前の workspace には戻らない
 # - M-[ / M-] と S-←/→ (前後の window): Alt+[ は制御シーケンスの頭と同じバイトで、Shift+矢印はエディタの入力で使う
 # - M-x / M-X / M-q / M-D / M-w (閉じる・切り離す): 1打で壊れる操作は直接キーにしない
-# - pane 数で main-vertical / tiled を切り替える hook と prefix M-Enter: herdr の標準機能に自動レイアウトが無い
+# - 自動レイアウトとの差分: ペインを閉じたときの再整列はしない。prefix M-Enter のトグルは移していない。手動分割は prefix+shift+v / prefix+minus
 
 # サイドバーの Claude の行。既定の 2 行の下に、実行中のサブエージェントを出す (例: ⧗2 coder, Explore)。
 # 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する
