@@ -125,6 +125,180 @@ tgh() {
         fi
     }
 }
+
+# herdr 版の tgh / tm / ta / s。herdr の自動命名はペインの cwd に追従するので、
+# 呼び出し元のスペース名が変わらないよう、どの関数もこのシェルの cwd を変えない。
+_herdr_err() {
+    print -ru2 -- "${funcstack[-1]}: $*"
+}
+
+_herdr_require() {
+    local cmd
+    for cmd in "$@"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            _herdr_err "$cmd が見つかりません"
+            return 127
+        }
+    done
+}
+
+# 0: サーバーが動いている / 1: 動いていない / 2: 確認できない
+_herdr_server_running() {
+    local json running
+    json=$(herdr status server --json) && running=$(jq -r .running <<<"$json") || {
+        _herdr_err "herdr のサーバーの状態を確認できません"
+        return 2
+    }
+    case $running in
+        true) return 0 ;;
+        false) return 1 ;;
+    esac
+    _herdr_err "herdr status の結果を解釈できません: $running"
+    return 2
+}
+
+# herdr の外なら接続する (サーバーが無ければ起動する)。中ならすでに見えている
+_herdr_attach_if_outside() {
+    [[ -n ${HERDR_ENV:-} ]] && return
+    herdr || {
+        local rc=$?
+        _herdr_err "herdr へ接続できません (終了状態 $rc)"
+        return $rc
+    }
+}
+
+_herdr_focus_space() {
+    herdr workspace focus "$1" >/dev/null || {
+        local rc=$?
+        _herdr_err "スペース $1 へ移動できません"
+        return $rc
+    }
+    _herdr_attach_if_outside
+}
+
+# 指定ディレクトリのスペースへ移動する。無ければ作り、herdr の外なら接続する。
+# $2 に渡したペインは探す対象から外す (hm は自分のペインを数えない)。
+_herdr_open_dir() {
+    local dir=${1:A} skip=${2:-} panes ws rc
+    # workspace create は存在しない cwd を黙ってホームに置き換えるので先に止める
+    [[ -d $dir ]] || {
+        _herdr_err "ディレクトリがありません: $dir"
+        return 1
+    }
+    if [[ -z ${HERDR_ENV:-} ]]; then
+        _herdr_server_running
+        rc=$?
+        if (( rc == 1 )); then
+            # 保存された状態があれば herdr はそれを復元し、このディレクトリのスペースは作らない
+            ( cd -q "$dir" && herdr ) || {
+                rc=$?
+                _herdr_err "herdr を起動できません (終了状態 $rc)"
+                return $rc
+            }
+            return
+        fi
+        (( rc == 0 )) || return $rc
+    fi
+    panes=$(herdr pane list) || {
+        rc=$?
+        _herdr_err "ペインの一覧を取得できません"
+        return $rc
+    }
+    # スペース名が追従する cwd で探す (foreground_cwd は一時的な子プロセスでも変わる)。
+    # 複数あれば今いるスペースを優先し、無ければ一覧の先頭へ移動する。
+    ws=$(jq -r --arg dir "$dir" --arg skip "$skip" --arg cur "${HERDR_WORKSPACE_ID:-}" '
+        [.result.panes[] | select(.cwd == $dir and .pane_id != $skip)]
+        | sort_by(.workspace_id != $cur) | .[0].workspace_id // empty' <<<"$panes") || {
+        rc=$?
+        _herdr_err "ペインの一覧を解釈できません"
+        return $rc
+    }
+    if [[ -n $ws ]]; then
+        _herdr_focus_space "$ws"
+        return
+    fi
+    # ラベルを付けると cwd に追従しなくなるので herdr の自動命名に任せる
+    herdr workspace create --cwd "$dir" --focus >/dev/null || {
+        rc=$?
+        _herdr_err "スペースを作成できません: $dir"
+        return $rc
+    }
+    _herdr_attach_if_outside
+}
+
+# cghでリポジトリを選び、そのスペースへ移動する (無ければ作る)
+hgh() {
+    _herdr_require herdr jq || return
+    local dir
+    # cgh の cd と chpwd フック (mise, zoxide) の環境変更をサブシェルに閉じ込める。
+    # フックが標準出力へ書いてもパスに混ざらない。
+    dir=$(cgh "$@" >/dev/null && print -r -- "$PWD") || return
+    _herdr_open_dir "$dir"
+}
+
+# カレントディレクトリのスペースへ移動する (無ければ作る)
+hm() {
+    _herdr_require herdr jq || return
+    _herdr_open_dir "$PWD" "${HERDR_PANE_ID:-}"
+}
+
+# herdr へ接続する (サーバーが無ければ起動する)。引数があればそのセッションへ接続する
+ha() {
+    _herdr_require herdr || return
+    if (( $# )); then
+        herdr session attach "$@" || {
+            local rc=$?
+            _herdr_err "セッション $* へ接続できません (終了状態 $rc)"
+            return $rc
+        }
+        return
+    fi
+    if [[ -n ${HERDR_ENV:-} ]]; then
+        _herdr_err "すでに herdr の中にいます。スペースの移動には hs を使ってください"
+        return 1
+    fi
+    _herdr_attach_if_outside
+}
+
+# 既存のスペース・ghq のリポジトリ・zoxide のディレクトリから選んで移動する
+hs() {
+    _herdr_require herdr jq fzf || return
+    local rc=0 spaces="" label cmd d picked kind target
+    local -a lines
+    local -A seen
+    [[ -n ${HERDR_ENV:-} ]] || { _herdr_server_running; rc=$? }
+    (( rc <= 1 )) || return $rc
+    if (( rc == 0 )); then
+        spaces=$(herdr workspace list) && spaces=$(jq -r '.result.workspaces[]
+            | ["space", .workspace_id, "space  \(.number) \(.label)"] | @tsv' <<<"$spaces") || {
+            rc=$?
+            _herdr_err "スペースの一覧を取得できません"
+            return $rc
+        }
+        [[ -n $spaces ]] && lines=("${(@f)spaces}")
+    fi
+    # 候補の形式は「種類 タブ 移動先 タブ 表示」。ghq と zoxide の重複は先に出た方を残す
+    for label cmd in 'repo ' 'ghq list -p' 'dir  ' 'zoxide query -l'; do
+        command -v "${cmd%% *}" >/dev/null 2>&1 || continue
+        for d in "${(@f)$(${=cmd} 2>/dev/null)}"; do
+            [[ -n $d && -z ${seen[$d]:-} ]] || continue
+            seen[$d]=1
+            lines+=("dir"$'\t'"$d"$'\t'"$label  ${(D)d}")
+        done
+    done
+    (( $#lines )) || {
+        _herdr_err "候補がありません"
+        return 1
+    }
+    picked=$(print -rl -- "${lines[@]}" | fzf --no-multi --delimiter=$'\t' --with-nth=3 --prompt='herdr> ') || return
+    kind=${picked%%$'\t'*}
+    target=${${picked#*$'\t'}%%$'\t'*}
+    if [[ $kind == space ]]; then
+        _herdr_focus_space "$target"
+    else
+        _herdr_open_dir "$target"
+    fi
+}
 alias ghd='gh dash'
 alias lg='lazygit'
 alias ld='lazydocker'
