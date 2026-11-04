@@ -1,7 +1,7 @@
 #!/bin/sh
 # エージェントの状態を、ペイン metadata のトークン signal (電波の強さ) として報告する。
-# 強さは本人の対応の急ぎ度。長さと高さで順序が分かり、色は config.toml の rules で付ける。
-#   blocked (入力待ち) ▁▃▅▇   done (完了) ▁▃▅   working (作業中) ▁▃   idle (待機) ▁   unknown は消す
+# 強さは本人の対応の急ぎ度。1 文字の高さで順序が分かり、色は config.toml の rules で付ける。
+#   blocked (入力待ち) ▇   done (完了) ▅   working (作業中) ▃   idle (待機) ▁   unknown は消す
 # 使い方: signal.sh event (イベントのフック) / signal.sh sync (全エージェント)
 # どんな場合も exit 0 で終わり、herdr を止めない。
 set -u
@@ -13,9 +13,9 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 report() { # pane_id status
   case "$2" in
-    blocked) v='▁▃▅▇' ;;
-    done) v='▁▃▅' ;;
-    working) v='▁▃' ;;
+    blocked) v='▇' ;;
+    done) v='▅' ;;
+    working) v='▃' ;;
     idle) v='▁' ;;
     *) v='' ;;
   esac

@@ -86,13 +86,13 @@ description = "ツリーを開いた Neovim を開く"
 [ui]
 hide_tab_bar_when_single_tab = true
 
-# サイドバーのエージェント行。先頭に $signal (電波の強さ) を出す。本人の対応が急ぎなほど長く高く、色も変える。
+# サイドバーのエージェント行。先頭に $signal (電波の強さ) を出す。本人の対応が急ぎなほど高く、色も変える。
 # 値は ~/.local/share/herdr-plugins/agent-signal (pane.agent_status_changed) がペインの metadata (signal) に報告する。
-# 状態 (herdr の agent_status) と表示の対応表。字形と長さが順序、色は種類。色だけには頼らない:
-#   blocked (入力待ち)  ▁▃▅▇  赤・太字   最優先
-#   done    (完了)      ▁▃▅   緑         次に確認する
-#   working (作業中)    ▁▃    黄         待てる
-#   idle    (待機)      ▁     灰・暗め   急ぎではない
+# 状態 (herdr の agent_status) と表示の対応表。1 文字の高さが順序、色は種類。色だけには頼らない:
+#   blocked (入力待ち)  ▇  赤・太字   最優先
+#   done    (完了)      ▅  緑         次に確認する
+#   working (作業中)    ▃  黄         待てる
+#   idle    (待機)      ▁  灰・暗め   急ぎではない
 #   unknown             表示なし
 # 字形は UDEV Gothic 35NFLG にある Block Elements (U+2581 U+2583 U+2585 U+2587)。
 # 色の rules は値の全体一致。字形を変えたら signal.sh の case と揃える
@@ -101,9 +101,9 @@ rows = [
   [
     "state_icon",
     { token = "$signal", rules = [
-      { equals = "▁▃▅▇", fg = "#ff5555", bold = true },
-      { equals = "▁▃▅", fg = "#50fa7b" },
-      { equals = "▁▃", fg = "#f1c40f" },
+      { equals = "▇", fg = "#ff5555", bold = true },
+      { equals = "▅", fg = "#50fa7b" },
+      { equals = "▃", fg = "#f1c40f" },
       { equals = "▁", fg = "#888888", dim = true },
     ] },
     "machine",
@@ -120,9 +120,9 @@ claude = [
   [
     "state_icon",
     { token = "$signal", rules = [
-      { equals = "▁▃▅▇", fg = "#ff5555", bold = true },
-      { equals = "▁▃▅", fg = "#50fa7b" },
-      { equals = "▁▃", fg = "#f1c40f" },
+      { equals = "▇", fg = "#ff5555", bold = true },
+      { equals = "▅", fg = "#50fa7b" },
+      { equals = "▃", fg = "#f1c40f" },
       { equals = "▁", fg = "#888888", dim = true },
     ] },
     "machine",
