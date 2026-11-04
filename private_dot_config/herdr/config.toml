@@ -92,7 +92,8 @@ description = "ツリーを開いた Neovim を開く"
 [ui]
 hide_tab_bar_when_single_tab = true
 
-# サイドバーのエージェント行。1 行目は「状態の点 / 電波アイコンとワークスペース名 / タブ」(例: ● 󰢼 chezmoi · 既存機…)。
+# サイドバーのエージェント行。1 行目は「状態の点 / 電波アイコンとワークスペース名」(例: ● 󰢼 chezmoi)。
+# タブ名は出さない。作業内容は 2 行目の agent (Haiku の要約) が示す。
 # herdr は値と値の間に必ず " · " を入れるので、アイコンと名前を 1 つの値 $signal_workspace にまとめて間の区切りを無くしている。
 # 値は ~/.local/share/herdr-plugins/agent-signal がペインの metadata (signal_workspace) に報告する。
 # 状態 (herdr の agent_status) とアイコン (Nerd Font の md-signal_cellular_*) の対応表。本数が本人の対応の急ぎ度で、色は state_icon が持つ:
@@ -112,7 +113,6 @@ rows = [
     "state_icon",
     "machine",
     { token = "$signal_workspace", fg = "#a6adc8", bold = true },
-    "tab",
   ],
   ["agent"],
 ]
@@ -125,7 +125,6 @@ claude = [
     "state_icon",
     "machine",
     { token = "$signal_workspace", fg = "#a6adc8", bold = true },
-    "tab",
   ],
   ["agent"],
   ["$subagents"],
