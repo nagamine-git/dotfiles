@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# herdr の Alt+G (config.toml の popup) から呼ばれる。
-# フォーカス中のペインの前面が Neovim なら、ポップアップは使わずその Neovim で :DiffviewToggle を実行する。
-# それ以外 (sim を含む) や判定に失敗したときは、従来どおり lazygit をポップアップの中で動かす。
+# herdr の Alt+G (config.toml の type = "shell") から呼ばれる。
+# フォーカス中のペインの前面が Neovim なら、ポップアップは開かずその Neovim で :LazygitFloatToggle を実行する。
+# それ以外 (sim を含む) や判定に失敗したときは、ペインの cwd で lazygit のポップアップを開く (プラグイン git-diff)。
 set -u
 
 h="${HERDR_BIN_PATH:-herdr}"
@@ -19,9 +19,16 @@ is_nvim_foreground() {
 
 if is_nvim_foreground; then
   # C-\ C-n は挿入・コマンドライン・ターミナル・演算子待ちのどのモードでもノーマルモードへ戻す (入力は残らない)
-  if "$h" pane send-text "$pane" "$(printf '\034\016:DiffviewToggle\r')" >/dev/null 2>&1; then
+  if "$h" pane send-text "$pane" "$(printf '\034\016:LazygitFloatToggle\r')" >/dev/null 2>&1; then
     exit 0
   fi
 fi
 
-exec lazygit
+# --cwd が無いとプラグインのディレクトリで開く。HERDR_ACTIVE_PANE_CWD は一番外のシェルの cwd なので、
+# 中で動くシェルなどに合わせて前面のプロセスの cwd を先に見る
+cwd=""
+if [ -n "$pane" ]; then
+  cwd="$("$h" pane get "$pane" 2>/dev/null | jq -r '.result.pane.foreground_cwd // empty' 2>/dev/null)"
+fi
+exec "$h" plugin pane open --plugin nagamine.git-diff --entrypoint lazygit \
+  --cwd "${cwd:-${HERDR_ACTIVE_PANE_CWD:-$PWD}}"

@@ -24,6 +24,13 @@ focus_pane_down = ["prefix+j", "alt+j", "alt+down"]
 focus_pane_up = ["prefix+k", "alt+k", "alt+up"]
 focus_pane_right = ["prefix+l", "alt+l", "alt+right"]
 
+# ペインの入れ替え (tilit の M-H/J/K/L)。prefix+shift+h などは herdr の既定と同じ。
+# キー名は配列の文字で判定するので、Colemak でも H/J/K/L の刻印のキーで動く
+swap_pane_left = ["prefix+shift+h", "alt+shift+h"]
+swap_pane_down = ["prefix+shift+j", "alt+shift+j"]
+swap_pane_up = ["prefix+shift+k", "alt+shift+k"]
+swap_pane_right = ["prefix+shift+l", "alt+shift+l"]
+
 # ペインの大きさ (tmux と同じ Alt+Shift+矢印。移動の Alt+矢印とぶつからない)
 resize_pane_left = "alt+shift+left"
 resize_pane_down = "alt+shift+down"
@@ -57,16 +64,15 @@ type = "plugin_action"
 command = "nagamine.last-workspace.toggle"
 description = "直前の workspace に戻る"
 
-# tilit の M-g と同じ。前面が Neovim のペインでは、ポップアップを出さずその Neovim で :DiffviewToggle を実行する
-# (開いていれば閉じる)。Neovim 以外 (sim を含む) と判定失敗のときは lazygit のポップアップ (~/.local/bin/herdr-git-diff)。
-# Neovim のときもポップアップは一瞬開いてすぐ閉じる (herdr のキー割り当てに前面プロセスで分岐する仕組みが無いため)
+# tilit の M-g と同じ。前面が Neovim のペインでは、その Neovim の中のフロートで lazygit を開閉する (:LazygitFloatToggle)。
+# Neovim 以外 (sim を含む) と判定失敗のときは lazygit のポップアップをペインの cwd で開く。
+# 分岐は ~/.local/bin/herdr-git-diff、ポップアップの定義は ~/.local/share/herdr-plugins/git-diff。
+# type = "popup" だと分岐の前に必ずポップアップが開いてしまうので shell にしている
 [[keys.command]]
 key = "alt+g"
-type = "popup"
+type = "shell"
 command = '"$HOME/.local/bin/herdr-git-diff"'
-width = "90%"
-height = "90%"
-description = "lazygit を開く (Neovim では diff を開閉)"
+description = "lazygit を開く (Neovim では中のフロートで開閉)"
 
 # ツリーを開いた Neovim。中では C-p (検索) と Space gg (diffview) も使える
 [[keys.command]]
@@ -86,47 +92,39 @@ description = "ツリーを開いた Neovim を開く"
 [ui]
 hide_tab_bar_when_single_tab = true
 
-# サイドバーのエージェント行。先頭に $signal (電波の強さ) を出す。本人の対応が急ぎなほど高く、色も変える。
-# 値は ~/.local/share/herdr-plugins/agent-signal (pane.agent_status_changed) がペインの metadata (signal) に報告する。
-# 状態 (herdr の agent_status) と表示の対応表。1 文字の高さが順序、色は種類。色だけには頼らない:
-#   blocked (入力待ち)  ▇  赤・太字   最優先
-#   done    (完了)      ▅  緑         次に確認する
-#   working (作業中)    ▃  黄         待てる
-#   idle    (待機)      ▁  灰・暗め   急ぎではない
-#   unknown             表示なし
-# 字形は UDEV Gothic 35NFLG にある Block Elements (U+2581 U+2583 U+2585 U+2587)。
-# 色の rules は値の全体一致。字形を変えたら signal.sh の case と揃える
+# サイドバーのエージェント行。1 行目は「状態の点 / 電波アイコンとワークスペース名 / タブ」(例: ● 󰢼 chezmoi · 既存機…)。
+# herdr は値と値の間に必ず " · " を入れるので、アイコンと名前を 1 つの値 $signal_workspace にまとめて間の区切りを無くしている。
+# 値は ~/.local/share/herdr-plugins/agent-signal がペインの metadata (signal_workspace) に報告する。
+# 状態 (herdr の agent_status) とアイコン (Nerd Font の md-signal_cellular_*) の対応表。本数が本人の対応の急ぎ度で、色は state_icon が持つ:
+#   blocked (入力待ち)  U+F08BE 󰢾  3 本       最優先
+#   done    (完了)      U+F08BD 󰢽  2 本       次に確認する
+#   working (作業中)    U+F08BC 󰢼  1 本       待てる
+#   idle    (待機)      U+F08BF 󰢿  枠だけ     急ぎではない
+#   unknown             アイコンなしで名前だけ
+# 字形は UDEV Gothic 35NFLG にあり、幅は半角 1 文字分。字形を変えたら signal.sh と揃える。
+# 1 つの値には 1 色しか付かず名前まで染まるので、rules で色は付けない。
+# fg と bold は既定の workspace に合わせた値 (カスタム値の既定は暗い #6c7086 で細い)。既定はフォーカス中の行だけ #cdd6f4 になるが、
+# 値ごとの指定では行の状態で変えられないので、多数を占める他の行の #a6adc8 に揃えている (フォーカス中の行は背景色で分かる)
+# プラグインが動いていない machine のペインには値が無く、名前も出ない
 [ui.sidebar.agents]
 rows = [
   [
     "state_icon",
-    { token = "$signal", rules = [
-      { equals = "▇", fg = "#ff5555", bold = true },
-      { equals = "▅", fg = "#50fa7b" },
-      { equals = "▃", fg = "#f1c40f" },
-      { equals = "▁", fg = "#888888", dim = true },
-    ] },
     "machine",
-    "workspace",
+    { token = "$signal_workspace", fg = "#a6adc8", bold = true },
     "tab",
   ],
   ["agent"],
 ]
 
 # Claude の行は、既定の 2 行の下に、実行中のサブエージェントを出す (例: ⧗2 coder, Explore)。
-# 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する。rows_by_agent は rows を置き換えるので $signal も書く
+# 値は ~/.claude/hooks/herdr-subagents.sh がペインの metadata (subagents) に報告する。rows_by_agent は rows を置き換えるので $signal_workspace も書く
 [ui.sidebar.agents.rows_by_agent]
 claude = [
   [
     "state_icon",
-    { token = "$signal", rules = [
-      { equals = "▇", fg = "#ff5555", bold = true },
-      { equals = "▅", fg = "#50fa7b" },
-      { equals = "▃", fg = "#f1c40f" },
-      { equals = "▁", fg = "#888888", dim = true },
-    ] },
     "machine",
-    "workspace",
+    { token = "$signal_workspace", fg = "#a6adc8", bold = true },
     "tab",
   ],
   ["agent"],

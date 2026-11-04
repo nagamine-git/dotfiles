@@ -1,0 +1,16 @@
+# herdr の Alt+G (~/.local/bin/herdr-git-diff) が開く lazygit のポップアップ。
+# keys.command の type = "popup" はキーを押した時点で開いてしまうので、前面で分岐できるようプラグインの入口にしている。
+# 登録は run_onchange_after_herdr-plugins.sh.tmpl
+id = "nagamine.git-diff"
+name = "Git diff"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "lazygit"
+title = "lazygit"
+placement = "popup"
+width = "90%"
+height = "90%"
+command = ["lazygit"]

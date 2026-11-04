@@ -419,8 +419,16 @@ hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"))
 -- === WINDOW OPERATIONS ===
 hl.bind(mainMod .. " + f", hl.dsp.window.fullscreen({ mode = "maximized" }))
 hl.bind(mainMod .. " + SHIFT + f", hl.dsp.window.fullscreen())
--- Alt+M: maximize トグル (tmux 内では tmux 側に吸われて pane zoom、tmux 外なら Hyprland maximize)
-hl.bind("ALT + m", hl.dsp.window.fullscreen({ mode = "maximized" }))
+-- Alt+M: 前面が端末ならキーをそのまま端末へ渡す (中の herdr が zoom する)。それ以外のアプリでは maximize トグル。
+-- pass_event は押下と離しの両方を修飾キーごと届ける。Ghostty のクラスは既定の com.mitchellh.ghostty
+local passAltMClasses = { ["foot"] = true, ["footclient"] = true, ["com.mitchellh.ghostty"] = true }
+hl.bind("ALT + m", function()
+    local window = hl.get_active_window()
+    if window and passAltMClasses[window.class] then
+        return { pass_event = true }
+    end
+    return hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized" }))
+end)
 hl.bind(mainMod .. " + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + tab", hl.dsp.focus({ urgent_or_last = true }))
 hl.bind(mainMod .. " + p", hl.dsp.exec_cmd([[hyprctl clients -j | jq -r '.[] | select(.mapped == true) | select(.workspace.id > 0) | "[\(.workspace.id)] \(.class): \(.title // "No Title")"' | rofi -dmenu -p "ウィンドウ検索" | cut -d'|' -f1 | xargs -I {} hyprctl dispatch "hl.dsp.focus({ window = 'address:{}' })"]]))
