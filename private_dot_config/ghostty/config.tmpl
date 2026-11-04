@@ -7,6 +7,24 @@ font-feature = -calt
 theme = Gruvbox Material
 # Option キーを Alt として送信 (tmux の M-m 最大化トグル等の M- バインドに必須)
 macos-option-as-alt = true
+# Cmd+数字を herdr の space 切り替えに渡す。既定のタブ切り替えは super+N と super+digit_N の両方にある (9 は super+9 だけ)
+keybind = super+1=unbind
+keybind = super+digit_1=unbind
+keybind = super+2=unbind
+keybind = super+digit_2=unbind
+keybind = super+3=unbind
+keybind = super+digit_3=unbind
+keybind = super+4=unbind
+keybind = super+digit_4=unbind
+keybind = super+5=unbind
+keybind = super+digit_5=unbind
+keybind = super+6=unbind
+keybind = super+digit_6=unbind
+keybind = super+7=unbind
+keybind = super+digit_7=unbind
+keybind = super+8=unbind
+keybind = super+digit_8=unbind
+keybind = super+9=unbind
 {{- else }}
 theme = Hybrid
 # Linux の Ghostty は既定で Alt+1..9 を自分のタブ切り替えに使う。herdr の N 番目のエージェント (focus_agent) に届くよう外す。

@@ -1,18 +1,38 @@
 #!/bin/bash
+# tmux:  claude-notify-focus <session> <window> <pane>
+# herdr: claude-notify-focus --herdr <workspace_id> <tab_id> <pane_id> [space 名]
 set -euo pipefail
 
-session="${1:-}"
-window="${2:-}"
-pane="${3:-}"
+if [ "${1:-}" = "--herdr" ]; then
+  workspace="${2:-}"
+  tab="${3:-}"
+  pane="${4:-}"
+  # Ghostty のウィンドウを探す文字列。herdr は既定で端末のタイトルに space 名を出す
+  session="${5:-}"
 
-[ -z "$session" ] && exit 1
-[ -z "$window" ] && exit 1
-[ -z "$pane" ] && exit 1
+  [ -z "$workspace" ] && exit 1
 
-if tmux has-session -t "$session" 2>/dev/null; then
-  tmux switch-client -t "${session}:${window}" 2>/dev/null || true
-  tmux select-window -t "${session}:${window}" 2>/dev/null || true
-  tmux select-pane -t "${session}:${window}.${pane}" 2>/dev/null || true
+  herdr_bin="${HERDR_BIN_PATH:-herdr}"
+  # agent focus は space とタブごとそのペインへ移る (CLI の pane focus は隣へ動くだけ)。
+  # ペインに Claude がもういなければタブへ、タブも閉じていれば space へ移る
+  "$herdr_bin" agent focus "$pane" >/dev/null 2>&1 \
+    || "$herdr_bin" tab focus "$tab" >/dev/null 2>&1 \
+    || "$herdr_bin" workspace focus "$workspace" >/dev/null 2>&1 \
+    || true
+else
+  session="${1:-}"
+  window="${2:-}"
+  pane="${3:-}"
+
+  [ -z "$session" ] && exit 1
+  [ -z "$window" ] && exit 1
+  [ -z "$pane" ] && exit 1
+
+  if tmux has-session -t "$session" 2>/dev/null; then
+    tmux switch-client -t "${session}:${window}" 2>/dev/null || true
+    tmux select-window -t "${session}:${window}" 2>/dev/null || true
+    tmux select-pane -t "${session}:${window}.${pane}" 2>/dev/null || true
+  fi
 fi
 
 if command -v hyprctl >/dev/null 2>&1; then

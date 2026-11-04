@@ -49,6 +49,24 @@ if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
 fi
 [ -n "$pane_target" ] || pane_target="no-tmux"
 
+# ---- herdr の位置 ---------------------------------------------------------
+# 取れなければ space の行を出さないだけで、通知は止めない
+herdr_workspace=""; herdr_tab=""; herdr_pane=""; space_name=""; space_num=""
+if [ "${HERDR_ENV:-}" = "1" ] && command -v jq >/dev/null 2>&1; then
+  herdr_bin="${HERDR_BIN_PATH:-herdr}"
+  # ペインを別の space へ移すと環境変数の ID は古くなるので、今の所属を herdr に聞く
+  pane_json="$("$herdr_bin" pane current --current 2>/dev/null || true)"
+  herdr_workspace="$(printf '%s' "$pane_json" | jq -r '.result.pane.workspace_id // empty' 2>/dev/null || true)"
+  herdr_tab="$(printf '%s' "$pane_json" | jq -r '.result.pane.tab_id // empty' 2>/dev/null || true)"
+  herdr_pane="$(printf '%s' "$pane_json" | jq -r '.result.pane.pane_id // empty' 2>/dev/null || true)"
+  if [ -n "$herdr_workspace" ]; then
+    space_json="$("$herdr_bin" workspace get "$herdr_workspace" 2>/dev/null || true)"
+    # 名前は ntfy のタイトル (HTTP ヘッダー) にも使うので制御文字を除く
+    space_name="$(printf '%s' "$space_json" | jq -r '.result.workspace.label // empty | gsub("[[:cntrl:]]"; "")' 2>/dev/null || true)"
+    space_num="$(printf '%s' "$space_json" | jq -r '.result.workspace.number // empty' 2>/dev/null || true)"
+  fi
+fi
+
 # ---- 本文 -------------------------------------------------------------------
 summary="Claude Code"
 body=""
@@ -75,6 +93,25 @@ esac
 
 project="$(basename "${cwd:-/}")"
 meta="target: ${pane_target}"
+if [ -n "$space_name" ]; then
+  # 本文は %b と notify-send がバックスラッシュを展開するので、名前の分は二重にする
+  space_line="space: $(printf '%s' "$space_name" | sed 's/\\/\\\\/g' || true)"
+  # switch_workspace のキーが効くのは 1..9 だけ
+  case "$space_num" in
+    [1-9])
+      if [ "$(uname -s)" = "Darwin" ]; then
+        space_line="$space_line (⌘$space_num)"
+      else
+        space_line="$space_line (Ctrl+$space_num)"
+      fi
+      ;;
+  esac
+  if [ "$pane_target" = "no-tmux" ]; then
+    meta="$space_line"
+  else
+    meta="$space_line\n$meta"
+  fi
+fi
 [ -n "$cwd" ] && meta="$meta\ncwd: $cwd"
 full_body="$body\n$meta"
 
@@ -110,7 +147,7 @@ push_phone() {
   esac
   # 本文は外部由来 (返答本文など)。-d だと先頭 @ でローカルファイルを送るため stdin から渡す
   printf '%s' "$body" | curl -fsS -m 8 \
-    -H "Title: ${summary} [${project} @ $(hostname -s)]" \
+    -H "Title: ${summary} [${space_name:-$project} @ $(hostname -s)]" \
     -H "Priority: ${prio}" -H "Tags: ${tags}" \
     --data-binary @- \
     "${NTFY_SERVER%/}/${NTFY_TOPIC}" >/dev/null 2>&1 || true
@@ -125,6 +162,9 @@ if command -v notify-send >/dev/null 2>&1; then
   if notify-send -A focus=Focus --app-name="Claude Code" --icon=dialog-information --expire-time=15000 --wait "$summary" "$full_body" >"$action_file" 2>/dev/null; then
     action="$(cat "$action_file" 2>/dev/null || true)"
     rm -f "$action_file"
+    if [ "$action" = "focus" ] && [ -n "$herdr_workspace" ]; then
+      "$HOME/.local/bin/claude-notify-focus" --herdr "$herdr_workspace" "$herdr_tab" "$herdr_pane" "$space_name" >/dev/null 2>&1 || true
+    fi
     if [ "$action" = "focus" ] && [ -n "$session" ] && [ -n "$window" ] && [ -n "$pane" ]; then
       "$HOME/.local/bin/claude-notify-focus" "$session" "$window" "$pane" >/dev/null 2>&1 || true
     fi

@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -9,9 +10,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "dot_local/bin/executable_herdr-git-diff"
-CONFIG = ROOT / "private_dot_config/herdr/config.toml"
+CONFIG = ROOT / "private_dot_config/herdr/config.toml.tmpl"
 MANIFEST = ROOT / "dot_local/share/herdr-plugins/git-diff/herdr-plugin.toml"
 NVIM_INIT = ROOT / "private_dot_config/nvim/init.lua.tmpl"
+CHEZMOI = shutil.which("chezmoi")
 
 FAKE_HERDR = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -31,6 +33,15 @@ elif args[:2] == ['pane', 'send-text']:
 FAKE_LAZYGIT = '''#!/bin/sh
 echo run >> "$FAKE_DIR/lazygit.log"
 '''
+
+
+def render_config(os_name):
+    """OS で分岐するテンプレートなので、描画してから読む。--source が無いと本体のソースを読んでしまう。"""
+    rendered = subprocess.run(
+        [CHEZMOI, "--source", str(ROOT), "execute-template",
+         "--override-data", json.dumps({"chezmoi": {"os": os_name}})],
+        input=CONFIG.read_text(), capture_output=True, text=True, check=True)
+    return tomllib.loads(rendered.stdout)
 
 
 class HerdrGitDiff(unittest.TestCase):
@@ -113,12 +124,20 @@ class HerdrGitDiff(unittest.TestCase):
 class Wiring(unittest.TestCase):
     """スクリプトが呼ぶ名前と、それを定義する設定を揃える。"""
 
+    @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
     def test_alt_g_is_shell_command(self):
-        commands = tomllib.loads(CONFIG.read_text())["keys"]["command"]
-        alt_g = [c for c in commands if c["key"] == "alt+g"]
-        self.assertEqual(len(alt_g), 1)
-        self.assertEqual(alt_g[0]["type"], "shell")
-        self.assertIn("herdr-git-diff", alt_g[0]["command"])
+        for os_name in ("linux", "darwin"):
+            with self.subTest(os=os_name):
+                commands = render_config(os_name)["keys"]["command"]
+                alt_g = [c for c in commands if c["key"] == "alt+g"]
+                self.assertEqual(len(alt_g), 1)
+                self.assertEqual(alt_g[0]["type"], "shell")
+                self.assertIn("herdr-git-diff", alt_g[0]["command"])
+
+    @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
+    def test_switch_workspace_follows_os(self):
+        self.assertEqual(render_config("linux")["keys"]["switch_workspace"], "ctrl+1..9")
+        self.assertEqual(render_config("darwin")["keys"]["switch_workspace"], "cmd+1..9")
 
     def test_plugin_entrypoint_is_90_percent_popup(self):
         manifest = tomllib.loads(MANIFEST.read_text())

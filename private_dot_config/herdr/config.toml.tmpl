@@ -1,5 +1,6 @@
 # herdr のキー設定。tmux (dot_tmux.conf.tmpl と tmux-tilit) のよく使うキーのうち、今の tmux より多くの入力を
 # 奪わないものだけを移している。herdr に同じ操作が無い自動整列・直前の workspace・ポップアップは [[keys.command]] で足す。
+# space の切り替えは tmux に無かったキーを足す例外。Mac の Cmd+数字はアプリに届かないキー、Linux の Ctrl+数字はアプリがほとんど使わないキー。
 # 確認: herdr config check / 反映: herdr server reload-config
 
 # 初回案内を済ませた状態。無いと起動時に案内が出る (進めると herdr がこの行を書き戻す)
@@ -42,7 +43,12 @@ resize_pane_right = "alt+shift+right"
 # Linux の Ghostty は既定で Alt+1..9 を自分のタブ切り替えに使うので、ghostty/config.tmpl で外している
 switch_tab = "prefix+1..9"
 focus_agent = "alt+1..9"
+# Mac の Cmd+数字は Ghostty の既定のタブ切り替えを外して使う (ghostty/config.tmpl)
+{{- if eq .chezmoi.os "darwin" }}
+switch_workspace = "cmd+1..9"
+{{- else }}
 switch_workspace = "ctrl+1..9"
+{{- end }}
 
 # tmux の Alt+f (fzf で window を選ぶ) を herdr の Go To に割り当てる。Go To はエージェントを状態で絞り込める。
 # Mac では Option+→ も ESC f になるので Go To が開く (tmux で fzf が開くのと同じ)
@@ -91,6 +97,12 @@ description = "ツリーを開いた Neovim を開く"
 # タブが 1 つの workspace ではタブの行を出さない
 [ui]
 hide_tab_bar_when_single_tab = true
+# エージェントの一覧を space ごとではなく、注意が必要な順に並べる
+agent_panel_sort = "priority"
+
+# ポップアップは出さない。デスクトップ通知は claude-notify が出す
+[ui.toast]
+delivery = "off"
 
 # サイドバーのエージェント行。1 行目は「状態の点とワークスペース名」(例: ● chezmoi)。
 # タブ名は出さない。作業内容は 2 行目の agent (Haiku の要約) が示す。
