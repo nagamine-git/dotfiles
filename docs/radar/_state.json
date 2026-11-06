@@ -1,56 +1,6 @@
 {
-  "last_run": "2026-11-05",
+  "last_run": "2026-11-06",
   "seen": [
-    {
-      "tool": "niri/river/sway",
-      "decided_at": "2026-10-19",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、niriは依然v26.04のまま"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
-      "decided_at": "2026-10-19",
-      "decision": "⌀ [確認済] Codex CLIはrust-v0.164.0-alpha.6まで進行(アルファ)、通常アップデートの範囲"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-10-19",
-      "decision": "⌀ [推定] 期間内固有のリリースは見つからず、既存の参照サーバー群から変化なし"
-    },
-    {
-      "tool": "chezmoi v2.73.3 (Go 1.27.3リビルド、セキュリティ修正)",
-      "decided_at": "2026-10-20",
-      "decision": "★★ [確認済] 本リポジトリを管理するchezmoi本体のセキュリティ修正、全マシン対象"
-    },
-    {
-      "tool": "Claude Code v2.1.305 (サブエージェントがフォールバックモデルに切り替わった後にモデル名を誤表示する不具合修正)",
-      "decided_at": "2026-10-20",
-      "decision": "★★ [確認済] 本セッション自身のclaude-opus-5-5[1m]/claude-opus-5[1m]フォールバック構成とdot_claude/agents配下のサブエージェントに関係"
-    },
-    {
-      "tool": "Claude Code v2.1.305 (Workflow resumeがpipeline()/parallel()の完了済みagentをジャーナルを使わず再実行する不具合修正)",
-      "decided_at": "2026-10-20",
-      "decision": "★★ [確認済] resumeFromRunIdによるキャッシュ再利用がpipeline/parallelで機能していなかった穴を解消"
-    },
-    {
-      "tool": "Claude Code v2.1.305 (sandbox.allowNestedUserNamespaces追加・MCP consent dialog Enter誤操作防止・サブエージェントworktree未削除修正等)",
-      "decided_at": "2026-10-20",
-      "decision": "⌀ [確認済] 本リポジトリのsandbox設定・WorktreeCreate hookには現状直撃しない、情報記録のみ"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-20",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-20",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、依然v1.3.1のまま未リリース"
-    },
-    {
-      "tool": "lazygit v0.66.2 最新版確認",
-      "decided_at": "2026-10-20",
-      "decision": "⌀ [確認済] GitHub Releases直接確認、10/17判定から変化なし"
-    },
     {
       "tool": "freee-mcp v0.37.1 最新版確認",
       "decided_at": "2026-10-20",
@@ -1000,6 +950,56 @@
       "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-11-05",
       "decision": "⌀ [不明] 11月固有の新着記事は見つからず"
+    },
+    {
+      "tool": "Claude Code v2.1.319 (auto mode既定動作変更: サーバー判定不能な呼び出しはclassifierフォールバック廃止で拒否優先に・permissions.denyInsteadOfPrompting追加・モデル変更+auto mode連続リクエスト誤拒否修正等)",
+      "decided_at": "2026-11-06",
+      "decision": "★★★ [確認済] dot_zshrcのccnimゲートウェイ経由auto mode運用とdefaultMode: autoのクラウドスケジュールタスク(本radar自身)に直撃"
+    },
+    {
+      "tool": "Hyprland/Ghostty/niri/helix/jj/zellij/lazygit/chezmoi/blink.cmp 最新版確認",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、11/05判定から変化なし"
+    },
+    {
+      "tool": "Tailscale v1.104.5 (v1.105.0-preはプレリリース)",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、安定版の新タグなし"
+    },
+    {
+      "tool": "freee-mcp v0.37.11 最新版確認",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、変化なし。無効化済みのため優先度低い"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [確認済] WebSearchでも11月版の発表未確認、直近は依然8月版"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [不明] WebSearchでも11月固有の反映情報見つからず、前回判定維持"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [不明] 11月固有の公式リリース情報特定できず。OpenAI-Cursorモデル契約終了報道(11/12)は本環境のcursor=VS Codeエイリアスには直撃なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [推定] 話題性のある新規実用サーバー確認できず"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-06",
+      "decision": "⌀ [不明] 11月固有の新着記事見つからず"
     }
   ]
 }
