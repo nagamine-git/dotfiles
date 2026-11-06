@@ -37,7 +37,6 @@ require("workspaces")
 {{- if or (ne $virt "none") (eq $disc "no") -}}{{- $terminal = "foot" -}}{{- end -}}
 {{- $terminal = env "CHEZMOI_TERMINAL" | default $terminal -}}
 {{- $browser := "google-chrome-stable" -}}
-{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $browser = "brave-origin" -}}{{- end -}}
 local terminal = "{{ $terminal }}"
 local fileManager = "thunar"
 local menu = "rofi -show drun"
