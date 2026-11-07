@@ -94,40 +94,8 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return
 }
 
-# cghと同じ挙動後、tmuxセッションを開始（名前はセッションのみ）
-tgh() {
-    cgh "$@" && {
-        local parent_dir=$(basename $(dirname $PWD))
-        local current_dir=$(basename $PWD | tr '.:' '_')
-        local name="${parent_dir}/${current_dir}"
-        local is_first_session=false
-        # Check if tmux server is running
-        if ! tmux list-sessions >/dev/null 2>&1; then
-            is_first_session=true
-        fi
-        if [ -n "$TMUX" ]; then
-            tmux new-session -d -s "$name" -c "$PWD"
-            tmux switch-client -t "$name"
-        else
-            tmux new-session -s "$name" -c "$PWD"
-        fi
-        # If this was the first session, prompt for rename
-        if $is_first_session; then
-            echo -n "セッション名を変更する? (y/N): "
-            read -r ans
-            if [[ "$ans" =~ ^[Yy]$ ]]; then
-                echo -n "New name: "
-                read -r new_name
-                if [ -n "$new_name" ]; then
-                    tmux rename-session -t "$name" "$new_name"
-                fi
-            fi
-        fi
-    }
-}
-
-# herdr 版の tgh / tm / ta / s。herdr の自動命名はペインの cwd に追従するので、
-# 呼び出し元のスペース名が変わらないよう、どの関数もこのシェルの cwd を変えない。
+# herdr の space を開く hgh / hm / ha / hs (tmux 版の tgh / tm / ta / s の後継)。
+# herdr の自動命名はペインの cwd に追従するので、呼び出し元のスペース名が変わらないよう、どの関数もこのシェルの cwd を変えない。
 _herdr_err() {
     print -ru2 -- "${funcstack[-1]}: $*"
 }
@@ -302,43 +270,6 @@ hs() {
 alias ghd='gh dash'
 alias lg='lazygit'
 alias ld='lazydocker'
-
-# sesh: tmux/zoxide/ghq/設定済 を横断する fzf セッションランチャー
-# tm/tgh/cgh より広い検索範囲を 1 コマンドで。新規シェルでも tmux 内でも動く。
-s() {
-    local session
-    session=$(sesh list --icons 2>/dev/null | \
-        fzf-tmux -p 60%,60% --no-sort --ansi \
-            --border-label ' sesh ' --prompt '⚡ ' \
-            --header '^a all  ^t tmux  ^g configs  ^x zoxide  ^d tmux-kill' \
-            --bind 'tab:down,btab:up' \
-            --bind 'ctrl-a:change-prompt(⚡ )+reload(sesh list --icons)' \
-            --bind 'ctrl-t:change-prompt(🪟 )+reload(sesh list -t --icons)' \
-            --bind 'ctrl-g:change-prompt(⚙  )+reload(sesh list -c --icons)' \
-            --bind 'ctrl-x:change-prompt(📁 )+reload(sesh list -z --icons)' \
-            --bind 'ctrl-d:execute(tmux kill-session -t {2..})+change-prompt(⚡ )+reload(sesh list --icons)')
-    [ -z "$session" ] && return
-    sesh connect "$session"
-}
-
-# カレントディレクトリでtmuxセッションを開始（名前はセッションのみ）
-tm() {
-    local name=$(basename $PWD | tr '.:' '_')
-    local is_first_session=false
-    # Check if tmux server is running
-    if ! tmux list-sessions >/dev/null 2>&1; then
-        is_first_session=true
-    fi
-    if [ -n "$TMUX" ]; then
-        tmux new-session -d -s "$name" -c "$PWD"
-        tmux switch-client -t "$name"
-    else
-        tmux new-session -s "$name" -c "$PWD"
-    fi
-}
-
-# tmux attachのエイリアス
-alias ta='tmux attach'
 
 # Cursorの実行
 code() {
