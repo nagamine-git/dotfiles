@@ -53,8 +53,6 @@ wolow-companion
 .config/xdg-desktop-portal/**
 .config/foot
 .config/foot/**
-.config/autokey
-.config/autokey/**
 .config/darkman
 .config/darkman/**
 .config/fcitx5
@@ -73,9 +71,7 @@ wolow-companion
 .config/gtk-3.0/**
 .config/pacman
 .config/pacman/**
-.config/cursor-flags.conf
 .config/electron-flags.conf
-.config/electron27-flags.conf
 
 .local/share/applications
 .local/share/applications/**
