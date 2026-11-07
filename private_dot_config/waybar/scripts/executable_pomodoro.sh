@@ -3,9 +3,7 @@
 # icon sets
 fill="⣿"                                    # full bar
 partials=(⣿ ⣷ ⣶ ⣦ ⣤ ⣄ ⣀ ⡀)
-empty="⣿"               # base char for empty segment
 empty_markup="<span foreground='#eceff450'>⣿</span>"  # light grey full block
-total_seg=6             # 8-step fade from full→empty
 
 min=$(date +%M)
 min=$((10#$min))                              # strip leading zero

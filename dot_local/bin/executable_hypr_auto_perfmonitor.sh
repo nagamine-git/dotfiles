@@ -86,8 +86,8 @@ get_current_mode() {
 
 # === CPU使用率取得（より正確） ===
 get_cpu_usage() {
-    local _cpu user nice system idle iowait irq softirq steal guest guest_nice
-    read -r _cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
+    local _cpu user nice system idle iowait irq softirq steal _guest _guest_nice
+    read -r _cpu user nice system idle iowait irq softirq steal _guest _guest_nice < /proc/stat
 
     local idle_all=$((idle + iowait))
     local non_idle=$((user + nice + system + irq + softirq + steal))
@@ -100,7 +100,7 @@ get_cpu_usage() {
 
         # Take a second sample immediately so one-shot status calls get a real value
         sleep 0.25
-        read -r _cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
+        read -r _cpu user nice system idle iowait irq softirq steal _guest _guest_nice < /proc/stat
 
         idle_all=$((idle + iowait))
         non_idle=$((user + nice + system + irq + softirq + steal))
@@ -408,7 +408,7 @@ case "${1:-start}" in
         echo "🧪 Testing sensors and detection..."
         echo "CPU Usage: $(get_cpu_usage)%"
         echo "CPU Temp: $(get_cpu_temp)°C"
-        echo "Load Average: $(cat /proc/loadavg | cut -d' ' -f1)"
+        echo "Load Average: $(cut -d' ' -f1 /proc/loadavg)"
         echo "Top CPU: $(top -bn1 | grep "Cpu(s)")"
         echo "Sensors:"
         sensors 2>/dev/null | grep -i temp || echo "No sensors found"

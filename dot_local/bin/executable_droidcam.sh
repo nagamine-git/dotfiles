@@ -35,7 +35,7 @@ if command -v v4l2-ctl >/dev/null 2>&1; then
 
         for device in $loopback_devices; do
             if [ -e "$device" ]; then
-                device_num=$(echo "$device" | sed 's|/dev/video||')
+                device_num=${device/\/dev\/video/}
                 if [ "$device_num" -gt "$max_num" ]; then
                     max_num=$device_num
                     latest_device="$device"
@@ -49,7 +49,7 @@ fi
 if [ -z "$latest_device" ]; then
     for device in /dev/video*; do
         if [ -e "$device" ] && [ -c "$device" ] && [ -r "$device" ]; then
-            device_num=$(echo "$device" | sed 's|/dev/video||')
+            device_num=${device/\/dev\/video/}
             if [ "$device_num" -gt "$max_num" ]; then
                 max_num=$device_num
                 latest_device="$device"

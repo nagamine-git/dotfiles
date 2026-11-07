@@ -4,7 +4,7 @@
 COUNT=5
 INTERVAL=0.01
 
-for i in $(seq 1 $COUNT); do
+for _ in $(seq 1 $COUNT); do
   hyprsunset -t 10000 &
   sleep "$INTERVAL"
   pkill -x hyprsunset 2>/dev/null || true
