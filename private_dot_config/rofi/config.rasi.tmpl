@@ -2,7 +2,8 @@
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 /*
- * rofi theme — Raycast/Spotlight 風ランチャー
+ * rofi theme — rofi -dmenu の選択画面 (waybar の Exit Node、Ctrl+Super+V のクリップボード履歴)。
+ * ランチャー (Super+Space) は Vicinae に移した
  *
  * 設計の根拠:
  *  - 文字サイズは 1.25 の等比スケール: 本文 13 / 入力欄 16 (入力欄を焦点にする)
@@ -25,12 +26,8 @@
  *  実測値: アイコン 26 論理px / 行ピッチ 57.3 論理px / 12 行で高さ 775 論理px。
  */
 configuration {
-    modi: "drun,run,window";
     show-icons: true;
     icon-theme: "Adwaita";
-    display-drun: "アプリ検索";
-    display-run: "コマンド実行";
-    display-window: "ウィンドウ";
 
     matching: "fuzzy";
     case-sensitive: false;
@@ -38,12 +35,6 @@ configuration {
        完全一致の Zeed が下の方に埋もれる */
     sort: true;
     sorting-method: "fzf";
-
-    /* drun の照合対象を名前系だけに絞る。既定は name,generic,exec,categories,keywords
-       で、Zeed 製の PWA は Exec に "zeed" を含むため "zeed" と打つと無関係な
-       アプリまで全部ヒットしていた */
-    drun-match-fields: "name,generic";
-    window-match-fields: "title,class";
 
     cycle: true;
     sidebar-mode: false;
@@ -117,8 +108,8 @@ mainbox {
     children: [ "inputbar", "listview", "message" ];
 }
 
-/* prompt を children から外すことでモード名 ("unified" 等) を表示しない。
-   Spotlight/Raycast と同じく、案内は entry の placeholder のみに任せる */
+/* prompt を children から外すことでモード名や -p の文字を表示しない。
+   案内は entry の placeholder のみに任せる */
 inputbar {
     margin: 0px 0px 8px 0px;
     padding: 12px 16px;
@@ -130,7 +121,7 @@ inputbar {
 entry {
     font: "{{ $f.ui }} 16";
     text-color: @fg;
-    placeholder: "何でも検索…";
+    placeholder: "検索…";
     placeholder-color: @fg-dim;
     cursor: text;
     vertical-align: 0.5;

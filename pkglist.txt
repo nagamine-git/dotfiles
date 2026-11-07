@@ -18,9 +18,8 @@ brave-bin
 zeed-bin
 # ランチャー (AUR)。Super+Space で開く。設定は ~/.config/vicinae
 vicinae-bin
+# rofi -dmenu は waybar の Exit Node の選択と Ctrl+Super+V のクリップボード履歴で使う
 rofi
-rofi-calc
-rofi-emoji
 gnome-keyring
 playerctl
 brightnessctl
