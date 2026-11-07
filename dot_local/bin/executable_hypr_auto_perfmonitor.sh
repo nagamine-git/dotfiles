@@ -136,7 +136,7 @@ get_cpu_usage() {
 # === CPU温度取得（複数ソース対応） ===
 get_cpu_temp() {
     local temp=0
-    
+
     # AMD Ryzen系 (k10temp)
     if [[ -f /sys/class/hwmon/hwmon1/temp1_input ]]; then
         temp=$(cat /sys/class/hwmon/hwmon1/temp1_input 2>/dev/null || echo 0)
@@ -153,7 +153,7 @@ get_cpu_temp() {
     else
         temp=$(sensors 2>/dev/null | grep -i 'temp1' | head -1 | awk '{print $2}' | sed 's/+//;s/°C//' | cut -d. -f1 2>/dev/null || echo 0)
     fi
-    
+
     echo "$temp"
 }
 
@@ -162,7 +162,7 @@ update_status_file() {
     local mode="$1"
     local cpu_usage="$2"
     local cpu_temp="$3"
-    
+
     # モード表示用のアイコン
     local mode_icon
     if [[ "$mode" == "performance" ]]; then
@@ -170,7 +170,7 @@ update_status_file() {
     else
         mode_icon="🌈"
     fi
-    
+
     # waybar用のJSON形式でステータスを出力
     cat > "$STATUS_FILE" << EOF
 {
@@ -197,9 +197,9 @@ switch_to_performance() {
     local current_mode
     current_mode=$(get_current_mode)
     [[ "$current_mode" == "performance" ]] && return 0
-    
+
     log "Switching to PERFORMANCE mode (CPU: ${cpu_usage}%, Temp: ${cpu_temp}°C)"
-    
+
     # Hyprland設定変更
     if ! hyprctl --batch "$HYPR_PERFORMANCE_BATCH" >/dev/null 2>&1; then
         log "hyprctl performance batch failed"
@@ -212,12 +212,12 @@ switch_to_performance() {
 
     touch "$STATE_FILE"
     update_status_file "performance" "$cpu_usage" "$cpu_temp"
-    
+
     # 通知のクールダウンチェック
     local last_notification_file=/tmp/hypr_perf_last_notification
     local current_time
     current_time=$(date +%s)
-    
+
     if [[ ! -f "$last_notification_file" ]] || \
        [[ $((current_time - $(cat "$last_notification_file" 2>/dev/null || echo 0))) -gt $NOTIFICATION_COOLDOWN ]]; then
         notify-send "System Monitor" "🚀 パフォーマンスモード ON (CPU: ${cpu_usage}%)" -u low
@@ -239,9 +239,9 @@ switch_to_normal() {
     local current_mode
     current_mode=$(get_current_mode)
     [[ "$current_mode" == "normal" ]] && return 0
-    
+
     log "Switching to NORMAL mode (CPU: ${cpu_usage}%, Temp: ${cpu_temp}°C)"
-    
+
     # Hyprland設定変更
     if ! hyprctl --batch "$HYPR_NORMAL_BATCH" >/dev/null 2>&1; then
         log "hyprctl normal batch failed"
@@ -254,12 +254,12 @@ switch_to_normal() {
 
     rm -f "$STATE_FILE"
     update_status_file "normal" "$cpu_usage" "$cpu_temp"
-    
+
     # 通知のクールダウンチェック
     local last_notification_file=/tmp/hypr_perf_last_notification
     local current_time
     current_time=$(date +%s)
-    
+
     if [[ ! -f "$last_notification_file" ]] || \
        [[ $((current_time - $(cat "$last_notification_file" 2>/dev/null || echo 0))) -gt $NOTIFICATION_COOLDOWN ]]; then
         notify-send "System Monitor" "🌈 通常モード (CPU: ${cpu_usage}%)" -u low
@@ -270,22 +270,22 @@ switch_to_normal() {
 # === メイン監視ループ ===
 main_monitor_loop() {
     log "Starting performance monitor (PID: $$)"
-    
+
     local consecutive_high=0
     local consecutive_normal=0
-    
+
     while true; do
         local cpu_usage cpu_temp current_mode
         cpu_usage=$(get_cpu_usage)
         cpu_temp=$(get_cpu_temp)
         current_mode=$(get_current_mode)
-        
+
         # 現在のステータスをwaybar用ファイルに更新（毎回更新）
         update_status_file "$current_mode" "$cpu_usage" "$cpu_temp"
-        
+
         # 判定ロジック（シンプル化）
         local should_be_performance=false
-        
+
         # CPU温度が高い場合は必ずパフォーマンスモード
         if [[ $cpu_temp -gt $TEMP_THRESHOLD ]]; then
             should_be_performance=true
@@ -297,22 +297,22 @@ main_monitor_loop() {
         elif (( $(echo "$cpu_usage < $CPU_LOW_THRESHOLD" | bc -l 2>/dev/null || echo "0") )); then
             should_be_performance=false
         fi
-        
+
         # モード切り替えの判定（ヒステリシス）
         if [[ "$current_mode" == "normal" ]] && [[ "$should_be_performance" == "true" ]]; then
             ((consecutive_high += 1))
             consecutive_normal=0
-            
+
             # 2回連続で高負荷を検出したら切り替え
             if [[ $consecutive_high -ge 2 ]]; then
                 switch_to_performance "$cpu_usage" "$cpu_temp"
                 consecutive_high=0
             fi
-            
+
         elif [[ "$current_mode" == "performance" ]] && [[ "$should_be_performance" == "false" ]]; then
             ((consecutive_normal += 1))
             consecutive_high=0
-            
+
             # 3回連続で低負荷を検出したら切り替え
             if [[ $consecutive_normal -ge 3 ]]; then
                 switch_to_normal "$cpu_usage" "$cpu_temp"
@@ -322,12 +322,12 @@ main_monitor_loop() {
             consecutive_high=0
             consecutive_normal=0
         fi
-        
+
         # デバッグ用ログ出力（1分毎）
         if [[ $(($(date +%s) % 60)) -lt $MONITOR_INTERVAL ]]; then
             log "Status: mode=$current_mode, CPU=${cpu_usage}%, temp=${cpu_temp}°C, consec_high=$consecutive_high, consec_normal=$consecutive_normal"
         fi
-        
+
         sleep "$MONITOR_INTERVAL"
     done
 }
@@ -342,7 +342,7 @@ Options:
   status    Show current status
   log       Show recent log entries
   test      Test sensors and thresholds
-  
+
 Manual control:
   perf      Force performance mode
   normal    Force normal mode
@@ -390,9 +390,9 @@ case "${1:-start}" in
         current_mode=$(get_current_mode)
         cpu_usage=$(get_cpu_usage)
         cpu_temp=$(get_cpu_temp)
-        
+
         update_status_file "$current_mode" "$cpu_usage" "$cpu_temp"
-        
+
         echo "🔧 Performance Monitor Status"
         echo "Mode: $current_mode"
         echo "CPU Usage: ${cpu_usage}% (threshold: H:${CPU_HIGH_THRESHOLD}%, L:${CPU_LOW_THRESHOLD}%)"
