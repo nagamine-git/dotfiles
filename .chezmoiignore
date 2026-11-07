@@ -94,6 +94,9 @@ wolow-companion
 .local/bin/sleep-now.sh
 .local/bin/swaync_launcher.sh
 .local/bin/security-update-check.sh
+# Vicinae の電源の Lock / Logout から呼ぶ (Hyprland 用)
+.local/bin/lock-screen
+.local/bin/hypr-logout
 {{- end }}
 
 # Agent lifecycle documentation and OS-specific service

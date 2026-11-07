@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# 画面をロックする。Vicinae の電源の Lock (customProgram) から呼ぶ。
+# Hyprland に hyprlock を起動させる。fp7-e14 は hypridle を起動しないので、
+# logind の LockSession (Vicinae の既定) ではロックされない。
+# 引数を取らないので、呼ぶ側はこのパスだけを書けばよく、引用符の扱いに左右されない。
+set -eu
+
+exec hyprctl dispatch 'hl.dsp.exec_cmd("hyprlock")'

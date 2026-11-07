@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Hyprland を正規に終わらせてログアウトする。Vicinae の電源の Logout (customProgram) から呼ぶ。
+# Vicinae の既定は logind の TerminateSession (セッションのプロセスを終わらせる)。
+# 引数を取らないので、呼ぶ側はこのパスだけを書けばよく、引用符の扱いに左右されない。
+set -eu
+
+exec hyprctl dispatch 'hl.dsp.exit()'

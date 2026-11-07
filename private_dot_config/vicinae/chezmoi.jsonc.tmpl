@@ -18,6 +18,8 @@
     "enabled": false
   },
 
+  // customProgram には引数の無いスクリプトの絶対パスだけを書く。Vicinae v0.29.2 は $SHELL -c で
+  // 実行するが、シェルを通さずに分割する実装に変わっても、引用符や ~ の扱いに左右されない
   "providers": {
     "power": {
       "entrypoints": {
@@ -25,13 +27,13 @@
         // fp7-e14 は hypridle を起動しないのでロックされない。Hyprland に hyprlock を起動させる
         "lock": {
           "preferences": {
-            "customProgram": "hyprctl dispatch 'hl.dsp.exec_cmd(\"hyprlock\")'"
+            "customProgram": "{{ .chezmoi.homeDir }}/.local/bin/lock-screen"
           }
         },
         // 既定は logind の TerminateSession (セッションのプロセスを終わらせる)。Hyprland を正規に終わらせる
         "logout": {
           "preferences": {
-            "customProgram": "hyprctl dispatch 'hl.dsp.exit()'"
+            "customProgram": "{{ .chezmoi.homeDir }}/.local/bin/hypr-logout"
           }
         }
       }

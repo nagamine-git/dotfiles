@@ -40,6 +40,12 @@ exec "$@"
 
 SYSTEM_TOOLS = ("bash", "date", "timeout", "env", "cat", "printf")
 
+# Vicinae の電源の項目 → customProgram で呼ぶ引数なしのスクリプトと、それが hyprctl に渡す引数
+POWER_PROGRAMS = {
+    "lock": ("lock-screen", ["dispatch", 'hl.dsp.exec_cmd("hyprlock")']),
+    "logout": ("hypr-logout", ["dispatch", "hl.dsp.exit()"]),
+}
+
 
 def render(text, hostname, os_name="linux"):
     """--source が無いと本体のソースを読んでしまう。"""
@@ -79,31 +85,78 @@ class HyprlandBinds(unittest.TestCase):
 
 
 class VicinaeConfig(unittest.TestCase):
-    def load_jsonc(self, path):
+    def load_jsonc(self, text):
         # 行全体のコメントだけを使っている前提で外す
-        text = "\n".join(line for line in path.read_text().splitlines()
-                         if not re.match(r"\s*//", line))
+        text = "\n".join(line for line in text.splitlines() if not re.match(r"\s*//", line))
         return json.loads(text)
 
     def test_settings_imports_managed_file(self):
         # settings.json は Vicinae が GUI の変更を書き込むので、無いときだけ作る (create_)
         settings = json.loads((VICINAE_DIR / "create_settings.json").read_text())
         for name in settings["imports"]:
-            self.assertTrue((VICINAE_DIR / name).is_file(), name)
+            self.assertTrue((VICINAE_DIR / name).is_file() or (VICINAE_DIR / f"{name}.tmpl").is_file(), name)
 
+    @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
     def test_managed_config(self):
-        cfg = self.load_jsonc(VICINAE_DIR / "chezmoi.jsonc")
-        self.assertIs(cfg["telemetry"]["system_info"], False)
-        self.assertIs(cfg["input_server"]["enabled"], False)
-        power = cfg["providers"]["power"]["entrypoints"]
-        self.assertIn("hyprlock", power["lock"]["preferences"]["customProgram"])
-        self.assertIn("hl.dsp.exit()", power["logout"]["preferences"]["customProgram"])
+        for hostname in ("am5-itx", "fp7-e14"):
+            with self.subTest(hostname=hostname):
+                cfg = self.load_jsonc(render((VICINAE_DIR / "chezmoi.jsonc.tmpl").read_text(), hostname))
+                self.assertIs(cfg["telemetry"]["system_info"], False)
+                self.assertIs(cfg["input_server"]["enabled"], False)
+
+    @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
+    def test_power_programs_are_single_paths(self):
+        # シェルを通さずに分割されても同じに動くよう、引用符・空白・~ を含まない絶対パスだけにする
+        for hostname in ("am5-itx", "fp7-e14"):
+            home = render("{{ .chezmoi.homeDir }}", hostname)
+            cfg = self.load_jsonc(render((VICINAE_DIR / "chezmoi.jsonc.tmpl").read_text(), hostname))
+            power = cfg["providers"]["power"]["entrypoints"]
+            for entry, (script, _) in POWER_PROGRAMS.items():
+                with self.subTest(hostname=hostname, entry=entry):
+                    program = power[entry]["preferences"]["customProgram"]
+                    self.assertRegex(program, r"\A/[^\s'\"\\~$`;|&]+\Z")
+                    self.assertEqual(program, f"{home}/.local/bin/{script}")
+
+    @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
+    def test_power_programs_are_installed_executable(self):
+        # customProgram の先のスクリプトを空の destination に apply し、実行可能なファイルとして置かれて
+        # 引数なしで hyprctl を正しい引数で呼ぶことを確かめる (hyprctl は偽物)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = Path(tmp.name)
+        dest, fake = d / "home", d / "bin"
+        (dest / ".local/bin").mkdir(parents=True)  # 対象のファイルだけを apply すると親は作られない
+        fake.mkdir()
+        (d / "chezmoi.toml").write_text("")
+        targets = [dest / ".local/bin" / script for script, _ in POWER_PROGRAMS.values()]
+        subprocess.run(
+            [CHEZMOI, "--source", str(ROOT), "--destination", str(dest), "--config", str(d / "chezmoi.toml"),
+             "--persistent-state", str(d / "state.boltdb"),
+             "--override-data", json.dumps({"chezmoi": {"hostname": "fp7-e14", "os": "linux"}}),
+             "apply", "--include", "files", *map(str, targets)],
+            capture_output=True, text=True, check=True)
+        (fake / "bash").symlink_to(shutil.which("bash"))
+        (fake / "hyprctl").write_text(RECORDER)
+        (fake / "hyprctl").chmod(0o755)
+        for script, args in POWER_PROGRAMS.values():
+            with self.subTest(script=script):
+                path = dest / ".local/bin" / script
+                self.assertTrue(path.is_file())
+                self.assertTrue(os.access(path, os.X_OK))
+                log = d / "hyprctl.jsonl"
+                log.unlink(missing_ok=True)
+                res = subprocess.run([str(path)], env={"PATH": str(fake), "FAKE_DIR": str(d)},
+                                     capture_output=True, text=True)
+                self.assertEqual(res.returncode, 0, res.stderr)
+                self.assertEqual([json.loads(line)["args"] for line in log.read_text().splitlines()], [args])
 
     @unittest.skipUnless(CHEZMOI, "chezmoi が必要")
     def test_linux_only(self):
         darwin = render(IGNORE.read_text(), "m1pro", "darwin").splitlines()
         linux = render(IGNORE.read_text(), "fp7-e14").splitlines()
-        for pattern in (".config/vicinae", ".local/share/vicinae"):
+        patterns = [".config/vicinae", ".local/share/vicinae"]
+        patterns += [f".local/bin/{script}" for script, _ in POWER_PROGRAMS.values()]
+        for pattern in patterns:
             self.assertIn(pattern, darwin)
             self.assertNotIn(pattern, linux)
 
