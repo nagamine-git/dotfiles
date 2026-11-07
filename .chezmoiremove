@@ -16,4 +16,5 @@
 .config/cursor-flags.conf
 .config/electron27-flags.conf
 .local/bin/hypr_auto_perfmonitor.sh
+bin/server.sh
 {{- end }}
