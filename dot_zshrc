@@ -481,41 +481,8 @@ _cc_is_ollama_model_available() {
     ollama list 2>/dev/null | grep -q "^${1}[: ]"
 }
 
-_claude_notify_idle_watch() {
-    # claude 実行「中」のペインを 30 秒間隔で監視し、画面が 30 秒間不変なら idle 通知。
-    # cc() が claude 起動前にバックグラウンドで開始し、終了時に kill する。
-    # (旧実装は claude 終了「後」に一度だけ監視していたため、対話中は一切通知されず、
-    #  終了後の放置シェルに誤通知が飛ぶという逆の挙動になっていた)
-    [ -z "${TMUX_PANE:-}" ] && return 0
-    local prev current notified=0
-    prev="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
-    while :; do
-      sleep 30
-      current="$(tmux capture-pane -p -S -20 2>/dev/null || true)"
-      if [ "$current" = "$prev" ]; then
-        if [ "$notified" -eq 0 ]; then
-          "$HOME/.local/bin/claude-notify" idle30 "入力待ちが30秒続いています" >/dev/null 2>&1 || true
-          notified=1   # 画面が動くまで再通知しない
-        fi
-      else
-        notified=0
-      fi
-      prev="$current"
-    done
-}
-
+# 入力待ちの通知は herdr がエージェントの状態から出す ([ui.toast])
 cc() {
-    if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
-        tmux rename-window "claude" 2>/dev/null || true
-        printf '\033]0;%s\007' "claude:$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || echo unknown)"
-    fi
-
-    local _idle_pid=""
-    if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
-        _claude_notify_idle_watch &!
-        _idle_pid=$!
-    fi
-
     local rc=0
     if _cc_is_pro_available; then
         echo "→ Claude Pro (sonnet)" >&2
@@ -533,8 +500,6 @@ cc() {
         echo "  3. Ollama local: ollama pull glm-4.7-flash && ollama create $_CC_LOCAL_MODEL" >&2
         rc=1
     fi
-
-    [ -n "$_idle_pid" ] && kill "$_idle_pid" 2>/dev/null
     return $rc
 }
 

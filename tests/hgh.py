@@ -491,6 +491,11 @@ class TmuxVersionsRemoved(unittest.TestCase):
             self.assertIsNone(re.search(rf"^{name}\(\) \{{", text, re.M), f"{name} が残っている")
         self.assertIsNone(re.search(r"^alias ta=", text, re.M), "ta が残っている")
 
+    def test_zshrc_does_not_run_tmux(self):
+        # cc の画面監視 (tmux capture-pane) のように、herdr の中では動かない処理を残さない
+        code = "\n".join(line for line in ZSHRC.read_text().splitlines() if not line.lstrip().startswith("#"))
+        self.assertNotRegex(code, r"\b(tmux|sesh|fzf-tmux|TMUX\w*)\b")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -568,7 +568,8 @@ hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -
 
 -- === NOTIFICATION CENTER ===
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"))
-hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd([[~/.local/bin/claude-notify-focus "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_session 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_window 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_pane 2>/dev/null)"]]))
+-- 最後に完了・承認待ちになった Claude Code の herdr のペインへ移る (herdr の通知はクリックしてもペインへ移らない)
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("~/.local/bin/claude-notify-focus --last"))
 
 -- === SCREENSHOTS (satty) ===
 -- grim は ppm (無圧縮) で渡して PNG エンコードを省く。保存先・コピー・early-exit は ~/.config/satty/config.toml。
