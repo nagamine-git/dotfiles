@@ -1,4 +1,4 @@
-"""Vicinae のランチャー。Vicinae の設定ファイルと、Meet に参加するスクリプトコマンド。
+"""Vicinae のランチャー。Hyprland の設定の描画、Vicinae の設定ファイル、Meet に参加するスクリプトコマンド。
 
 Vicinae 本体と gog・xdg-open は呼ばず、偽物だけを使う。
 """
@@ -15,6 +15,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+HYPR = ROOT / "private_dot_config/hypr/hyprland.lua.tmpl"
 IGNORE = ROOT / ".chezmoiignore"
 VICINAE_DIR = ROOT / "private_dot_config/vicinae"
 MEET = ROOT / "dot_local/share/vicinae/scripts/executable_meet-join.sh"
@@ -60,6 +61,21 @@ def event(summary, start, end, link=None, video=None):
         ev["conferenceData"] = {"entryPoints": [{"entryPointType": "phone", "uri": "tel:+1"},
                                                 {"entryPointType": "video", "uri": video}]}
     return ev
+
+
+@unittest.skipUnless(CHEZMOI, "chezmoi が必要")
+class HyprlandBinds(unittest.TestCase):
+    def test_launcher_keys_open_vicinae(self):
+        for hostname in ("am5-itx", "fp7-e14"):
+            with self.subTest(hostname=hostname):
+                hypr = render(HYPR.read_text(), hostname)
+                self.assertIn('hl.exec_cmd("vicinae server")', hypr)
+                self.assertIn('hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"))', hypr)
+                self.assertIn("vicinae 'vicinae://launch/applications?toggle=true'", hypr)
+                self.assertIn("vicinae 'vicinae://launch/wm/switch-windows?toggle=true'", hypr)
+                self.assertIn('namespace = "vicinae"', hypr)
+                self.assertNotIn("unified_launcher", hypr)
+                self.assertNotIn("rofi -show", hypr)
 
 
 class VicinaeConfig(unittest.TestCase):

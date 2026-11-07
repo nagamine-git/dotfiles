@@ -97,7 +97,6 @@ wolow-companion
 .local/bin/uninstall-appimage.sh
 .local/bin/fix-brave-pwa.sh
 .local/bin/swaync_launcher.sh
-.local/bin/unified_launcher.sh
 .local/bin/security-update-check.sh
 {{- end }}
 
