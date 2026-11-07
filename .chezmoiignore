@@ -104,16 +104,6 @@ Library
 Library/**
 {{ end }}
 
-# Repository-only desktop launcher documentation and tests.
-docs/desktop-apps-tmux.md
-tests/desktop-apps-tmux.py
-
-# Desktop launcher wrapper is enabled only on this Hyprland host.
-{{ if ne .chezmoi.hostname "am5-itx" -}}
-.local/bin/desktop-apps-tmux
-.config/desktop-apps
-{{ end -}}
-
 # Slack から Claude Code に依頼する bot は am5-itx 専用
 {{ if ne .chezmoi.hostname "am5-itx" -}}
 .local/bin/slack-claude

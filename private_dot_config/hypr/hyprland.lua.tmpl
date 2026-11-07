@@ -49,8 +49,10 @@ local browser = "{{ $browser }}"
 hl.on("hyprland.start", function()
     hl.exec_cmd("fcitx5 -d --replace")
     {{ if eq .chezmoi.hostname "am5-itx" -}}
-    -- Start the existing apps after desktop login; reuse any running instances.
-    hl.exec_cmd("~/.local/bin/desktop-apps-tmux autostart")
+    -- ログイン時に ChatGPT と Codex の app-server daemon を起動する。起動済みならどちらも既存のものを使う
+    -- (ChatGPT は single-instance。daemon start は動いていないときだけ起動する)
+    hl.exec_cmd("chatgpt --ozone-platform=wayland")
+    hl.exec_cmd("~/.local/bin/codex app-server daemon start")
     {{ end -}}
     hl.exec_cmd("1password --silent &")
     hl.exec_cmd("hyprvoice serve &")

@@ -292,12 +292,12 @@ code() {
 }
 
 
-# ChatGPT はデスクトップと同じ tmux / Wayland 起動を使う。
+# ChatGPT はデスクトップ (Hyprland の起動・desktop entry) と同じく Wayland で起動し、端末から切り離す。
 chatgpt() {
-  if [[ -x "$HOME/.local/bin/desktop-apps-tmux" ]]; then
-    "$HOME/.local/bin/desktop-apps-tmux" chatgpt "$@"
-  else
+  if [[ "$OSTYPE" == darwin* ]]; then
     command chatgpt "$@"
+  else
+    command chatgpt --ozone-platform=wayland "$@" >/dev/null 2>&1 &!
   fi
 }
 
