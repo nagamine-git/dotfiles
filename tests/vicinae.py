@@ -173,6 +173,40 @@ class MeetJoin(unittest.TestCase):
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertEqual(self.calls("xdg-open"), [["https://meet.google.com/late"]])
 
+    def test_rejects_links_that_are_not_meet(self):
+        # 招待は外部の誰でも送れる。先に始まる偽の予定に押しのけられず、本物の Meet だけを開く
+        now = int(time.time())
+        bad = ("file:///etc/passwd", "https://meet.google.com.evil.tld/abc",
+               "https://meet.google.com@evil.tld/abc", "javascript:alert(1)",
+               "https://meet.google.com/abc\nfile:///etc/passwd", "http://meet.google.com/abc",
+               "https://evil.tld/https://meet.google.com/abc")
+        self.events(
+            *[event(f"偽{i}", now - 600 + i, now + 600, link=url) for i, url in enumerate(bad)],
+            event("偽のビデオ", now - 600, now + 600, video="https://meet.google.com.evil.tld/v"),
+            event("本物", now + 1800, now + 3600, link="https://meet.google.com/abc-defg-hij"),
+        )
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(res.stdout.splitlines()[0], "30分後  本物")
+        self.assertEqual(self.calls("xdg-open"), [["https://meet.google.com/abc-defg-hij"]])
+
+    def test_falls_back_to_meet_video_entry_when_hangout_link_is_bad(self):
+        now = int(time.time())
+        self.events(event("定例", now - 60, now + 600, link="https://meet.google.com@evil.tld/x",
+                          video="https://meet.google.com/abc-defg-hij?authuser=0"))
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.calls("xdg-open"), [["https://meet.google.com/abc-defg-hij?authuser=0"]])
+
+    def test_only_rejected_links_opens_nothing_and_says_why(self):
+        now = int(time.time())
+        self.events(event("Zoom", now - 60, now + 600, video="https://zoom.us/j/1"),
+                    event("偽", now - 60, now + 600, link="javascript:alert(1)"))
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("開きません", res.stdout.splitlines()[0])
+        self.assertEqual(self.calls("xdg-open"), [])
+
     def test_no_meeting_opens_nothing(self):
         now = int(time.time())
         self.events(event("リンクなし", now, now + 600))

@@ -26,21 +26,30 @@ if ! raw=$(timeout 8s gog cal events --days=2 --max 12 -j --results-only 2>/dev/
   exit 1
 fi
 
-# Meet のリンクがある予定を「開始 / 終了 / 題名 / URL」の TSV にする
-rows=$(printf '%s' "$raw" | jq -r '
+# 開いてよい URL。カレンダーの招待は外部の誰でも送れるので、hangoutLink や会議の URL を
+# そのまま xdg-open に渡さない (file://、javascript:、meet.google.com.evil.tld、
+# meet.google.com@evil.tld などを開かされる)。Zoom など Meet 以外の会議も開かない。
+# 同じ式を jq (\A と \z) と bash (^ と $) で文字列全体の先頭と末尾に固定して使う
+MEET_URL='https://meet\.google\.com/[A-Za-z0-9_/?=&-]+'
+
+# 会議のリンクがある予定を「開始 / 終了 / 題名 / Meet の URL」にする。区切りは \x1f
+# (タブは read で空の欄が詰まるため)。リンクがあっても Meet の URL として通らなければ URL を空にする。
+# 選ぶ前に弾くので、偽の予定が本物の予定を押しのけることは無い
+rows=$(printf '%s' "$raw" | jq -r --arg re "\\A${MEET_URL}\\z" '
   (if type=="array" then .
    elif type=="object" and has("items") then .items
    elif type=="object" and has("events") then .events
    else [] end)
   | .[]?
-  | ((.hangoutLink // "")) as $hl
-  | (([.conferenceData?.entryPoints[]? | select(.entryPointType=="video") | .uri] | first) // "") as $cl
-  | (if $hl != "" then $hl elif $cl != "" then $cl else "" end) as $url
-  | select($url != "")
+  | ([.hangoutLink?, (.conferenceData?.entryPoints[]? | select(.entryPointType=="video") | .uri)]
+     | map(select(type=="string" and . != ""))) as $links
+  | select($links | length > 0)
+  | (([$links[] | select(test($re))] | first) // "") as $url
   | ((.start.dateTime // .start.date // "")) as $start
+  | select($start != "")
   | ((.end.dateTime // .end.date // $start)) as $end
-  | ((.summary // "(無題)") | gsub("[\\r\\n\\t]"; " ")) as $title
-  | [$start, $end, $title, $url] | @tsv
+  | (.summary // "(無題)") as $title
+  | [$start, $end, $title, $url] | map(tostring | gsub("[\r\n\t\u001f]"; " ")) | join("\u001f")
 ') || {
   echo "予定の形式を読めませんでした"
   exit 1
@@ -48,20 +57,35 @@ rows=$(printf '%s' "$raw" | jq -r '
 
 # 終わってから 5 分以内のものも残し、開始がいちばん早いものを選ぶ (進行中があればそれになる)
 now=$(date +%s)
-best_start="" best_title="" best_url=""
-while IFS=$'\t' read -r start_raw end_raw title url; do
-  [ -n "${url:-}" ] || continue
+best_start="" best_title="" best_url="" rejected=0
+while IFS=$'\x1f' read -r start_raw end_raw title url; do
+  [ -n "${start_raw:-}" ] || continue
   start=$(date -d "$start_raw" +%s 2>/dev/null) || continue
   end=$(date -d "${end_raw:-$start_raw}" +%s 2>/dev/null) || end=$((start + 1800))
   [ "$end" -ge $((now - 300)) ] || continue
+  if [ -z "${url:-}" ]; then
+    rejected=$((rejected + 1))
+    continue
+  fi
   if [ -z "$best_start" ] || [ "$start" -lt "$best_start" ]; then
     best_start=$start best_title=$title best_url=$url
   fi
 done <<<"$rows"
 
 if [ -z "$best_url" ]; then
-  echo "これからの Meet はありません"
+  if [ "$rejected" -gt 0 ]; then
+    echo "Meet 以外のリンクの予定は開きません ($rejected 件)"
+  else
+    echo "これからの Meet はありません"
+  fi
   exit 0
+fi
+
+# 開く直前にもう一度確かめる
+meet_re="^${MEET_URL}\$"
+if ! [[ $best_url =~ $meet_re ]]; then
+  echo "Meet の URL ではないので開きません"
+  exit 1
 fi
 
 if [ "$best_start" -le "$now" ]; then
