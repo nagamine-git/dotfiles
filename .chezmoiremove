@@ -1,0 +1,18 @@
+# ソースから消したファイルの配置先。apply のときにホームからも消す (chezmoi はソースから
+# 消しただけではホームのファイルを消さない)。テンプレートとして読まれる。
+# パターンはホームからの相対パスで、glob として当てる。ほかの用途のファイルを巻き込まないよう、
+# 1 つずつ正確に書き、そのファイルを配置していた OS に限る。全機で消えたら外してよい。
+.local/bin/biz_start.sh
+{{- if ne .chezmoi.os "darwin" }}
+.local/bin/unified_launcher.sh
+.local/bin/desktop-apps-tmux
+.local/bin/integrate-appimage.sh
+.local/bin/uninstall-appimage.sh
+.local/bin/fix-brave-pwa.sh
+.config/desktop-apps/tmux.conf
+# 中身はこのリポジトリが置いた data/Company/EFG.{json,txt} だけ (両機で確認済み)
+.config/autokey
+.config/hypr/hyprsession.conf
+.config/cursor-flags.conf
+.config/electron27-flags.conf
+{{- end }}
