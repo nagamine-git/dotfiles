@@ -5,7 +5,7 @@ font-feature = -liga
 font-feature = -calt
 {{- if eq .chezmoi.os "darwin" }}
 theme = Gruvbox Material
-# Option キーを Alt として送信 (tmux の M-m 最大化トグル等の M- バインドに必須)
+# Option キーを Alt として送信 (herdr の Alt+m 最大化や Alt+hjkl のペイン移動など、Alt のキーに必須)
 macos-option-as-alt = true
 # Cmd+数字を herdr の space 切り替えに渡す。既定のタブ切り替えは super+N と super+digit_N の両方にある (9 は super+9 だけ)
 keybind = super+1=unbind

@@ -1,7 +1,7 @@
 # dotfiles
 
 > **Chezmoi-managed dotfiles for Hyprland / Wayland on Arch Linux** (CachyOS & EndeavourOS) + macOS.
-> Single source across 3 machines via OS/hostname templating. Zsh + Starship, Neovim, Ghostty, tmux, fcitx5, waybar.
+> Single source across 3 machines via OS/hostname templating. Zsh + Starship, Neovim, Ghostty + herdr, fcitx5, waybar.
 > *Detailed notes below are in Japanese.*
 
 個人的な設定ファイルを [chezmoi](https://www.chezmoi.io/) で管理するリポジトリです。
@@ -75,7 +75,9 @@ ChatGPTとdotsの設定はchezmoiから自動同期されません。
 
 - **シェル**: zsh + sheldon + starship (2行プロンプト、`starship.toml.tmpl` で3台配色分岐)
 - **ターミナル**: Ghostty (UDEV Gothic 35NFLG / リガチャ無効 / カーソル点滅無効)
-- **tmux**: prefix は **`C-t`**。TPM (tmux-power / resurrect / continuum / fzf / tilit)。
+- **herdr**: 3台とも Ghostty の上で使う多重化ツール。prefix は tmux と同じ **`C-t`**。
+  zsh の `hgh` / `hm` / `ha` / `hs` で space を開く。Claude Code の完了と承認待ちは herdr がデスクトップに通知する
+- **tmux**: ssh 先など herdr の無い場面用に残している。prefix は **`C-t`**。TPM (tmux-power / resurrect / continuum / fzf / tilit)。
   pane 数で main-vertical (≤3) ⇔ tiled (≥4) を自動切替 (`M-Enter` でトグル、`M-m` で zoom)
 - **Neovim**: leader は **Space**。VSCode 相当の操作系 + 認知科学ベースの UI 設定
   (詳細は下表)。キーの学習は nvim 内で **`:Tutor chezmoi-keys`**

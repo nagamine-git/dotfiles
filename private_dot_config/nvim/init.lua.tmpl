@@ -335,10 +335,10 @@ require('lazy').setup({
   -- 暗号化
   { 'jamessan/vim-gnupg' },
 
-  -- Claude Code (IDE 連携: tmux 別ペインの Claude Code を /ide で接続する)
+  -- Claude Code (IDE 連携: herdr の別ペインの Claude Code を /ide で接続する)
   -- Coder 社製サードパーティ (VSCode 拡張の WebSocket/MCP をリバースエンジニアリング)。
   -- provider="none" で Neovim 内蔵ターミナルは使わず、WebSocket サーバーだけ待受け。
-  -- 運用: tmux ペインで `claude` を起動 → `/ide` で本 nvim に接続 →
+  -- 運用: herdr のペインで `claude` を起動 → `/ide` で本 nvim に接続 →
   --   neo-tree 上でファイルに <leader>as → Claude のコンテキストへ送信、
   --   編集提案は nvim ネイティブ diff で accept/reject。
   {
@@ -528,7 +528,7 @@ vim.keymap.set('n', '<leader>ge', ':Neotree git_status<CR>', { noremap = true, s
 -- dropbar設定 (VSCode breadcrumbs)
 require('dropbar').setup()
 
--- gitsigns設定 (行単位の変更表示 + ステージ操作。コミットは tmux ペインの git/Claude Code で)
+-- gitsigns設定 (行単位の変更表示 + ステージ操作。コミットは herdr のペインの git/Claude Code で)
 require('gitsigns').setup({
   on_attach = function(bufnr)
     local gs = require('gitsigns')
