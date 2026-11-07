@@ -10,6 +10,9 @@ pkglist.txt
 .github/**
 tests
 tests/**
+# tests/ が dot_local/bin の Python スクリプトを読み込むと、隣に __pycache__ ができる
+**/__pycache__
+**/__pycache__/**
 # リポジトリ用の資料 (radar / model-radar のレポート等)。ホームには置かない
 docs
 docs/**
