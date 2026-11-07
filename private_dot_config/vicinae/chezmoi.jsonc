@@ -1,0 +1,40 @@
+// Vicinae の設定のうち chezmoi で管理するもの。settings.json の imports から読まれる。
+// settings.json は Vicinae が GUI での変更を書き込むので chezmoi は最初の 1 回だけ作り (create_)、
+// この取り込み用のファイルには Vicinae は書き込まない。同じ項目は settings.json の値が勝つ。
+// 項目と既定値は `vicinae config default` か https://docs.vicinae.com/config を参照。
+{
+  // 起動時のシステム情報 (デスクトップ環境・版など) を Vicinae のサーバーへ送らない
+  "telemetry": {
+    "system_info": false
+  },
+
+  // 閉じたら最初の画面に戻す。開くたびにルート検索から始まる (旧 rofi のランチャーと同じ)
+  "pop_to_root_on_close": true,
+
+  // vicinae-input-server を起動しない。前面のアプリへの貼り付けとスニペットの展開に使うが、
+  // パッケージが cap_dac_override を付けており、全キーボードの入力を読み続けるため。
+  // 止めると Vicinae のクリップボード履歴の「貼り付け」はコピーになる (直接貼るのは Ctrl+Super+V の cliphist)
+  "input_server": {
+    "enabled": false
+  },
+
+  "providers": {
+    "power": {
+      "entrypoints": {
+        // 既定は logind の LockSession で、ロックは hypridle の lock_cmd 任せ。
+        // fp7-e14 は hypridle を起動しないのでロックされない。Hyprland に hyprlock を起動させる
+        "lock": {
+          "preferences": {
+            "customProgram": "hyprctl dispatch 'hl.dsp.exec_cmd(\"hyprlock\")'"
+          }
+        },
+        // 既定は logind の TerminateSession (セッションのプロセスを終わらせる)。Hyprland を正規に終わらせる
+        "logout": {
+          "preferences": {
+            "customProgram": "hyprctl dispatch 'hl.dsp.exit()'"
+          }
+        }
+      }
+    }
+  }
+}

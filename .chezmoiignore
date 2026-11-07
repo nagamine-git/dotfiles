@@ -40,6 +40,8 @@ wolow-companion
 .config/waybar/**
 .config/rofi
 .config/rofi/**
+.config/vicinae
+.config/vicinae/**
 .config/satty
 .config/satty/**
 .config/swaync
@@ -80,6 +82,8 @@ wolow-companion
 .local/share/light-mode.d/**
 .local/share/dbus-1
 .local/share/dbus-1/**
+.local/share/vicinae
+.local/share/vicinae/**
 
 .local/bin/hypr_auto_perfmonitor.sh
 .local/bin/hypr_perfmodeswitch.sh
