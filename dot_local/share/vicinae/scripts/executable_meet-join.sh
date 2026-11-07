@@ -34,13 +34,14 @@ MEET_URL='https://meet\.google\.com/[A-Za-z0-9_/?=&-]+'
 
 # 会議のリンクがある予定を「開始 / 終了 / 題名 / Meet の URL」にする。区切りは \x1f
 # (タブは read で空の欄が詰まるため)。リンクがあっても Meet の URL として通らなければ URL を空にする。
-# 選ぶ前に弾くので、偽の予定が本物の予定を押しのけることは無い
+# 選ぶ前に弾くので、偽の予定が本物の予定を押しのけることは無い。自分 (self) が断った予定は候補にしない
 rows=$(printf '%s' "$raw" | jq -r --arg re "\\A${MEET_URL}\\z" '
   (if type=="array" then .
    elif type=="object" and has("items") then .items
    elif type=="object" and has("events") then .events
    else [] end)
   | .[]?
+  | select(any(.attendees[]?; type=="object" and .self == true and .responseStatus == "declined") | not)
   | ([.hangoutLink?, (.conferenceData?.entryPoints[]? | select(.entryPointType=="video") | .uri)]
      | map(select(type=="string" and . != ""))) as $links
   | select($links | length > 0)

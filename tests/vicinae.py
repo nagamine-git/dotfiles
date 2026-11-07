@@ -59,13 +59,15 @@ def iso(epoch):
     return datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
 
 
-def event(summary, start, end, link=None, video=None):
+def event(summary, start, end, link=None, video=None, attendees=None):
     ev = {"summary": summary, "start": {"dateTime": iso(start)}, "end": {"dateTime": iso(end)}}
     if link:
         ev["hangoutLink"] = link
     if video:
         ev["conferenceData"] = {"entryPoints": [{"entryPointType": "phone", "uri": "tel:+1"},
                                                 {"entryPointType": "video", "uri": video}]}
+    if attendees is not None:
+        ev["attendees"] = attendees
     return ev
 
 
@@ -260,6 +262,40 @@ class MeetJoin(unittest.TestCase):
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn("開きません", res.stdout.splitlines()[0])
         self.assertEqual(self.calls("xdg-open"), [])
+
+    def test_skips_meetings_i_declined(self):
+        # 自分 (self) が断った予定は、進行中でも開かない。ほかの人が断っただけなら開く
+        now = int(time.time())
+        me_declined = [{"email": "me@example.com", "self": True, "responseStatus": "declined"},
+                       {"email": "a@example.com", "responseStatus": "accepted"}]
+        other_declined = [{"email": "me@example.com", "self": True, "responseStatus": "accepted"},
+                          {"email": "a@example.com", "responseStatus": "declined"}]
+        self.events(
+            event("断った定例", now - 300, now + 1500, link="https://meet.google.com/declined", attendees=me_declined),
+            event("1on1", now + 30 * 60 + 30, now + 3600, link="https://meet.google.com/ok", attendees=other_declined),
+        )
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(res.stdout.splitlines()[0], "30分後  1on1")
+        self.assertEqual(self.calls("xdg-open"), [["https://meet.google.com/ok"]])
+
+    def test_only_declined_meetings_opens_nothing(self):
+        now = int(time.time())
+        self.events(event("断った定例", now - 60, now + 600, link="https://meet.google.com/declined",
+                          attendees=[{"self": True, "responseStatus": "declined"}]))
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(res.stdout.splitlines()[0], "これからの Meet はありません")
+        self.assertEqual(self.calls("xdg-open"), [])
+
+    def test_odd_attendees_do_not_break_parsing(self):
+        # attendees が配列でない・要素が文字列でも、予定の読み取りは失敗させない
+        now = int(time.time())
+        self.events(event("A", now - 60, now + 600, link="https://meet.google.com/a", attendees="me"),
+                    event("B", now + 3000, now + 3600, link="https://meet.google.com/b", attendees=["me", None]))
+        res = self.run_meet()
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(self.calls("xdg-open"), [["https://meet.google.com/a"]])
 
     def test_no_meeting_opens_nothing(self):
         now = int(time.time())
