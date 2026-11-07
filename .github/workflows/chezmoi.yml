@@ -52,6 +52,16 @@ jobs:
           python3 tests/herdr-git-diff.py
           python3 tests/hgh.py
 
+      - name: Verify notifications and desktop launch with stubbed tools
+        run: |
+          python3 tests/claude-notify.py
+          python3 tests/desktop-autostart.py
+
+      - name: Verify Vicinae launcher config and Meet script with stubbed tools
+        run: |
+          shellcheck dot_local/share/vicinae/scripts/executable_meet-join.sh
+          python3 tests/vicinae.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)

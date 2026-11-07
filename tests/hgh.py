@@ -482,5 +482,20 @@ class Hs(Base):
         self.assertIn("jq", r.stderr)
 
 
+class TmuxVersionsRemoved(unittest.TestCase):
+    """herdr 版に一本化した。tmux 版の tgh / tm / ta / s を zsh の入口に戻さない。"""
+
+    def test_tmux_versions_are_not_defined(self):
+        text = ZSHRC.read_text()
+        for name in ("tgh", "tm", "s"):
+            self.assertIsNone(re.search(rf"^{name}\(\) \{{", text, re.M), f"{name} が残っている")
+        self.assertIsNone(re.search(r"^alias ta=", text, re.M), "ta が残っている")
+
+    def test_zshrc_does_not_run_tmux(self):
+        # cc の画面監視 (tmux capture-pane) のように、herdr の中では動かない処理を残さない
+        code = "\n".join(line for line in ZSHRC.read_text().splitlines() if not line.lstrip().startswith("#"))
+        self.assertNotRegex(code, r"\b(tmux|sesh|fzf-tmux|TMUX\w*)\b")
+
+
 if __name__ == "__main__":
     unittest.main()

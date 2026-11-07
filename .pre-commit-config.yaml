@@ -14,9 +14,12 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # hazkey の .tsv は行末のタブが空の列を表すので消さない
       - id: trailing-whitespace
-        exclude: '\.md$'
+        exclude: '\.(md|tsv)$'
+      # fcitx5 は設定を末尾の空行付きで書き戻すので、そろえると apply のたびに差分が出る
       - id: end-of-file-fixer
+        exclude: '^private_dot_config/private_fcitx5/'
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ["--maxkb=500"]

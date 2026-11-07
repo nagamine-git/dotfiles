@@ -39,7 +39,8 @@ require("workspaces")
 {{- $browser := "google-chrome-stable" -}}
 local terminal = "{{ $terminal }}"
 local fileManager = "thunar"
-local menu = "rofi -show drun"
+-- アプリだけを検索する Vicinae の画面。開いていれば閉じる
+local menu = "vicinae 'vicinae://launch/applications?toggle=true'"
 local browser = "{{ $browser }}"
 
 -----------------
@@ -49,8 +50,10 @@ local browser = "{{ $browser }}"
 hl.on("hyprland.start", function()
     hl.exec_cmd("fcitx5 -d --replace")
     {{ if eq .chezmoi.hostname "am5-itx" -}}
-    -- Start the existing apps after desktop login; reuse any running instances.
-    hl.exec_cmd("~/.local/bin/desktop-apps-tmux autostart")
+    -- ログイン時に ChatGPT と Codex の app-server daemon を起動する。起動済みならどちらも既存のものを使う
+    -- (ChatGPT は single-instance。daemon start は動いていないときだけ起動する)
+    hl.exec_cmd("chatgpt --ozone-platform=wayland")
+    hl.exec_cmd("~/.local/bin/codex app-server daemon start")
     {{ end -}}
     hl.exec_cmd("1password --silent &")
     hl.exec_cmd("hyprvoice serve &")
@@ -61,6 +64,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("swayosd-server &")
     hl.exec_cmd("hyprpaper &")
     hl.exec_cmd("mkdir -p /tmp/hypr/$USER")
+    -- ランチャー (Super+Space) の常駐サーバー。toggle などのコマンドはこれに頼む
+    hl.exec_cmd("vicinae server")
     hl.exec_cmd("cliphist &")
     hl.exec_cmd("wl-paste --type text --watch cliphist store &")
     hl.exec_cmd("wl-paste --type image --watch cliphist store &")
@@ -76,7 +81,6 @@ hl.on("hyprland.start", function()
     -- 不在だと 1Password agent が署名を即拒否し、SSH鍵認証が "agent refused operation" で全滅する。
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &")
     hl.exec_cmd("systemctl --user start darkman.service &")
-    hl.exec_cmd("~/.local/bin/hypr_auto_perfmonitor.sh start &")
     -- VRR は 4K@120Hz HDMI でパネルが黒落ちするため、起動時にモニタへ vrr = 0 を明示再適用する
     -- (0.56 までの調査で misc:vrr=0 だけではモニタ初期化時に効かなかったため。経緯は同スクリプト冒頭)。
     hl.exec_cmd("~/.local/bin/hypr-vrr-off.sh &")
@@ -322,11 +326,16 @@ hl.window_rule({
 hl.layer_rule({ match = { namespace = "waybar" }, blur = true })
 hl.layer_rule({ match = { namespace = "waybar" }, ignore_alpha = 0.2 })
 
--- ランチャー (rofi) も blur。半透明のまま背後をぼかすことで、後ろに端末など
+-- rofi (waybar の Exit Node の選択と Ctrl+Super+V のクリップボード履歴) も blur。
+-- 半透明のまま背後をぼかすことで、後ろに端末など
 -- 文字の多いウィンドウがあっても行のテキストが読める (blur 無しだと素通しで
 -- 実効コントラストが背後次第になり、テーマ側で測った 8.66:1 が保証されない)
 hl.layer_rule({ match = { namespace = "rofi" }, blur = true })
 hl.layer_rule({ match = { namespace = "rofi" }, ignore_alpha = 0.5 })
+
+-- ランチャー (Vicinae) は blur して、開閉のアニメーションを付けない (公式の Hyprland 向けの設定)
+hl.layer_rule({ match = { namespace = "vicinae" }, blur = true, ignore_alpha = 0 })
+hl.layer_rule({ match = { namespace = "vicinae" }, no_anim = true })
 
 -----------------------
 --- LAYOUT SETTINGS ---
@@ -406,11 +415,10 @@ hl.bind(mainMod .. " + w", hl.dsp.exec_cmd(browser))
 hl.bind(mainMod .. " + s", hl.dsp.exec_cmd(terminal .. " -e yazi"))
 hl.bind(mainMod .. " + SHIFT + s", hl.dsp.exec_cmd(fileManager))
 
--- === UNIFIED LAUNCHER (Raycast/Spotlight-like) ===
-hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("~/.local/bin/unified_launcher.sh"))
+-- === LAUNCHER (Vicinae: アプリ・ウィンドウ・クリップボード・計算・絵文字・電源・Meet) ===
+hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"))
 
 hl.bind(mainMod .. " + a", hl.dsp.exec_cmd("~/.local/bin/hypr_perfmodeswitch.sh"))
-hl.bind(mainMod .. " + CTRL + a", hl.dsp.exec_cmd([[~/.local/bin/hypr_auto_perfmonitor.sh status | xargs -I {} notify-send "Performance Monitor" "{}"]]))
 
 -- === SCREEN LOCK ===
 hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"))
@@ -430,7 +438,7 @@ hl.bind("ALT + m", function()
 end)
 hl.bind(mainMod .. " + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + tab", hl.dsp.focus({ urgent_or_last = true }))
-hl.bind(mainMod .. " + p", hl.dsp.exec_cmd([[hyprctl clients -j | jq -r '.[] | select(.mapped == true) | select(.workspace.id > 0) | "[\(.workspace.id)] \(.class): \(.title // "No Title")"' | rofi -dmenu -p "ウィンドウ検索" | cut -d'|' -f1 | xargs -I {} hyprctl dispatch "hl.dsp.focus({ window = 'address:{}' })"]]))
+hl.bind(mainMod .. " + p", hl.dsp.exec_cmd("vicinae 'vicinae://launch/wm/switch-windows?toggle=true'"))
 hl.bind(mainMod .. " + v", hl.dsp.layout("togglesplit"))
 
 -- === WINDOW GROUPING (StarCraft2 Grid-inspired: Group commands in left hand) ===
@@ -566,7 +574,8 @@ hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -
 
 -- === NOTIFICATION CENTER ===
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"))
-hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd([[~/.local/bin/claude-notify-focus "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_session 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_window 2>/dev/null)" "$(cat ${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify/last_pane 2>/dev/null)"]]))
+-- 最後に完了・承認待ちになった Claude Code の herdr のペインへ移る (herdr の通知はクリックしてもペインへ移らない)
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("~/.local/bin/claude-notify-focus --last"))
 
 -- === SCREENSHOTS (satty) ===
 -- grim は ppm (無圧縮) で渡して PNG エンコードを省く。保存先・コピー・early-exit は ~/.config/satty/config.toml。

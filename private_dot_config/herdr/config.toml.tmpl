@@ -100,9 +100,17 @@ hide_tab_bar_when_single_tab = true
 # エージェントの一覧を space ごとではなく、注意が必要な順に並べる
 agent_panel_sort = "priority"
 
-# ポップアップは出さない。デスクトップ通知は claude-notify が出す
+# エージェントの完了と承認待ちは herdr がデスクトップに通知する。通知元のタブを表示中で、端末にフォーカスがある (または分からない) ときは出さない。
+# Claude Code のフックの claude-notify は、herdr の中ではデスクトップに出さず、スマホ (ntfy) への送信と移動先の記録だけをする。
+# どちらの配信でも、通知をクリックしてもペインへは移らない (herdr 0.9.5 でクリックでペインへ移るのは Windows だけ)。
+# Linux は system (notify-send を swaync が表示する)。移るときは Super+Shift+R (claude-notify-focus --last)。
+# Mac は terminal (OSC 9 で Ghostty が表示する)。system は terminal-notifier が無いと osascript になり、クリックしても端末に戻れない
 [ui.toast]
-delivery = "off"
+{{- if eq .chezmoi.os "darwin" }}
+delivery = "terminal"
+{{- else }}
+delivery = "system"
+{{- end }}
 
 # サイドバーのエージェント行。1 行目は「状態の点とワークスペース名」(例: ● chezmoi)。
 # タブ名は出さない。作業内容は 2 行目の agent (Haiku の要約) が示す。

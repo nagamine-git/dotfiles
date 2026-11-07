@@ -83,7 +83,7 @@ leader キーは **Space** です。以下 `Space` と表記します。
 
 ## 8. Claude Code 連携
 
-tmux ペインで `claude` → `/ide` で本 nvim に接続してから:
+herdr のペインで `claude` → `/ide` で本 nvim に接続してから:
 - ビジュアル選択 + `Space a s` : 選択範囲を Claude へ送る
 - neo-tree 上で `Space a s`    : ファイルをコンテキストに追加
 

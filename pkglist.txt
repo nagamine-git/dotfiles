@@ -9,14 +9,17 @@ github-cli
 chezmoi
 vim
 neovim
+# 多重化は herdr (AUR)。tmux は ssh 先など herdr の無い場面用に残す
+herdr-bin
 tmux
 fcitx5-im
 fcitx5-hazkey-bin
 brave-bin
 zeed-bin
+# ランチャー (AUR)。Super+Space で開く。設定は ~/.config/vicinae
+vicinae-bin
+# rofi -dmenu は waybar の Exit Node の選択と Ctrl+Super+V のクリップボード履歴で使う
 rofi
-rofi-calc
-rofi-emoji
 gnome-keyring
 playerctl
 brightnessctl
@@ -59,6 +62,9 @@ hyprsunset
 xdg-desktop-portal-gtk
 xdg-desktop-portal-hyprland
 distrobox
+# AppImage の登録・更新・削除 (gearlever --integrate / --update / --remove / --list-installed)。置き場所は ~/AppImages。
+# Electron 製で日本語入力に要るフラグ (--enable-wayland-ime --wayland-text-input-version=3) はアプリ詳細の Command line arguments に書く
+gearlever
 # slack-desktop-wayland は AUR から消えた (2026-10)。導入済みのものを使い続ける
 thunar
 nm-connection-editor

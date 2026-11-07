@@ -28,14 +28,14 @@ max_num=0
 # Check v4l2-ctl output for loopback devices
 if command -v v4l2-ctl >/dev/null 2>&1; then
     v4l2_output=$(v4l2-ctl --list-devices 2>/dev/null || true)
-    
+
     if echo "$v4l2_output" | grep -q "platform:v4l2loopback"; then
         # Extract device paths from v4l2-ctl output
         loopback_devices=$(echo "$v4l2_output" | grep -A1 "platform:v4l2loopback" | grep "/dev/video" || true)
-        
+
         for device in $loopback_devices; do
             if [ -e "$device" ]; then
-                device_num=$(echo "$device" | sed 's|/dev/video||')
+                device_num=${device/\/dev\/video/}
                 if [ "$device_num" -gt "$max_num" ]; then
                     max_num=$device_num
                     latest_device="$device"
@@ -49,7 +49,7 @@ fi
 if [ -z "$latest_device" ]; then
     for device in /dev/video*; do
         if [ -e "$device" ] && [ -c "$device" ] && [ -r "$device" ]; then
-            device_num=$(echo "$device" | sed 's|/dev/video||')
+            device_num=${device/\/dev\/video/}
             if [ "$device_num" -gt "$max_num" ]; then
                 max_num=$device_num
                 latest_device="$device"

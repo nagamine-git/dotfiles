@@ -1,10 +1,12 @@
-#!/bin/bash
-# Claude Code のフック (Stop / Notification) から呼ばれる通知スクリプト。
+#!/usr/bin/env bash
+# Claude Code のフック (Stop / Notification) と、他のスクリプトから呼ばれる通知スクリプト。
 #   claude-notify stop [summary] [body]
 #   claude-notify notification [summary] [body]
-#   claude-notify idle30 [summary] [body]
+#   claude-notify <その他の種類> [summary] [body]   (例: security-update-check.sh の security-update)
 # フックの stdin JSON (message / title / cwd / transcript_path) を読み、
 # デスクトップ通知 (notify-send / osascript) に加えて ntfy でスマホへ送る。
+# herdr の中の stop / notification は、エージェントの完了と承認待ちとして herdr が通知する ([ui.toast])。
+# ここではデスクトップに出さず、スマホへの送信と Super+Shift+R (claude-notify-focus --last) の移動先の記録だけをする。
 # スマホへ送る条件は ~/.config/claude-notify/config の PHONE_MODE で決める。
 set -euo pipefail
 
@@ -38,21 +40,13 @@ last_assistant_text() {
     | grep -v '^\s*$' | tail -n 1 | tr -s '[:space:]' ' ' | cut -c1-160 || true
 }
 
-# ---- tmux の位置 ----------------------------------------------------------
-session=""; window=""; pane=""; pane_target=""
 cwd="${hook_cwd:-${PWD:-}}"
-if [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
-  session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
-  window="$(tmux display-message -p '#{window_index}' 2>/dev/null || true)"
-  pane="$(tmux display-message -p '#{pane_index}' 2>/dev/null || true)"
-  pane_target="$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null || true)"
-fi
-[ -n "$pane_target" ] || pane_target="no-tmux"
 
 # ---- herdr の位置 ---------------------------------------------------------
-# 取れなければ space の行を出さないだけで、通知は止めない
-herdr_workspace=""; herdr_tab=""; herdr_pane=""; space_name=""; space_num=""
-if [ "${HERDR_ENV:-}" = "1" ] && command -v jq >/dev/null 2>&1; then
+# 取れなければ移動先を記録せず、スマホのタイトルに space 名を使わないだけで、通知は止めない
+in_herdr=0; herdr_workspace=""; herdr_tab=""; herdr_pane=""; space_name=""
+[ "${HERDR_ENV:-}" = "1" ] && in_herdr=1
+if [ "$in_herdr" = 1 ] && command -v jq >/dev/null 2>&1; then
   herdr_bin="${HERDR_BIN_PATH:-herdr}"
   # ペインを別の space へ移すと環境変数の ID は古くなるので、今の所属を herdr に聞く
   pane_json="$("$herdr_bin" pane current --current 2>/dev/null || true)"
@@ -61,28 +55,27 @@ if [ "${HERDR_ENV:-}" = "1" ] && command -v jq >/dev/null 2>&1; then
   herdr_pane="$(printf '%s' "$pane_json" | jq -r '.result.pane.pane_id // empty' 2>/dev/null || true)"
   if [ -n "$herdr_workspace" ]; then
     space_json="$("$herdr_bin" workspace get "$herdr_workspace" 2>/dev/null || true)"
-    # 名前は ntfy のタイトル (HTTP ヘッダー) にも使うので制御文字を除く
+    # 名前は ntfy のタイトル (HTTP ヘッダー) と記録の 1 行に使うので制御文字を除く
     space_name="$(printf '%s' "$space_json" | jq -r '.result.workspace.label // empty | gsub("[[:cntrl:]]"; "")' 2>/dev/null || true)"
-    space_num="$(printf '%s' "$space_json" | jq -r '.result.workspace.number // empty' 2>/dev/null || true)"
   fi
 fi
 
 # ---- 本文 -------------------------------------------------------------------
+# agent_event: herdr がエージェントの状態から通知できるもの (完了と承認待ち)
+agent_event=0
 summary="Claude Code"
 body=""
 case "$mode" in
   stop)
+    agent_event=1
     summary="Claude Code: 完了"
     body="${summary_arg:-$(last_assistant_text)}"
     body="${body:-作業が完了しました}"
     ;;
   notification)
+    agent_event=1
     summary="Claude Code: ${hook_title:-入力待ち}"
     body="${summary_arg:-${hook_message:-確認や許可を待っています}}"
-    ;;
-  idle30)
-    summary="Claude Code: 30秒入力待ち"
-    body="${summary_arg:-入力待ちが30秒続いています}"
     ;;
   *)
     summary="Claude Code"
@@ -92,33 +85,13 @@ esac
 [ -n "$body_arg" ] && body="$body_arg"
 
 project="$(basename "${cwd:-/}")"
-meta="target: ${pane_target}"
-if [ -n "$space_name" ]; then
-  # 本文は %b と notify-send がバックスラッシュを展開するので、名前の分は二重にする
-  space_line="space: $(printf '%s' "$space_name" | sed 's/\\/\\\\/g' || true)"
-  # switch_workspace のキーが効くのは 1..9 だけ
-  case "$space_num" in
-    [1-9])
-      if [ "$(uname -s)" = "Darwin" ]; then
-        space_line="$space_line (⌘$space_num)"
-      else
-        space_line="$space_line (Ctrl+$space_num)"
-      fi
-      ;;
-  esac
-  if [ "$pane_target" = "no-tmux" ]; then
-    meta="$space_line"
-  else
-    meta="$space_line\n$meta"
-  fi
-fi
-[ -n "$cwd" ] && meta="$meta\ncwd: $cwd"
-full_body="$body\n$meta"
+full_body="$body"
+[ -n "$cwd" ] && full_body="$body\ncwd: $cwd"
 
-echo "$session" > "$runtime_dir/last_session"
-echo "$window" > "$runtime_dir/last_window"
-echo "$pane" > "$runtime_dir/last_pane"
-printf '%b\n' "$full_body" > "$runtime_dir/last_body"
+# Super+Shift+R (claude-notify-focus --last) で移る先。1 行に 1 つ、workspace / tab / pane / space 名の順
+if [ "$agent_event" = 1 ] && [ -n "$herdr_workspace" ]; then
+  printf '%s\n' "$herdr_workspace" "$herdr_tab" "$herdr_pane" "$space_name" > "$runtime_dir/last_herdr"
+fi
 
 # ---- スマホ (ntfy) ----------------------------------------------------------
 NTFY_SERVER="https://ntfy.sh"; NTFY_TOPIC=""; PHONE_MODE="locked"
@@ -155,25 +128,12 @@ push_phone() {
 push_phone &
 
 # ---- デスクトップ ----------------------------------------------------------
-if command -v notify-send >/dev/null 2>&1; then
-  # Linux: アクション付き通知。action ファイルはペイン単位で一意化
-  # (固定パスだと複数ペイン同時通知で他ペインの Focus クリックを誤読するレース)
-  action_file="$runtime_dir/action.$$"
-  if notify-send -A focus=Focus --app-name="Claude Code" --icon=dialog-information --expire-time=15000 --wait "$summary" "$full_body" >"$action_file" 2>/dev/null; then
-    action="$(cat "$action_file" 2>/dev/null || true)"
-    rm -f "$action_file"
-    if [ "$action" = "focus" ] && [ -n "$herdr_workspace" ]; then
-      "$HOME/.local/bin/claude-notify-focus" --herdr "$herdr_workspace" "$herdr_tab" "$herdr_pane" "$space_name" >/dev/null 2>&1 || true
-    fi
-    if [ "$action" = "focus" ] && [ -n "$session" ] && [ -n "$window" ] && [ -n "$pane" ]; then
-      "$HOME/.local/bin/claude-notify-focus" "$session" "$window" "$pane" >/dev/null 2>&1 || true
-    fi
-  else
-    rm -f "$action_file"
-    notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
-  fi
+if [ "$in_herdr" = 1 ] && [ "$agent_event" = 1 ]; then
+  : # herdr が通知する。二重に出さない
+elif command -v notify-send >/dev/null 2>&1; then
+  notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
 elif command -v osascript >/dev/null 2>&1; then
-  # macOS: osascript で表示 (argv 渡しでクオート問題を回避。アクションボタンは非対応)
+  # macOS: osascript で表示 (argv 渡しでクオート問題を回避)
   osascript -e 'on run argv' \
             -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
             -e 'end run' "$summary" "$(printf '%b' "$full_body")" >/dev/null 2>&1 || true
