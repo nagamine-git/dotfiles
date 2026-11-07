@@ -183,7 +183,8 @@ class MeetJoin(unittest.TestCase):
         self.events(
             *[event(f"偽{i}", now - 600 + i, now + 600, link=url) for i, url in enumerate(bad)],
             event("偽のビデオ", now - 600, now + 600, video="https://meet.google.com.evil.tld/v"),
-            event("本物", now + 1800, now + 3600, link="https://meet.google.com/abc-defg-hij"),
+            # 秒の境目をまたいでも「30分後」になるよう 30 秒の余裕を持たせる
+            event("本物", now + 30 * 60 + 30, now + 3600, link="https://meet.google.com/abc-defg-hij"),
         )
         res = self.run_meet()
         self.assertEqual(res.returncode, 0, res.stderr)
