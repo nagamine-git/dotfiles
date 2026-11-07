@@ -34,7 +34,7 @@ brew install chezmoi     # macOS
 chezmoi init --apply nagamine-git
 ```
 
-- Linux では `pkglist.txt` のパッケージが `run_onchange_setup.sh` により自動導入されます
+- Linux では初回の apply で `run_onchange_setup.sh` が `pkglist.txt` のパッケージを導入します (後から足したものは下の「更新」を参照)
 - 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck 等がコミット時に走る)
 
 ### 更新
@@ -42,6 +42,26 @@ chezmoi init --apply nagamine-git
 ```bash
 chezmoi apply -v
 ```
+
+#### pkglist.txt が変わった更新の反映手順
+
+`run_onchange_setup.sh` は自分の中身が変わったときだけ再実行され、`pkglist.txt` の
+ハッシュは含んでいません。setup は sudo を含むので、apply のたびには走らせない作りです。
+そのため **`pkglist.txt` に足したパッケージは `chezmoi apply` では入りません**。
+パッケージを先に入れてから apply します。
+
+```bash
+# 1. 足したパッケージを入れる (例: ランチャーを Vicinae に、AppImage を Gear Lever にした更新)
+paru -S --needed vicinae-bin gearlever
+# 2. 設定を反映する
+chezmoi apply -v
+# 3. 常駐するものを起動する。Vicinae は Hyprland の起動時に vicinae server を立てるので、
+#    これをするか再ログインするまで Super+Space が効かない (端末を閉じても残るよう切り離す)
+setsid -f vicinae server >/dev/null 2>&1
+```
+
+`pkglist.txt` から外したパッケージ (例: rofi-calc、rofi-emoji) も自動では消えません。
+不要なら `paru -Rns <パッケージ>` で消します。
 
 ### AIの共通回答形式
 
