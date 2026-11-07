@@ -84,7 +84,6 @@ wolow-companion
 .local/share/vicinae
 .local/share/vicinae/**
 
-.local/bin/hypr_auto_perfmonitor.sh
 .local/bin/hypr_perfmodeswitch.sh
 .local/bin/hypr-vrr-off.sh
 .local/bin/hyprvoice_ptt.sh

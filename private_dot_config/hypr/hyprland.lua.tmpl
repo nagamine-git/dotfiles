@@ -81,7 +81,6 @@ hl.on("hyprland.start", function()
     -- 不在だと 1Password agent が署名を即拒否し、SSH鍵認証が "agent refused operation" で全滅する。
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &")
     hl.exec_cmd("systemctl --user start darkman.service &")
-    hl.exec_cmd("~/.local/bin/hypr_auto_perfmonitor.sh start &")
     -- VRR は 4K@120Hz HDMI でパネルが黒落ちするため、起動時にモニタへ vrr = 0 を明示再適用する
     -- (0.56 までの調査で misc:vrr=0 だけではモニタ初期化時に効かなかったため。経緯は同スクリプト冒頭)。
     hl.exec_cmd("~/.local/bin/hypr-vrr-off.sh &")
@@ -420,7 +419,6 @@ hl.bind(mainMod .. " + SHIFT + s", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"))
 
 hl.bind(mainMod .. " + a", hl.dsp.exec_cmd("~/.local/bin/hypr_perfmodeswitch.sh"))
-hl.bind(mainMod .. " + CTRL + a", hl.dsp.exec_cmd([[~/.local/bin/hypr_auto_perfmonitor.sh status | xargs -I {} notify-send "Performance Monitor" "{}"]]))
 
 -- === SCREEN LOCK ===
 hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"))
