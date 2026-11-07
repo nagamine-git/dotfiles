@@ -9,6 +9,8 @@ github-cli
 chezmoi
 vim
 neovim
+# 多重化は herdr (AUR)。tmux は ssh 先など herdr の無い場面用に残す
+herdr-bin
 tmux
 fcitx5-im
 fcitx5-hazkey-bin
