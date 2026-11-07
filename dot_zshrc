@@ -385,7 +385,6 @@ if [[ "$OSTYPE" != darwin* ]]; then
   # macOS はネイティブの pbcopy を持っているので上書きしない
   alias pbcopy='wl-copy'
 fi
-alias b='~/.local/bin/biz_start.sh '
 
 # WoL を有効化して suspend。Wolow アプリ登録用の情報を表示し Enter で実行
 wsuspend() {

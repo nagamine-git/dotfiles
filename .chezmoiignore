@@ -96,7 +96,6 @@ wolow-companion
 .local/bin/droidcam.sh
 .local/bin/mic-snr.sh
 .local/bin/sleep-now.sh
-.local/bin/fix-brave-pwa.sh
 .local/bin/swaync_launcher.sh
 .local/bin/security-update-check.sh
 {{- end }}
