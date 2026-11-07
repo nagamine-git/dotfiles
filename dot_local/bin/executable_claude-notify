@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Claude Code のフック (Stop / Notification) と、他のスクリプトから呼ばれる通知スクリプト。
 #   claude-notify stop [summary] [body]
 #   claude-notify notification [summary] [body]

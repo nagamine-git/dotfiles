@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Claude Code のいる herdr のペインへ移り、Ghostty のウィンドウを前に出す。
 #   claude-notify-focus --herdr <workspace_id> <tab_id> <pane_id> [space 名]
 #   claude-notify-focus --last   claude-notify が最後に記録したペイン (Hyprland の Super+Shift+R)

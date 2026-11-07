@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Visual blink effect for pomodoro notifications using hyprsunset
+set -eu
 
 COUNT=5
 INTERVAL=0.01
@@ -15,6 +16,6 @@ for _ in $(seq 1 $COUNT); do
 done
 
 # Restore: re-apply night filter if in rest/dark mode
-if [[ "$1" == "--rest" ]]; then
+if [[ "${1:-}" == "--rest" ]]; then
   hyprsunset -t 3000 &
 fi
