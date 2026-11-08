@@ -19,6 +19,8 @@ with (h/'events.jsonl').open('a') as f:
  f.write(json.dumps({'mode':mode,'args':sys.argv[1:],'pid':os.getpid()})+'\\n')
 if mode == 'first':
  marker.touch()
+ # Like Chromium, the first instance creates its app scope once it is running.
+ if (h/'gui-creates-scope').exists(): (h/'scope-ready').touch()
  while (h/'hold-gui').exists(): time.sleep(.02)
 '''
 
@@ -29,6 +31,7 @@ with (h/'systemctl-calls.jsonl').open('a') as f: f.write(json.dumps(args)+'\\n')
 if args[1] == 'list-units' and (h/'scope-ready').exists():
  print(args[-1].replace('app-*-', 'app-org.example.Fixture-') + ' loaded active running fixture')
 elif args[1] == 'set-property': sys.exit(1 if (h/'fail-set-property').exists() else 0)
+elif args[1] == 'is-active': sys.exit(1 if (h/'scope-inactive').exists() else 0)
 elif args[1] == 'show':
  current = h/'memory-current'
  print(current.read_text().strip() if current.exists() else '0')
@@ -63,9 +66,13 @@ class ChatgptLaunch(unittest.TestCase):
             target = self.bin / name
             target.write_text(content)
             target.chmod(0o700)
+        self.runtime = self.home / "runtime"
+        self.runtime.mkdir(mode=0o700)
+        self.lock = self.runtime / "chatgpt-launch.lock"
         self.env = {
             "HOME": str(self.home), "USER": "fixture", "LOGNAME": "fixture",
             "PATH": str(self.bin) + ":/usr/bin:/bin", "LANG": "C.UTF-8",
+            "XDG_RUNTIME_DIR": str(self.runtime), "CHATGPT_WATCH_INTERVAL": "0.05",
         }
 
     def run_launcher(self, *args):
@@ -91,6 +98,19 @@ class ChatgptLaunch(unittest.TestCase):
                 found.append(int(proc.name))
         return found
 
+    def holds_lock(self, pid):
+        held = False
+        for fd in Path("/proc/%d/fd" % pid).glob("*"):
+            try:
+                held = held or os.readlink(fd) == str(self.lock)
+            except OSError:
+                continue
+        return held
+
+    def parent(self, pid):
+        status = Path("/proc/%d/status" % pid).read_text()
+        return int(next(line.split()[1] for line in status.splitlines() if line.startswith("PPid:")))
+
     def wait_for(self, condition, timeout=3):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -104,8 +124,7 @@ class ChatgptLaunch(unittest.TestCase):
         target = subprocess.Popen(["sleep", "30"])
         self.addCleanup(target.wait)
         self.addCleanup(target.kill)
-        env = dict(self.env, CHATGPT_WATCH_INTERVAL="0.05")
-        watcher = subprocess.Popen([str(self.launcher), "--watch-chatgpt", str(target.pid)], env=env,
+        watcher = subprocess.Popen([str(self.launcher), "--watch-chatgpt", str(target.pid)], env=self.env,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.addCleanup(watcher.wait)
         self.addCleanup(watcher.kill)
@@ -124,6 +143,11 @@ class ChatgptLaunch(unittest.TestCase):
         self.assertEqual(event["pid"], launch.pid)
         pattern = "app-*-%d.scope" % launch.pid
         self.wait_for(lambda: any(c[-1] == pattern for c in self.calls("systemctl-calls.jsonl")))
+        # The watcher is detached from ChatGPT and alone keeps the launch lock until the scope appears.
+        [watcher] = self.watchers()
+        self.assertNotEqual(self.parent(watcher), launch.pid)
+        self.assertTrue(self.holds_lock(watcher))
+        self.assertFalse(self.holds_lock(launch.pid))
         (self.home / "hold-gui").unlink()
         launch.communicate(timeout=3)
         self.assertEqual(launch.returncode, 0)
@@ -147,6 +171,31 @@ class ChatgptLaunch(unittest.TestCase):
         time.sleep(.3)
         self.assertEqual(self.watchers(), [])
         self.assertFalse((self.home / "systemctl-calls.jsonl").exists())
+
+    def test_concurrent_first_launches_start_one_instance(self):
+        (self.home / "hold-gui").touch()
+        (self.home / "gui-creates-scope").touch()
+        launches = [subprocess.Popen([str(self.launcher), "codex://%d" % n], env=self.env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE) for n in range(2)]
+        for launch in launches:
+            self.addCleanup(launch.wait)
+            self.addCleanup(launch.kill)
+        self.wait_for(lambda: len(self.events()) == 2, timeout=5)
+        self.assertEqual(sorted(e["mode"] for e in self.events()), ["first", "forward"])
+        (self.home / "hold-gui").unlink()
+        for launch in launches:
+            launch.communicate(timeout=3)
+            self.assertEqual(launch.returncode, 0)
+        self.wait_for(lambda: not self.watchers())
+        self.assertEqual(sum(c[1] == "set-property" for c in self.calls("systemctl-calls.jsonl")), 1)
+
+    def test_launches_without_a_runtime_dir(self):
+        env = dict(self.env)
+        env.pop("XDG_RUNTIME_DIR")
+        result = subprocess.run([str(self.launcher)], env=env, capture_output=True, text=True, timeout=6)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events()[0]["mode"], "first")
+        self.assertFalse(self.lock.exists())
 
     def test_missing_chatgpt_fails_before_starting_a_watcher(self):
         (self.bin / "chatgpt").unlink()
@@ -192,6 +241,14 @@ class ChatgptLaunch(unittest.TestCase):
         target.kill()
         target.wait()
         self.assertEqual(watcher.wait(timeout=3), 0)
+
+    def test_watcher_stops_when_its_scope_is_no_longer_active(self):
+        (self.home / "scope-ready").touch()
+        target, watcher = self.start_watcher()
+        self.wait_for(lambda: any(c[1] == "show" for c in self.calls("systemctl-calls.jsonl")))
+        (self.home / "scope-inactive").touch()
+        self.assertEqual(watcher.wait(timeout=3), 0)
+        self.assertIsNone(target.poll())
 
     def test_watcher_reports_when_limits_cannot_be_applied(self):
         (self.home / "scope-ready").touch()

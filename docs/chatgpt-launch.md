@@ -22,6 +22,7 @@ ChatGPT (Chromium) は起動後に自分で `app-*.scope` を作り、メイン 
 `systemd-run --scope` で包んでも、移った時点で元の scope は空になり、上限は残らない (使い捨ての scope で確認済み)。
 そこで chatgpt-launch は、`--watch-chatgpt <pid>` を裏で走らせてから `exec` で ChatGPT に置き換わる。
 `exec` なので pid は変わらない。watcher は `app-*-<pid>.scope` が現れたら、`systemctl --user set-property --runtime` で上限を付ける。
+watcher は ChatGPT の子にならないよう切り離して起動し、ChatGPT が終わるか scope が active でなくなると終了する。
 
 この scope には、メイン process と、その後に生む Codex・MCP サーバー・その Chrome が入る。
 zygote 経由の子 (renderer や GPU など) の大半は上限の対象外になる。
@@ -36,6 +37,7 @@ tmux から起動していたときは、これらが元の tmux pane の scope 
 - **通知**:High と Max それぞれの 90% で、一度ずつ `notify-send` する。上限を付けられなかったときも通知する。
 - **付け直し**:付与は runtime だけなので、ChatGPT を起動するたびに付け直す。起動済みの ChatGPT には、次の起動まで効かない。
 - **起動済みのとき**:URI と focus を ChatGPT の single-instance の処理へ渡すだけで、watcher は作らない。
+- **同時に起動したとき**:`$XDG_RUNTIME_DIR/chatgpt-launch.lock` で順番にする。2 つ目は、1 つ目の watcher が scope を見つけるまで (最大 15 秒) 待ち、その後は起動済みとして URI を渡す。lock を持ち続けるのは watcher だけで、ChatGPT には渡さない。
 
 ## 確認
 

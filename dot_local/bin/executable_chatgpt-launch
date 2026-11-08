@@ -38,6 +38,9 @@ chatgpt_watch() {
     kill -0 "$pid" 2>/dev/null || return 0
     sleep 0.5
   done
+  # Release the launch lock inherited as fd 9: the scope is there (or never came), so a
+  # waiting launcher can go on and find the running instance.
+  exec 9>&-
   if [ -z "$scope" ] || ! systemctl --user set-property --runtime "$scope" \
     "MemoryHigh=${chatgpt_mem_high_gib}G" "MemoryMax=${chatgpt_mem_max_gib}G" \
     "MemorySwapMax=${chatgpt_mem_swap_max_gib}G" >/dev/null 2>&1; then
@@ -50,7 +53,8 @@ chatgpt_watch() {
   near_max=$((chatgpt_mem_max_gib * 1073741824 * 9 / 10))
   warned_high=0
   warned_max=0
-  while kill -0 "$pid" 2>/dev/null; do
+  # Stop with the scope too, so a reused pid alone does not keep the watcher alive.
+  while kill -0 "$pid" 2>/dev/null && systemctl --user is-active --quiet "$scope" 2>/dev/null; do
     current="$(systemctl --user show -p MemoryCurrent --value "$scope" 2>/dev/null)" || current=
     case "$current" in
       ''|*[!0-9]*) ;;
@@ -82,11 +86,22 @@ command -v chatgpt >/dev/null 2>&1 || {
   printf '%s\n' 'chatgpt-launch: chatgpt is not installed' >&2
   exit 127
 }
+# Serialize first launches. A second launcher waits here until the first watcher has found
+# the app scope (or gave up), then sees the running instance and only forwards its URIs.
+runtime="${XDG_RUNTIME_DIR:-}"
+if [ -n "$runtime" ] && [ -d "$runtime" ] && [ -O "$runtime" ]; then
+  exec 9>>"$runtime/chatgpt-launch.lock"
+  flock -w 15 9 || printf '%s\n' 'chatgpt-launch: launch lock timed out; launching anyway' >&2
+fi
 if pgrep -u "$(id -u)" -x ChatGPT >/dev/null; then
+  exec 9>&-
   # Preserve the app's single-instance focus and URI forwarding. This short-lived process
   # gets no scope of its own; the running instance keeps the limit set when it started.
   exec chatgpt --ozone-platform=wayland "$@"
 fi
 # exec keeps this pid, so the watcher finds the app-*-<pid>.scope that ChatGPT creates.
-"$(readlink -f "$0")" --watch-chatgpt "$$" </dev/null >/dev/null 2>&1 &
+# The subshell detaches the watcher so it is not a child of ChatGPT. Only the watcher keeps
+# the lock (fd 9) until the scope appears; ChatGPT gets the fd closed.
+( "$(readlink -f "$0")" --watch-chatgpt "$$" </dev/null >/dev/null 2>&1 & )
+exec 9>&-
 exec chatgpt --ozone-platform=wayland "$@"
