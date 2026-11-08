@@ -73,6 +73,16 @@ if [ -z "${PI_JEV_WRAPPED:-}" ] && command -v zsh >/dev/null 2>&1; then
   ) || true
 fi
 export PI_ZSH_SNAPSHOT
+# 毎回のコマンドの前に source するので、書いた直後 (作り直せなかったときは今あるファイル) の sha256 を渡し、
+# prefix と jev-gate は中身が一致するときだけ使う。入れ子の起動 (Pi の中の pi) は親の値をそのまま引き継ぐ:
+# セッションの途中で書き換えられたファイルを信じ直さないため。sha256sum は PATH ではなく既定の場所から呼ぶ。
+if [ -z "${PI_JEV_WRAPPED:-}" ]; then
+  if sum="$(command -p sha256sum 2>/dev/null <"$PI_ZSH_SNAPSHOT")"; then
+    export PI_ZSH_SNAPSHOT_SHA256="${sum%% *}"
+  else
+    unset PI_ZSH_SNAPSHOT_SHA256
+  fi
+fi
 
 export PI_JEV_WRAPPED=1
 exec "$REAL_PI" "$@"

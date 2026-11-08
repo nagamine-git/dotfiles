@@ -9,7 +9,9 @@
   空 (新ホスト) なら {} から作る。何度通しても同じ結果になる。
 
   Pi は `<shellPath> -c "<shellCommandPrefix>\n<command>"` で起動する。prefix の 3 行は:
-    1. pi-jev が対話の zsh から書き出したエイリアスと関数 ($PI_ZSH_SNAPSHOT) を読む
+    1. pi-jev が対話の zsh から書き出したエイリアスと関数 ($PI_ZSH_SNAPSHOT) を読む。pi-jev が起動時に渡した
+       sha256 ($PI_ZSH_SNAPSHOT_SHA256) と中身が違えば (途中で書き換えられた) 読まず、stderr に 1 行警告して
+       エイリアスと関数なしで続ける。sha256sum は PATH ではなく既定の場所から呼ぶ (1 回で約 1ms)
     2. モデルが書く bash 流のコマンドを通す。no_nomatch: 合わないグロブ (grep --include=*.ts、URL の ?) を
        そのまま渡す。no_equals: 語頭の = (echo ===) をコマンドのパスに展開しない
     3. zsh -c は文字列を全部読んでから実行するので、1 で足したエイリアスは後ろの行では展開されない。
@@ -41,7 +43,7 @@
 {{- if $zsh -}}
 {{-   $s = set $s "shellPath" $zsh -}}
 {{-   $prefix := list
-        `[[ -r "$PI_ZSH_SNAPSHOT" ]] && source "$PI_ZSH_SNAPSHOT"`
+        `[[ -r "$PI_ZSH_SNAPSHOT" ]] && { if [[ $(command -p sha256sum < "$PI_ZSH_SNAPSHOT") == "$PI_ZSH_SNAPSHOT_SHA256 "* ]]; then source "$PI_ZSH_SNAPSHOT"; else print -ru2 -- "pi: $PI_ZSH_SNAPSHOT が起動時から変わったので読まない (エイリアスと関数なしで続ける)"; fi; }`
         `setopt no_nomatch no_equals`
         `[[ -n $ZSH_EXECUTION_STRING ]] && { eval "${ZSH_EXECUTION_STRING#*$'\n'*$'\n'*$'\n'}"; exit; }` -}}
 {{-   $s = set $s "shellCommandPrefix" (join "\n" $prefix) -}}

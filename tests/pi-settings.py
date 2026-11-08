@@ -6,6 +6,7 @@ Needs chezmoi (CI installs it; elsewhere the tests skip). The zsh prefix runs in
 without it, but not in CI). The real-Pi tests hand the result to the installed Pi (pi_real.py: dummy
 keys, nothing prompted, so no model call) and skip on hosts without it.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,7 +24,9 @@ CHEZMOI = shutil.which("chezmoi")
 ZSH = shutil.which("zsh")
 BASH = shutil.which("bash")
 PREFIX = "\n".join([
-    '[[ -r "$PI_ZSH_SNAPSHOT" ]] && source "$PI_ZSH_SNAPSHOT"',
+    '[[ -r "$PI_ZSH_SNAPSHOT" ]] && { if [[ $(command -p sha256sum < "$PI_ZSH_SNAPSHOT") == "$PI_ZSH_SNAPSHOT_SHA256 "* ]];'
+    ' then source "$PI_ZSH_SNAPSHOT"; else print -ru2 -- "pi: $PI_ZSH_SNAPSHOT が起動時から変わったので読まない'
+    ' (エイリアスと関数なしで続ける)"; fi; }',
     "setopt no_nomatch no_equals",
     """[[ -n $ZSH_EXECUTION_STRING ]] && { eval "${ZSH_EXECUTION_STRING#*$'\\n'*$'\\n'*$'\\n'}"; exit; }""",
 ])
@@ -150,9 +153,11 @@ class PiSettings(unittest.TestCase):
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_prefix_gives_zsh_the_aliases_functions_and_bash_style_globs(self):
         repo, snapshot = self.project_with_snapshot()
-        run = lambda shell, cmd, snap=snapshot: subprocess.run(
-            [shell, "-c", PREFIX + "\n" + cmd], cwd=str(repo), timeout=30, capture_output=True, text=True,
-            env=dict(os.environ, PI_ZSH_SNAPSHOT=str(snap)))
+        sha = hashlib.sha256(SNAPSHOT.encode()).hexdigest()
+        prefix = json.loads(self.render(""))["shellCommandPrefix"]  # 描いた設定のものを試す
+        run = lambda shell, cmd, snap=snapshot, sha=sha: subprocess.run(
+            [shell, "-c", prefix + "\n" + cmd], cwd=str(repo), timeout=30, capture_output=True, text=True,
+            env=dict(os.environ, PI_ZSH_SNAPSHOT=str(snap), PI_ZSH_SNAPSHOT_SHA256=sha))
         cases = {
             "gss": "?? src/\n?? untracked.txt\n",                       # エイリアス (eval で読み直すので効く)
             "myfn x; hello": "fn:x\nhello-alias\n",                     # 関数とエイリアス
@@ -174,13 +179,30 @@ class PiSettings(unittest.TestCase):
         bash = run(BASH, "echo bash-ok")
         self.assertEqual(bash.stdout, "bash-ok\n")
 
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_a_changed_snapshot_is_not_sourced_and_the_command_still_runs(self):
+        repo, snapshot = self.project_with_snapshot()
+        sha = hashlib.sha256(SNAPSHOT.encode()).hexdigest()
+        snapshot.write_text(SNAPSHOT + "git () { print -r -- hijacked }\n")  # 例えば git を乗っ取る関数
+        prefix = json.loads(self.render(""))["shellCommandPrefix"]
+        for env_sha in (sha, ""):  # 起動時の値と違う、または値が無い
+            with self.subTest(env_sha=env_sha):
+                result = subprocess.run([ZSH, "-c", prefix + "\n" + "git --version >/dev/null && print ran; myfn x"],
+                                        cwd=str(repo), timeout=30, capture_output=True, text=True,
+                                        env=dict(os.environ, PI_ZSH_SNAPSHOT=str(snapshot), PI_ZSH_SNAPSHOT_SHA256=env_sha))
+                self.assertEqual(result.stdout, "ran\n")
+                self.assertEqual(len(result.stderr.splitlines()), 2, result.stderr)  # 警告 1 行と myfn が無いこと
+                self.assertIn("変わったので読まない", result.stderr.splitlines()[0])
+                self.assertIn("command not found: myfn", result.stderr)
+
     @unittest.skipUnless(pi_real.available() and ZSH, "Pi と zsh が要る (am5-itx だけ)")
     def test_real_pi_runs_bang_commands_in_zsh_with_the_snapshot(self):
         repo, snapshot = self.project_with_snapshot()
         settings = self.render(json.dumps({"lastChangelogVersion": "1.5.0"}))
         cmd = "cd %s && gss && myfn x && grep -rn --include=*.ts needle . && echo ===" % repo
         responses, stderr, _ = pi_real.rpc({"settings.json": settings}, [{"type": "bash", "command": cmd}],
-                                           env={"PI_ZSH_SNAPSHOT": str(snapshot)})
+                                           env={"PI_ZSH_SNAPSHOT": str(snapshot),
+                                                "PI_ZSH_SNAPSHOT_SHA256": hashlib.sha256(SNAPSHOT.encode()).hexdigest()})
         data = responses.get("c0", {}).get("data") or {}
         self.assertEqual((data.get("exitCode"), data.get("output")),
                          (0, "?? src/\n?? untracked.txt\nfn:x\n./src/a.ts:1:needle\n===\n"), stderr)

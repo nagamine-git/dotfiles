@@ -3,6 +3,7 @@
 The zsh snapshot tests run the real zsh on a fixture ~/.zshrc (they skip without zsh, but not in CI) and a
 fake zsh for the failure paths.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,7 +27,8 @@ keys = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY",
         "PI_JEV_WRAPPED")
 with (pathlib.Path(os.environ["HOME"])/"pi-runs.jsonl").open("a") as f:
     f.write(json.dumps({"args": sys.argv[1:], "env": {k: os.environ[k] for k in keys if k in os.environ},
-                        "snapshot": os.environ.get("PI_ZSH_SNAPSHOT")})+"\\n")
+                        "snapshot": os.environ.get("PI_ZSH_SNAPSHOT"),
+                        "sha256": os.environ.get("PI_ZSH_SNAPSHOT_SHA256")})+"\\n")
 '''
 
 # What the owner's ~/.zshrc might hold: plain aliases and functions to keep, and ones the snapshot must leave out.
@@ -209,6 +211,31 @@ class PiJev(unittest.TestCase):
                 self.assertEqual(run["snapshot"], str(self.snapshot()))
                 self.assertEqual(self.snapshot().read_text(), "alias old='true'\n")
                 self.assertEqual(sorted(p.name for p in self.snapshot().parent.iterdir()), ["zsh-snapshot.zsh"])
+
+    def sha256(self):
+        return hashlib.sha256(self.snapshot().read_bytes()).hexdigest()
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_the_snapshot_hash_is_exported_for_the_prefix_and_the_gate(self):
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
+        self.assertEqual(self.run_wrapper()["sha256"], self.sha256())
+
+    def test_without_a_new_snapshot_the_existing_file_is_hashed(self):
+        self.fake_zsh("exit 1\n")
+        self.old_snapshot()
+        self.assertEqual(self.run_wrapper()["sha256"], self.sha256())
+        (self.home / "pi-runs.jsonl").unlink()
+        self.snapshot().unlink()
+        self.assertIsNone(self.run_wrapper(PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-STALE")["sha256"])
+
+    def test_nested_launch_keeps_the_hash_it_inherited(self):
+        # A snapshot changed during the session must not become trusted by starting Pi again from inside Pi.
+        self.fake_zsh("exit 0\n")
+        self.old_snapshot()
+        run = self.run_wrapper(PI_JEV_WRAPPED="1", PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-PARENT-HASH")
+        self.assertEqual(run["sha256"], "SYNTHETIC-PARENT-HASH")
+        (self.home / "pi-runs.jsonl").unlink()
+        self.assertIsNone(self.run_wrapper(PI_JEV_WRAPPED="1")["sha256"])
 
     def test_without_zsh_pi_starts_with_no_snapshot(self):
         tools = self.home / "tools"
