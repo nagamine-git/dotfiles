@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Slack に通知を 1 通送る。投稿の種類 (--kind) ごとに名前とアイコンを変える。
+
+  op-agent run --env-file ~/.config/agents/tower.env -- slack-notify --kind preship --text "本文"
+  echo "本文" | op-agent run --env-file ~/.config/agents/tower.env -- slack-notify --kind preship
+  slack-notify --kind preship --text "本文" --dry-run   送らずにペイロードを出す (トークン不要)
+
+種類を足すときは ~/.config/slack-notify/kinds.json (chezmoi のソースは
+private_dot_config/slack-notify/kinds.json。SLACK_NOTIFY_KINDS で別のファイルを指せる) の
+"kinds" に username と icon_emoji か icon_url、必要なら channel を書く。両方あれば Slack と同じく
+icon_emoji が勝つ。送り先は --channel、種類の channel、default_channel の順に決まる。
+
+トークンは Incoming webhook アプリ (@Tower) の SLACK_BOT_TOKEN。名前とアイコンの上書きには
+chat:write.customize が要り、付与前は Slack が上書きを無視して @Tower の名前で投稿される。
+成功すると「channel ts」を 1 行出す。終了コードは 0 成功、1 Slack・通信の失敗、2 使い方・設定の誤り。
+トークンの値は出力しない。
+"""
+import argparse
+import json
+import os
+import sys
+import urllib.request
+from pathlib import Path
+
+SLACK_API = "https://slack.com/api/"
+
+
+class UsageError(Exception):
+    pass
+
+
+class SlackError(Exception):
+    pass
+
+
+def kinds_path(environ):
+    override = environ.get("SLACK_NOTIFY_KINDS")
+    return Path(override).expanduser() if override else Path.home() / ".config/slack-notify/kinds.json"
+
+
+def load_kinds(path):
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise UsageError("種類の設定がありません: %s" % path) from None
+    except (OSError, ValueError) as exc:
+        raise UsageError("種類の設定を読めません: %s (%s)" % (path, type(exc).__name__)) from None
+    if not isinstance(config, dict) or not isinstance(config.get("kinds"), dict):
+        raise UsageError('種類の設定に "kinds" がありません: %s' % path)
+    return config
+
+
+def find_kind(config, kind):
+    kinds = config["kinds"]
+    if kind not in kinds:
+        raise UsageError("未知の種類です: %s (既知の種類: %s)" % (kind, ", ".join(kinds) or "なし"))
+    look = kinds[kind]
+    if not isinstance(look, dict) or not isinstance(look.get("username"), str) or not look["username"]:
+        raise UsageError("種類 %s に username がありません" % kind)
+    return look
+
+
+def build_payload(config, look, text, channel=None):
+    channel = channel or look.get("channel") or config.get("default_channel")
+    if not channel:
+        raise UsageError("送り先がありません (--channel か kinds.json の default_channel を指定する)")
+    payload = {"channel": channel, "text": text, "username": look["username"], "unfurl_links": False}
+    if look.get("icon_emoji"):
+        payload["icon_emoji"] = look["icon_emoji"]
+    elif look.get("icon_url"):
+        payload["icon_url"] = look["icon_url"]
+    return payload
+
+
+def slack_api(token, method, payload, urlopen=urllib.request.urlopen):
+    request = urllib.request.Request(
+        SLACK_API + method, data=json.dumps(payload).encode("utf-8"), method="POST",
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json; charset=utf-8"})
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError) as exc:
+        code = getattr(exc, "code", None)
+        raise SlackError("%s: %s%s" % (method, type(exc).__name__, " %s" % code if code else "")) from None
+
+
+def post_message(token, payload, urlopen=urllib.request.urlopen):
+    response = slack_api(token, "chat.postMessage", payload, urlopen)
+    if not isinstance(response, dict) or not response.get("ok"):
+        error = response.get("error") if isinstance(response, dict) else None
+        raise SlackError(str(error or "unknown"))
+    return response
+
+
+def main(argv=None, environ=None, stdin=None, urlopen=urllib.request.urlopen):
+    environ = os.environ if environ is None else environ
+    parser = argparse.ArgumentParser(prog="slack-notify", description="Slack に種類ごとの名前とアイコンで通知を送る")
+    parser.add_argument("--kind", required=True, help="投稿の種類 (kinds.json の kinds のキー)")
+    parser.add_argument("--channel", help="送り先のチャンネル ID (省略時は種類の channel か default_channel)")
+    parser.add_argument("--text", help="本文 (省略時は標準入力)")
+    parser.add_argument("--dry-run", action="store_true", help="送らずにペイロードを出す")
+    args = parser.parse_args(argv)
+    try:
+        config = load_kinds(kinds_path(environ))
+        look = find_kind(config, args.kind)
+        text = args.text if args.text is not None else (sys.stdin if stdin is None else stdin).read()
+        text = text.rstrip()
+        if not text:
+            raise UsageError("本文が空です (--text か標準入力で渡す)")
+        payload = build_payload(config, look, text, args.channel)
+    except UsageError as exc:
+        print("slack-notify: %s" % exc, file=sys.stderr)
+        return 2
+    if args.dry_run:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    token = environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        print("slack-notify: 環境変数がありません: SLACK_BOT_TOKEN"
+              " (op-agent run --env-file ~/.config/agents/tower.env -- slack-notify ... で呼ぶ)", file=sys.stderr)
+        return 2
+    try:
+        response = post_message(token, payload, urlopen)
+    except SlackError as exc:
+        print("slack-notify: %s" % exc, file=sys.stderr)
+        return 1
+    print("%s %s" % (response.get("channel") or payload["channel"], response.get("ts", "")))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
