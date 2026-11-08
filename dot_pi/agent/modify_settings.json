@@ -1,0 +1,31 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  ~/.pi/agent/settings.json は Pi も書く (lastChangelogVersion・deviceId・/model の Ctrl+S など) ので、
+  丸ごとは管理せず .chezmoidata/pi.yaml のモデルの 3 段から作るキーだけを上書きし、ほかのキーは残す。
+    defaultProvider / defaultModel / defaultThinkingLevel  default 段
+    modelThinkingLevels                                     3 段の "provider/id": thinking (ほかのキーは残す)
+    enabledModels                                           Ctrl+P の切り替え。"provider/id:thinking" を default・peak・light の順
+  空 (新ホスト) なら {} から作る。何度通しても同じ結果になる。
+*/ -}}
+{{- $s := dict -}}
+{{- if trim .chezmoi.stdin -}}
+{{-   $s = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $m := .pi.models -}}
+{{- $s = set $s "defaultProvider" $m.default.provider -}}
+{{- $s = set $s "defaultModel" $m.default.id -}}
+{{- $s = set $s "defaultThinkingLevel" $m.default.thinking -}}
+{{- $levels := dict -}}
+{{- if hasKey $s "modelThinkingLevels" -}}
+{{-   $levels = $s.modelThinkingLevels -}}
+{{- end -}}
+{{- $cycle := list -}}
+{{- range $tier := list "default" "peak" "light" -}}
+{{-   $t := index $m $tier -}}
+{{-   $key := printf "%s/%s" $t.provider $t.id -}}
+{{-   $levels = set $levels $key $t.thinking -}}
+{{-   $cycle = append $cycle (printf "%s:%s" $key $t.thinking) -}}
+{{- end -}}
+{{- $s = set $s "modelThinkingLevels" $levels -}}
+{{- $s = set $s "enabledModels" $cycle -}}
+{{- toPrettyJson $s -}}
