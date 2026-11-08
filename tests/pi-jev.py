@@ -11,11 +11,12 @@ SCRIPT = ROOT / "dot_local/bin/executable_pi-jev"
 IGNORE = ROOT / ".chezmoiignore"
 ZSHRC = ROOT / "dot_zshrc"
 CHEZMOI = shutil.which("chezmoi")
-KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY")
+KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")
 
 FAKE_PI = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
-keys = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "PI_JEV_WRAPPED")
+keys = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+        "PI_JEV_WRAPPED")
 with (pathlib.Path(os.environ["HOME"])/"pi-runs.jsonl").open("a") as f:
     f.write(json.dumps({"args": sys.argv[1:], "env": {k: os.environ[k] for k in keys if k in os.environ}})+"\\n")
 '''
@@ -47,7 +48,8 @@ class PiJev(unittest.TestCase):
         agents = self.home / ".config/agents"
         agents.mkdir(parents=True)
         (agents / "model-typesafe.env").write_text("# synthetic\nTYPESAFE_API_KEY=op://Agents/synthetic-typesafe/password\n")
-        (agents / "model-openrouter.env").write_text(
+        self.openrouter_env = agents / "model-openrouter.env"
+        self.openrouter_env.write_text(
             "# synthetic\nOPENROUTER_API_KEY=\"op://Agents/synthetic-openrouter/password\"\n"
             "ARTIFICIAL_ANALYSIS_API_KEY=op://Agents/synthetic-aa/password\n")
         self.env = {"HOME": str(self.home), "PATH": str(self.bin) + ":/usr/bin:/bin", "LANG": "C.UTF-8"}
@@ -65,7 +67,7 @@ class PiJev(unittest.TestCase):
         return [json.loads(x) for x in path.read_text().splitlines()] if path.exists() else []
 
     def test_default_puts_no_key_in_pis_environment(self):
-        inherited = {key: "SYNTHETIC-INHERITED" for key in KEYS[:2]}
+        inherited = {key: "SYNTHETIC-INHERITED" for key in KEYS}
         run = self.run_wrapper("--print", "a b", **inherited)
         self.assertEqual(run["args"], ["--print", "a b"])
         self.assertEqual(run["env"], {"PI_JEV_WRAPPED": "1"})
@@ -78,8 +80,38 @@ class PiJev(unittest.TestCase):
         self.assertEqual(run["env"], {"OPENROUTER_API_KEY": "SYNTHETIC-VALUE-FOR op://Agents/synthetic-openrouter/password",
                                       "PI_JEV_WRAPPED": "1"})
 
-    def test_openrouter_flag_without_token_or_op_agent_starts_pi_without_keys(self):
+    def test_openrouter_flag_drops_the_other_inherited_keys(self):
+        inherited = {key: "SYNTHETIC-INHERITED" for key in KEYS if key != "OPENROUTER_API_KEY"}
+        run = self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1", **inherited)
+        self.assertEqual(sorted(run["env"]), ["OPENROUTER_API_KEY", "PI_JEV_WRAPPED"])
+
+    def test_openrouter_flag_without_token_starts_pi_without_keys(self):
         self.token.unlink()
+        self.assertEqual(self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1")["env"], {"PI_JEV_WRAPPED": "1"})
+        self.assertEqual(self.calls("op-agent-calls.jsonl"), [])
+
+    def test_openrouter_flag_without_op_agent_starts_pi_without_keys(self):
+        (self.bin / "op-agent").unlink()
+        self.assertEqual(self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1")["env"], {"PI_JEV_WRAPPED": "1"})
+
+    def test_openrouter_reference_may_be_quoted_with_spaces_or_bare(self):
+        for line, ref in (('OPENROUTER_API_KEY="op://Agents/synthetic vault/item one/password"  \n',
+                           "op://Agents/synthetic vault/item one/password"),
+                          ("OPENROUTER_API_KEY=op://Agents/synthetic-bare/password\t\n", "op://Agents/synthetic-bare/password")):
+            with self.subTest(ref=ref):
+                for name in ("pi-runs.jsonl", "op-agent-calls.jsonl"):
+                    (self.home / name).unlink(missing_ok=True)
+                self.openrouter_env.write_text("# synthetic\n" + line)
+                run = self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1")
+                self.assertEqual(self.calls("op-agent-calls.jsonl"), [["read", ref]])
+                self.assertEqual(run["env"]["OPENROUTER_API_KEY"], "SYNTHETIC-VALUE-FOR " + ref)
+
+    def test_unreadable_or_malformed_reference_still_starts_pi(self):
+        self.openrouter_env.write_text('OPENROUTER_API_KEY="op://Agents/synthetic-unclosed/password\n')
+        self.assertEqual(self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1")["env"], {"PI_JEV_WRAPPED": "1"})
+        (self.home / "pi-runs.jsonl").unlink()
+        self.openrouter_env.unlink()
+        self.openrouter_env.mkdir()  # Readable, but sed fails on it.
         self.assertEqual(self.run_wrapper(PI_JEV_ALLOW_OPENROUTER="1")["env"], {"PI_JEV_WRAPPED": "1"})
         self.assertEqual(self.calls("op-agent-calls.jsonl"), [])
 

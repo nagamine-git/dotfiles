@@ -21,13 +21,16 @@ REAL_PI="$HOME/.pi/agent/bin/pi"
 TOKEN="${OP_AGENT_TOKEN_FILE:-$HOME/.config/op/agents-sa-token}"
 OPENROUTER_ENV="$HOME/.config/agents/model-openrouter.env"
 
-unset TYPESAFE_API_KEY
+# Provider keys inherited from the caller would reach every tool command.
+unset TYPESAFE_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY ARTIFICIAL_ANALYSIS_API_KEY
 if [ "${PI_JEV_ALLOW_OPENROUTER:-}" != 1 ]; then
   unset OPENROUTER_API_KEY
 elif [ -z "${PI_JEV_WRAPPED:-}" ] && [ -r "$TOKEN" ] && [ -r "$OPENROUTER_ENV" ] &&
   command -v op-agent >/dev/null 2>&1; then
-  # Only the OPENROUTER_API_KEY="op://..." line (optional quotes); other keys stay out.
-  ref="$(sed -n 's/^OPENROUTER_API_KEY="\{0,1\}\(op:\/\/[^"]*\)"\{0,1\}$/\1/p' "$OPENROUTER_ENV" | head -n 1)"
+  # Only the OPENROUTER_API_KEY line, quoted (spaces allowed inside) or bare, as jev-gate.ts
+  # parses its reference; other keys stay out. A read failure still starts Pi.
+  ref="$(sed -nE 's/^OPENROUTER_API_KEY=("(op:\/\/[^"]+)"|(op:\/\/[^[:space:]]+))[[:space:]]*$/\2\3/p' \
+    "$OPENROUTER_ENV" | head -n 1)" || ref=""
   if [ -n "$ref" ] && val="$(op-agent read "$ref" 2>/dev/null)"; then
     export OPENROUTER_API_KEY="$val"
   fi
