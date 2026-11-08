@@ -23,14 +23,26 @@
 - スキル: `dot_agents/skills/<name>/SKILL.md` を作って `chezmoi apply`。`npx skills add` で `~/.agents/skills` に入れたものも `agents-sync skills` が Claude 側にリンクする。
 - MCP サーバー: `dot_agents/mcp.json` に名前・`command` / `args` または `type: http` と `url` を足して `chezmoi apply`。秘密の環境変数は `secrets` に名前だけ書く (値は書かない。自動では足されないので `claude mcp add -e` / `codex mcp add --env` で 1 回入れる)。
 - subagent: `dot_claude/agents/<name>.md` を書く。Codex 用 toml は自動生成。
-- 指示: `dot_agents/AGENTS.md` を直す。道具固有の規則は「Claude Code のみ」「Codex のみ」の節に書く。
+- 指示: `dot_agents/AGENTS.md` を直す。道具固有の規則は「道具ごとの差」に書く。
 
 ## 日本語の回答と ChatGPT / dot
 
-回答の書き方は `dot_agents/AGENTS.md` の共通節が正本。文字数の固定上限は設けず、自然な文と必要な説明を優先する。
-ChatGPT の Settings > Personalization にある ChatGPT / Codex の custom instructions は、`agents-sync` の同期対象ではない。「回答の書き方」の本文を両方へ反映し、保存後に開き直して確認する。
+個人の作業ポリシーと回答の書き方は `dot_agents/AGENTS.md` が正本。文字数の固定上限は設けず、自然な文と必要な説明を優先する。
+ChatGPT の Settings > Personalization にある ChatGPT / Codex の custom instructions は、`agents-sync` の同期対象ではない。「作業と報告」の回答表現に関する項目を両方へ反映し、保存後に開き直して確認する。
 dot の Custom rules に同じ文字数制限を重ねない。書き方は custom instructions、行動の許可は Custom rules に分ける。
 この設定は生成時の指針であり、実際の読みやすさは新しい会話でも確認する。既存会話には古い指示やメモリが残ることがある。
+
+## 個人設定と会社ルール
+
+`dot_agents/AGENTS.md` は本人の既定。会社・顧客の状態管理、PR 承認、受入条件は各組織の正本に置く。
+EFG の共通運用は [Linear の運用ルール](https://linear.app/efg/document/運用ルール-9b4270577ad2)、製品固有の指示は各 repo の `AGENTS.md`。この repo の `REVIEW.md` は chezmoi のレビュー時だけ読むリポジトリ用資料で、ホームへは配置しない。
+
+## メモリの追記
+
+Claude の `~/.claude/projects/<repo>/memory/` に1事実1ファイルで残す。Codex では `agent-memory-dir` で場所を確認する。
+`<type>_<短い題>.md` に `name` / `description` / `metadata` (`node_type: memory`、`type: user|feedback|project|reference`) の frontmatter と、事実・理由を書く。
+索引 `MEMORY.md` へ `- [題](ファイル名) — 一行の要約` を足し、200行・25KB以内に保つ。秘密・トークン・個人データは書かない。
+Codex 自身の `~/.codex/memories` は自動生成物であり、手で編集しない。
 
 ## 公式の仕様 (確認した内容)
 
