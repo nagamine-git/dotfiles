@@ -3,7 +3,9 @@
 Needs Node 23.6 or later, which runs TypeScript by stripping its types. Elsewhere it skips, but
 not in CI (the CI environment variable): there an older Node fails the run. Never calls a model.
 The injection guard is the repo's copy of Claude Code's hook (dot_claude/hooks), run for real.
+The zsh alias tests run the real zsh (they skip without it, but not in CI) on a fixture snapshot.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +19,27 @@ EXTENSION = ROOT / "dot_pi/agent/extensions/jev-gate.ts"
 INJECTION_GUARD = ROOT / "dot_claude/hooks/executable_injection-guard.sh"
 NODE = shutil.which("node")
 JQ = shutil.which("jq")
+ZSH = shutil.which("zsh")
+
+# A snapshot as pi-jev writes it (alias -L, functions): wrappers around a force push, a harmless alias,
+# a chain of aliases the gate follows (c1 -> c2 -> gpf!) and one too deep to follow (d1 -> ... -> d4).
+SNAPSHOT = """alias a-ok='true'
+alias c1=c2
+alias c2='gpf!'
+alias d1=d2
+alias d2=d3
+alias d3=d4
+alias d4='git push --force'
+alias 'gpf!'='git push --force'
+alias gss='git status --short'
+ggf () {
+\tgit push --force origin "${1:-main}"
+}
+"""
+COUNTING_ZSH = """#!/bin/sh
+echo call >> "$HOME/zsh-calls"
+exec "$REAL_ZSH" "$@"
+"""
 REF = "op://Agents/synthetic-typesafe/password"
 KEY = "SYNTHETIC-VALUE-FOR " + REF
 
@@ -424,6 +447,125 @@ class JevGate(unittest.TestCase):
                                {"toolName": "grep", "input": {"pattern": "x", "path": "~/work"}}],
                               scenario={"cwd": str(self.home / "work")})
         self.assertEqual(seen["results"], [None, None, None])
+
+    # --- zsh aliases and functions (Pi's bash runs in zsh with pi-jev's snapshot) -------------------
+
+    def with_snapshot(self, text=SNAPSHOT, sha=None):
+        snapshot = self.home / ".cache/pi/zsh-snapshot.zsh"
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        snapshot.write_text(text)
+        zsh = self.home / "counting-zsh"
+        zsh.write_text(COUNTING_ZSH)
+        zsh.chmod(0o700)
+        return {"PI_ZSH_SNAPSHOT": str(snapshot), "JEV_GATE_ZSH": str(zsh), "REAL_ZSH": str(ZSH),
+                "PI_ZSH_SNAPSHOT_SHA256": sha if sha is not None else hashlib.sha256(text.encode()).hexdigest()}
+
+    def zsh_calls(self):
+        path = self.home / "zsh-calls"
+        return len(path.read_text().splitlines()) if path.exists() else 0
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_aliases_and_functions_that_wrap_a_denied_command_are_denied_by_the_rules(self):
+        env = self.with_snapshot()
+        for command in ("gpf!", "ggf", "c1", "git status && gpf! origin main", "g'g'f"):
+            with self.subTest(command=command):
+                seen = self.run_gate([command], **env)
+                [result] = seen["results"]
+                self.assertIsNotNone(result)
+                self.assertTrue(result["block"])
+                self.assertIn("(rule)", result["reason"])
+                self.assertEqual(seen["classify"], [])
+        entry = self.log_entries()[0]
+        self.assertEqual(entry["text"], "gpf!")
+        self.assertIn("git push --force", entry["expanded"])
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_a_harmless_alias_goes_to_the_classifier_with_its_expansion(self):
+        seen = self.run_gate(["gss"], **self.with_snapshot())
+        self.assertEqual(seen["results"], [None])
+        [classified] = seen["classify"]
+        shown = classified["state"]["command_or_path"]
+        self.assertTrue(shown.startswith("gss\n# expanded:\n"), shown)
+        self.assertIn("git status --short", shown)
+        [entry] = self.log_entries()
+        self.assertEqual((entry["text"], entry["decision"]), ("gss", "allow"))
+        self.assertIn("git status --short", entry["expanded"])
+        # A command without aliases or functions reaches the classifier as it is.
+        self.assertEqual(self.run_gate(["git status"], **self.with_snapshot())["classify"][0]["state"]["command_or_path"],
+                         "git status")
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_a_failed_resolution_is_a_confirm(self):
+        cases = {  # name: (command, environment)
+            "changed snapshot": ("gss", lambda: self.with_snapshot(sha="0" * 64)),
+            "no zsh": ("gss", lambda: dict(self.with_snapshot(), JEV_GATE_ZSH=str(self.home / "no-such-zsh"))),
+            "broken snapshot": ("gss", lambda: self.with_snapshot(text="alias x='unterminated\n")),
+            "too deep": ("d1", lambda: self.with_snapshot()),
+        }
+        for name, (command, make_env) in cases.items():
+            with self.subTest(name):
+                env = make_env()
+                seen = self.run_gate([command], **env)
+                self.assertEqual((seen["results"], seen["confirms"], seen["classify"]), ([None], 1, []))
+                seen = self.run_gate([command], confirm_answer=False, **env)
+                self.assertTrue(seen["results"][0]["block"])
+                [blocked] = self.run_gate([command], has_ui=False, **env)["results"]
+                self.assertIsNotNone(blocked)
+                self.assertTrue(blocked["block"])
+                self.assertIn("zsh", blocked["reason"])
+
+    def test_without_a_snapshot_nothing_changes(self):
+        zsh = self.home / "counting-zsh"
+        zsh.write_text(COUNTING_ZSH)
+        zsh.chmod(0o700)
+        for extra in ({}, {"PI_ZSH_SNAPSHOT": str(self.home / "missing.zsh")}):
+            with self.subTest(extra=extra):
+                seen = self.run_gate(["gpf!"], JEV_GATE_ZSH=str(zsh), REAL_ZSH=str(ZSH), **extra)
+                self.assertEqual(seen["results"], [None])
+                self.assertEqual(seen["classify"][0]["state"]["command_or_path"], "gpf!")
+        self.assertEqual(self.zsh_calls(), 0)
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_zsh_runs_once_per_bash_decision_and_not_for_other_tools(self):
+        seen = self.run_calls([{"toolName": "bash", "input": {"command": "gss; git status; a-ok"}},
+                               {"toolName": "bash", "input": {"command": "ls"}},
+                               {"toolName": "write", "input": {"path": "x.txt", "content": "gss"}}],
+                              **self.with_snapshot())
+        self.assertEqual(seen["results"], [None, None, None])
+        self.assertEqual(self.zsh_calls(), 2)
+
+    # --- The snapshot itself: every bash command sources it, so only pi-jev may write it -------------
+
+    def test_the_snapshot_directory_is_closed_to_write_and_edit(self):
+        cache = self.home / ".cache/pi"
+        cache.mkdir(parents=True)
+        (cache / "zsh-snapshot.zsh").write_text("alias x=y\n")
+        (self.home / "work").mkdir()
+        xdg = self.home / "xdg"
+        calls = [{"toolName": tool, "input": {"path": p, **extra}}
+                 for p in ("~/.cache/pi/zsh-snapshot.zsh", "~/.cache/pi/new.zsh", str(cache))
+                 for tool, extra in (("write", {"content": "x"}), ("edit", {"edits": [{"oldText": "x", "newText": "y"}]}))]
+        self.assert_denied(calls)
+        seen = self.run_calls([{"toolName": "write", "input": {"path": str(xdg / "pi/zsh-snapshot.zsh"), "content": "x"}}],
+                              scenario={"cwd": str(self.home / "work")}, XDG_CACHE_HOME=str(xdg))
+        self.assertTrue(seen["results"][0]["block"])
+        self.assertIn("protected path", seen["results"][0]["reason"])
+        # Reading it stays allowed, and so does the pip cache next to it.
+        seen = self.run_calls([{"toolName": "read", "input": {"path": "~/.cache/pi/zsh-snapshot.zsh"}},
+                               {"toolName": "write", "input": {"path": "~/.cache/pip/x", "content": "x"}}],
+                              scenario={"cwd": str(self.home / "work")})
+        self.assertEqual(seen["results"], [None, None])
+
+    def test_bash_may_not_touch_the_snapshot(self):
+        for command in ("cat ~/.cache/pi/zsh-snapshot.zsh", "printf 'git () { :; }' >> $HOME/.cache/pi/zsh-snapshot.zsh",
+                        "cp evil.zsh ~/.cache/pi/", "sed -i s/a/b/ zsh-snapshot.zsh", "echo $PI_ZSH_SNAPSHOT",
+                        "printenv PI_ZSH_SNAPSHOT_SHA256", 'echo x > "${XDG_CACHE_HOME}/pi/x"'):
+            with self.subTest(command=command):
+                seen = self.run_gate([command])
+                self.assertTrue(seen["results"][0]["block"])
+                self.assertIn("(rule)", seen["results"][0]["reason"])
+                self.assertEqual(seen["classify"], [])
+        self.assertIsNone(self.run_gate(["ls ~/.cache/pip"])["results"][0])
 
     # --- MCP tools --------------------------------------------------------------------------------
 

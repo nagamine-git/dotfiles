@@ -7,14 +7,24 @@
  *      auth.json and *credentials* files are denied, checked on the path as given and with
  *      symlinks followed. read and grep may not open .env, *.env or .env.* (except
  *      .env.example / .sample / .template), and grep may not search a directory that holds
- *      a protected path. Bash is not path-checked: its .ssh and .env uses go to (3).
+ *      a protected path. write and edit may not touch the zsh snapshot's directory (see below).
+ *      Bash is not path-checked: its .ssh and .env uses go to (3).
  *   2. Deterministic rules: for bash, Claude Code's own ~/.claude/hooks/injection-guard.sh
  *      (remote fetch|shell, outbound mail, 1Password reads, secret files in transfers) is
  *      run, not copied, so the two cannot drift. If it is missing or fails, bash is denied.
  *      DENY_RULES (bash, and write/edit paths) add the settings.json deny list and Pi's own
  *      rules: op-agent read, ~/.config/op and auth.json, OpenRouter, force push / hard
- *      reset, publish/delete. MCP inputs are not matched against them.
+ *      reset, publish/delete, and any mention of the zsh snapshot. MCP inputs are not matched against them.
  *   Layers 1 and 2 never call a model.
+ *
+ *   zsh aliases and functions: Pi's bash runs in zsh, and its prefix sources pi-jev's snapshot of the
+ *   owner's aliases and functions (PI_ZSH_SNAPSHOT), so `gpf!` or a function like ggf can stand for
+ *   `git push --force`. When the snapshot is readable, one `zsh -fc` per bash call sources it and prints
+ *   what every alias or function among the command's words stands for, following chains 3 levels deep.
+ *   That expansion is appended to the command ("# expanded:") for layers 2 and 3 and logged beside it.
+ *   If zsh cannot resolve them (no zsh, timeout, a broken snapshot, deeper chains, or a snapshot whose
+ *   sha256 differs from PI_ZSH_SNAPSHOT_SHA256, which pi-jev sets at launch), the call is a confirm.
+ *   Every word is resolved, wherever it stands, so a word that only looks like an alias is expanded too.
  *   3. jev classifier (TypeSafe, via Pi's model registry) for bash, write, edit and MCP
  *      tools (mcp__*, including calls from codemode scripts), asking {allow, confirm, deny}
  *      with probabilities. The TypeSafe key is read here with op-agent (reference in
@@ -48,6 +58,11 @@ const OP_AGENT = path.join(HOME, ".local/bin/op-agent");
 const INJECTION_GUARD = process.env.JEV_GATE_INJECTION_GUARD || path.join(HOME, ".claude/hooks/injection-guard.sh");
 // What the classifier is shown of a command or tool input. MCP inputs are cut to it for the log too.
 const TEXT_MAX = 8000;
+// The zsh snapshot of aliases and functions that Pi's bash prefix sources (written by pi-jev), and its directory.
+const SNAPSHOT_DIRS = [...new Set([path.join(process.env.XDG_CACHE_HOME || path.join(HOME, ".cache"), "pi"),
+  ...(process.env.PI_ZSH_SNAPSHOT ? [path.dirname(path.resolve(process.env.PI_ZSH_SNAPSHOT))] : [])])];
+// An absolute zsh, so a zsh planted earlier on PATH cannot answer for it. JEV_GATE_ZSH is for tests.
+const ZSH = process.env.JEV_GATE_ZSH || ["/usr/bin/zsh", "/bin/zsh"].find((p) => fs.existsSync(p)) || "/usr/bin/zsh";
 
 // The op:// reference, quoted (spaces allowed inside) or bare. pi-jev parses the same way.
 const TYPESAFE_REF = /^TYPESAFE_API_KEY=(?:"(op:\/\/[^"]+)"|(op:\/\/\S+))\s*$/m;
@@ -129,6 +144,9 @@ function protectedPath(tool: string, input: any, cwd: string): string | undefine
     if (tool === "grep" && secrets.some((s) => within(p, s))) {
       return `grep would search ${p}, which holds credentials (search a narrower path)`;
     }
+    if ((tool === "write" || tool === "edit") && SNAPSHOT_DIRS.some((d) => within(d, p) || within(real(d), p))) {
+      return `${p} is where pi-jev keeps the zsh snapshot that every bash command sources`;
+    }
   }
 }
 
@@ -141,6 +159,10 @@ const DENY_RULES: { re: RegExp; reason: string }[] = [
   { re: /git\s+push\s+.*(--force|-f)\b/, reason: "git force push" },
   { re: /git\s+reset\s+--hard\s+origin\//, reason: "hard reset to origin" },
   { re: /\b(gh\s+repo\s+delete|npm\s+publish|pnpm\s+publish|yarn\s+publish|cargo\s+publish)\b/, reason: "publish/delete of a package or repo" },
+  // Even reading it: anything a command does there could change what every later command runs.
+  { re: new RegExp(`zsh-snapshot|PI_ZSH_SNAPSHOT|(?:\\.cache/pi|XDG_CACHE_HOME\\}?/pi|${SNAPSHOT_DIRS.map((d) =>
+      d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![\\w.-])`),
+    reason: "touching Pi's zsh snapshot, which every bash command sources (only pi-jev writes it)" },
 ];
 
 type RuleDeny = { layer: string; reason: string; unavailable?: true };
@@ -163,6 +185,66 @@ function injectionGuard(command: string): Promise<RuleDeny | undefined> {
     });
     child.stdin?.on("error", () => {}); // a missing hook closes the pipe
     child.stdin?.end(JSON.stringify({ tool_input: { command } }));
+  });
+}
+
+// Run by `zsh -fc` with the snapshot ($1), its expected sha256 ($2) and the command on stdin (read with cat:
+// Node's stdin is a socket, which /dev/stdin cannot open). Prints what each
+// alias or function among the command's words (zsh's own split, quotes removed, plus a split on every other
+// character, for words inside $(...) or after =) stands for, then the same for the words of those, 3 levels.
+// Exit 5: the snapshot changed; 3: it does not load; 4: still an alias or function after 3 levels.
+const RESOLVE_ZSH = [
+  '[[ $(command -p sha256sum < $1) == "$2 "* ]] || exit 5',
+  'zmodload zsh/parameter',
+  'source -- $1 || exit 3',
+  'typeset -A __jg_seen',
+  'typeset -a __jg_todo __jg_next',
+  '__jg_words() { builtin print -rl -- ${(Q)${(z)1}} ${=${1//[^A-Za-z0-9_.:+@!%^~-]/ }} }',
+  '__jg_todo=( ${(f)"$(__jg_words "$(command -p cat)")"} )',
+  'for __jg_level in 1 2 3; do',
+  '  __jg_next=()',
+  '  for __jg_w in $__jg_todo; do',
+  '    [[ -n $__jg_w && -z $__jg_seen[$__jg_w] && $__jg_w != __jg_* ]] || continue',
+  '    __jg_seen[$__jg_w]=1',
+  '    if (( $+aliases[$__jg_w] )); then',
+  '      builtin print -r -- "$__jg_w: aliased to $aliases[$__jg_w]"',
+  '      __jg_next+=( ${(f)"$(__jg_words $aliases[$__jg_w])"} )',
+  '    elif (( $+functions[$__jg_w] )); then',
+  '      builtin print -r -- "$__jg_w () { $functions[$__jg_w] }"',
+  '      __jg_next+=( ${(f)"$(__jg_words $functions[$__jg_w])"} )',
+  '    fi',
+  '  done',
+  '  __jg_todo=( $__jg_next )',
+  'done',
+  'for __jg_w in $__jg_todo; do',
+  '  [[ -z $__jg_seen[$__jg_w] ]] && (( $+aliases[$__jg_w] || $+functions[$__jg_w] )) && exit 4',
+  'done',
+  'exit 0',
+].join("\n");
+
+type Expansion = { expansion?: string; failed?: string };
+
+// What the bash command's aliases and functions stand for, when Pi's bash sources a snapshot. Without a readable
+// snapshot there is nothing to resolve (commands then run without the owner's aliases and functions).
+function expandShellWords(command: string): Promise<Expansion> {
+  const snapshot = process.env.PI_ZSH_SNAPSHOT;
+  try {
+    if (!snapshot) return Promise.resolve({});
+    fs.accessSync(snapshot, fs.constants.R_OK);
+  } catch {
+    return Promise.resolve({});
+  }
+  const why: Record<string, string> = { "3": "the snapshot does not load", "4": "aliases nest deeper than 3 levels",
+    "5": "the snapshot changed since Pi started" };
+  return new Promise((resolve) => {
+    const child = execFile(ZSH, ["-fc", RESOLVE_ZSH, "zsh", snapshot, process.env.PI_ZSH_SNAPSHOT_SHA256 ?? ""],
+      { timeout: 3_000, maxBuffer: 64 * 1024 }, (err: any, stdout) => {
+        if (!err) return resolve({ expansion: String(stdout).trim() || undefined });
+        const reason = err.killed ? "timed out" : why[String(err.code)] ?? String(err.code ?? err.message);
+        resolve({ failed: `zsh could not resolve the command's aliases and functions (${reason})` });
+      });
+    child.stdin?.on("error", () => {});
+    child.stdin?.end(command);
   });
 }
 
@@ -237,6 +319,33 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
   }
 }
 
+// A confirm: asked in the UI, otherwise denied unless JEV_GATE_MODE=allow. entry is what the log records.
+async function confirm(pi: ExtensionAPI, ctx: any, kind: string, text: string, entry: Record<string, unknown>,
+  why?: string): Promise<{ block: true; reason: string } | undefined> {
+  const mode = gateMode(ctx);
+  if (mode === "ask" && ctx.hasUI && ctx.ui?.confirm) {
+    // herdr-agent-state.ts shows the pane as blocked meanwhile; notify.ts tells the owner.
+    pi.events.emit("herdr:blocked", { active: true, label: "jev-gate: 承認待ち" });
+    let ok: boolean;
+    try {
+      ok = await ctx.ui.confirm("jev-gate", `Allow this ${kind}?${why ? ` (${why})` : ""}\n${text.slice(0, 300)}`);
+    } finally {
+      pi.events.emit("herdr:blocked", { active: false });
+    }
+    log({ ...entry, decision: ok ? "allow" : "deny", via: "confirm->ask" });
+    if (!ok) return { block: true, reason: "jev-gate: denied at confirm prompt" };
+    return;
+  }
+  if (mode === "allow") {
+    log({ ...entry, decision: "allow", via: "confirm->auto" });
+    return;
+  }
+  // No UI (the default), JEV_GATE_MODE=deny or an unknown mode, or "ask" with no UI to ask in.
+  const blocked = process.env.JEV_GATE_MODE && mode !== "ask" ? `JEV_GATE_MODE=${mode}` : "no UI to ask";
+  log({ ...entry, decision: "deny", via: "confirm->deny", why: blocked });
+  return { block: true, reason: `jev-gate: ${why ? `${why}; ` : ""}confirm verdict blocked (${blocked})` };
+}
+
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", (_e, ctx) => {
     // A hook that runs but decides nothing (for example without jq) would let every command through.
@@ -267,69 +376,55 @@ export default function (pi: ExtensionAPI) {
     }
     const mcp = event.toolName.startsWith("mcp__");
     if (!GATED.has(event.toolName) && !mcp) return;
-    const { kind, text } = subject(event);
+    const { kind, text: command } = subject(event);
+    // What the command's zsh aliases and functions stand for, for layers 2 and 3 and the log.
+    const shell = kind === "bash" ? await expandShellWords(command) : {};
+    const text = shell.expansion ? `${command}\n# expanded:\n${shell.expansion}` : command;
+    const about = { tool: kind, text: command, ...(shell.expansion ? { expanded: shell.expansion } : {}) };
 
     // 2) Deterministic deny (written for commands and paths, so not for MCP inputs)
     const hit = mcp ? undefined : await ruleDeny(kind, text);
     if (hit) {
-      log({ layer: hit.layer, tool: kind, text, decision: "deny", reason: hit.reason });
+      log({ layer: hit.layer, ...about, decision: "deny", reason: hit.reason });
       return { block: true, reason: `jev-gate (rule): ${hit.reason}`, terminate: true };
     }
+    // Not knowing what an alias or function runs is never let through on the bare text.
+    if (shell.failed) return confirm(pi, ctx, kind, text, { layer: "zsh-expand", ...about, note: shell.failed }, shell.failed);
 
     // 3) jev classifier
     const j = await askJev(ctx, kind, text);
     if (!j) {
       // With a UI, fail open. Without one, nobody would see the gap, so deny unless JEV_GATE_MODE=allow.
       if (ctx.hasUI || gateMode(ctx) === "allow") {
-        log({ layer: "jev", tool: kind, text, decision: "allow", note: "jev-unavailable-fail-open" });
+        log({ layer: "jev", ...about, decision: "allow", note: "jev-unavailable-fail-open" });
         return;
       }
-      log({ layer: "jev", tool: kind, text, decision: "deny", note: "jev-unavailable-no-ui" });
+      log({ layer: "jev", ...about, decision: "deny", note: "jev-unavailable-no-ui" });
       return { block: true, reason: "jev-gate: classifier unavailable and no UI to ask (JEV_GATE_MODE=allow to allow)" };
     }
 
     if (j.decision === "deny") {
-      log({ layer: "jev", tool: kind, text, decision: "deny", probabilities: j.probabilities, confidence: j.confidence });
+      log({ layer: "jev", ...about, decision: "deny", probabilities: j.probabilities, confidence: j.confidence });
       return { block: true, reason: `jev-gate: classified as deny (p=${JSON.stringify(j.probabilities)})` };
     }
 
-    if (j.decision === "confirm") {
-      // Interactive (ctx.hasUI, Pi's own flag) -> ask the human. Headless/automation has
-      // nobody to ask, so deny; JEV_GATE_MODE=allow opts a trusted run back into auto-allow.
-      const mode = gateMode(ctx);
-      if (mode === "ask" && ctx.hasUI && ctx.ui?.confirm) {
-        // herdr-agent-state.ts shows the pane as blocked meanwhile; notify.ts tells the owner.
-        pi.events.emit("herdr:blocked", { active: true, label: "jev-gate: 承認待ち" });
-        let ok: boolean;
-        try {
-          ok = await ctx.ui.confirm("jev-gate", `Allow this ${kind}?\n${text.slice(0, 300)}`);
-        } finally {
-          pi.events.emit("herdr:blocked", { active: false });
-        }
-        log({ layer: "jev", tool: kind, text, decision: ok ? "allow" : "deny", via: "confirm->ask", confidence: j.confidence });
-        if (!ok) return { block: true, reason: "jev-gate: denied at confirm prompt" };
-        return;
-      }
-      if (mode === "allow") {
-        log({ layer: "jev", tool: kind, text, decision: "allow", via: "confirm->auto", confidence: j.confidence });
-        return;
-      }
-      // No UI (the default), JEV_GATE_MODE=deny or an unknown mode, or "ask" with no UI to ask in.
-      const why = process.env.JEV_GATE_MODE && mode !== "ask" ? `JEV_GATE_MODE=${mode}` : "no UI to ask";
-      log({ layer: "jev", tool: kind, text, decision: "deny", via: "confirm->deny", why, confidence: j.confidence });
-      return { block: true, reason: `jev-gate: confirm verdict blocked (${why})` };
-    }
+    // Interactive (ctx.hasUI, Pi's own flag) -> ask the human. Headless/automation has
+    // nobody to ask, so deny; JEV_GATE_MODE=allow opts a trusted run back into auto-allow.
+    if (j.decision === "confirm") return confirm(pi, ctx, kind, text, { layer: "jev", ...about, confidence: j.confidence });
 
-    log({ layer: "jev", tool: kind, text, decision: "allow", confidence: j.confidence });
+    log({ layer: "jev", ...about, decision: "allow", confidence: j.confidence });
   });
 
   // Manual probe: /jev-test <command>
   pi.registerCommand("jev-test", {
     description: "Classify a command with the jev gate without running it",
     handler: async (args, ctx) => {
-      const text = (args || "").trim() || "rm -rf /tmp/does-not-exist";
+      const command = (args || "").trim() || "rm -rf /tmp/does-not-exist";
+      const shell = await expandShellWords(command);
+      const text = shell.expansion ? `${command}\n# expanded:\n${shell.expansion}` : command;
       const hit = await ruleDeny("bash", text);
       if (hit) { ctx.ui.notify(`deterministic DENY: ${hit.reason}`, "warning"); return; }
+      if (shell.failed) { ctx.ui.notify(`would ask (confirm): ${shell.failed}`, "warning"); return; }
       const j = await askJev(ctx, "bash", text);
       if (!j) { ctx.ui.notify("jev unavailable (check ~/.config/agents/model-typesafe.env and op-agent)", "warning"); return; }
       ctx.ui.notify(`jev verdict: ${j.decision} (conf ${j.confidence?.toFixed?.(2)}) p=${JSON.stringify(j.probabilities)}`, "info");
