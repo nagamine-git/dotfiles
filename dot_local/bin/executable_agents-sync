@@ -32,6 +32,7 @@ PI_MARK = "---\n" + GENERATED_MARK  # Pi の md は frontmatter の 1 行目に�
 PI_TOOLS = {"Read": "read", "Edit": "edit", "Write": "write", "Bash": "bash", "Grep": "grep", "Glob": "find", "LS": "ls"}
 PI_BUILTIN_TOOLS = ("read", "bash", "edit", "write", "grep", "find", "ls")
 PI_THINKING = ("off", "minimal", "low", "medium", "high", "xhigh", "max")  # Claude の effort (low〜max) はそのままある
+TOOL_SPLIT_RE = re.compile(r",(?![^(]*\))")  # Bash(git diff:*, git log:*) の括弧の中のカンマでは切らない
 PI_MCP_OWNED = ("type", "command", "args", "url")  # 共有の定義から作るキー。ほか (enabled・exposure・env・oauth など) は残す
 
 
@@ -126,25 +127,39 @@ def render_pi_agent(meta, body, source):
         lines.append("model: " + toml_string(model))
     elif effort:
         notes.append("model が無く呼び出し元のモデルと thinking を引き継ぐので effort %s は写さない" % effort)
-    names = lambda key: [t.strip().strip("\"'") for t in meta[key].strip("[]").split(",") if t.strip()]
-    tools = None
-    if "tools" in meta:
-        tools = [PI_TOOLS[t] for t in names("tools") if t in PI_TOOLS]
-        dropped = [t for t in names("tools") if t not in PI_TOOLS]
+    names = lambda key: [t.strip().strip("\"'") for t in TOOL_SPLIT_RE.split(meta.get(key, "").strip().strip("[]"))
+                         if t.strip()]
+    if "tools" in meta or "disallowedTools" in meta:
+        # Pi は組み込みの道具の許可リストでしか縛れず、Bash(git status*) のような範囲も表せない。
+        # 迷う指定は許さない側に倒す: 範囲つきの許可は落とし、範囲つきの禁止は道具ごと禁止する。
+        allowed, dropped, scoped = list(PI_BUILTIN_TOOLS), [], []
+        if "tools" in meta:
+            allowed = [PI_TOOLS[t] for t in names("tools") if t in PI_TOOLS]
+            dropped = [t for t in names("tools") if t not in PI_TOOLS and "(" not in t]
+            scoped = [t for t in names("tools") if t not in PI_TOOLS and "(" in t]
         if dropped:
             notes.append("Pi に対応の無い道具を落とした: " + ", ".join(dropped))
-        if not tools:
-            notes.append("Pi の道具が残らないので tools を書かない (Pi の既定の道具になる)")
-    elif "disallowedTools" in meta:  # Pi は許可リストで縛れるので、読み取り専用などをそのまま守る
-        denied = {PI_TOOLS.get(t) for t in names("disallowedTools")}
-        tools = [t for t in PI_BUILTIN_TOOLS if t not in denied]
-    if tools:
-        lines.append("tools: " + toml_string(", ".join(dict.fromkeys(tools))))
+        if scoped:
+            notes.append("範囲を限った許可は Pi で表せないので、その道具を許可しない: " + ", ".join(scoped))
+        widened = []
+        for t in names("disallowedTools"):
+            base = PI_TOOLS.get(t.split("(", 1)[0].strip())
+            if base and "(" in t:
+                widened.append("%s → %s" % (t, base))
+            allowed = [a for a in allowed if a != base]
+        if widened:
+            notes.append("範囲を限った禁止は Pi で表せないので、道具ごと禁止する: " + ", ".join(widened))
+        tools = list(dict.fromkeys(allowed))
+        if not tools:  # tools を書かない・空にすると、公式例は Pi の既定の道具 (read・bash・edit・write) を全部渡す
+            notes.append("Pi の道具が 1 つも残らず、tools を書かずに済ませると既定の道具が全部渡るので安全に写せない")
+            return None, notes
+        lines.append("tools: " + toml_string(", ".join(tools)))
     return "\n".join(lines + ["---", "", body.strip("\n")]) + "\n", notes
 
 
 def sync_generated(src_dir, dest_dir, suffix, render, mark, label, prune, dry_run):
     """src_dir/*.md から dest_dir/<stem><suffix> を作る。目印の無い既存ファイルは 1 度だけ退避する。
+    render が None を返したもの (安全に写せない) は作らず、前の生成物 (目印つき) があれば消す。
     元の md が無い生成物は、prune なら消し、そうでなければ報告だけする。"""
     messages = []
     src_dir, dest_dir = Path(src_dir), Path(dest_dir)
@@ -157,6 +172,13 @@ def sync_generated(src_dir, dest_dir, suffix, render, mark, label, prune, dry_ru
         target = dest_dir / (md.stem + suffix)
         wanted.add(target.name)
         current = target.read_text(encoding="utf-8") if target.exists() else None
+        if text is None:
+            generated = current is not None and current.startswith(mark)
+            messages.append("%s: %s は安全に写せないので作らない%s" % (label, target.name, " (前の生成物を削除)" if generated else ""))
+            messages += ["%s: %s: %s" % (label, target.name, note) for note in notes]
+            if generated and not dry_run:
+                target.unlink()
+            continue
         if current == text:
             continue
         if current is not None and not current.startswith(mark):

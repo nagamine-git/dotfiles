@@ -177,13 +177,59 @@ class PiSubagents(unittest.TestCase):
     def test_tools_are_renamed_and_unmapped_ones_dropped(self):
         out, notes = self.render("---\nname: a\ndescription: d\ntools: Read, Glob, Grep, WebFetch, Bash(git:*), LS\n---\nb\n")
         self.assertEqual(self.frontmatter(out)[0]["tools"], "read, find, grep, ls")
-        self.assertTrue(any("WebFetch" in n and "Bash(git:*)" in n for n in notes))
+        self.assertTrue(any("WebFetch" in n for n in notes), notes)
+        self.assertTrue(any("Bash(git:*)" in n for n in notes), notes)
         out, _ = self.render("---\nname: a\ndescription: d\ntools: [\"Edit\", Write]\n---\nb\n")
         self.assertEqual(self.frontmatter(out)[0]["tools"], "edit, write")
 
     def test_disallowed_tools_become_an_allowlist_so_read_only_stays_read_only(self):
         out, _ = self.render(AGENT_MD)
         self.assertEqual(self.frontmatter(out)[0]["tools"], "read, bash, grep, find, ls")
+
+    # Pi の公式例は tools が無い・空なら既定の道具 (read/bash/edit/write) を全部渡す。権限が広がる向きには倒さない。
+    def test_an_agent_with_no_pi_tool_left_is_not_generated(self):
+        for spec in ("tools: WebFetch, Agent", "tools: Bash(git status*)",
+                     "disallowedTools: Read, Edit, Write, Bash, Grep, Glob, LS"):
+            with self.subTest(spec=spec):
+                out, notes = self.render("---\nname: a\ndescription: d\n%s\n---\nb\n" % spec)
+                self.assertIsNone(out)
+                self.assertTrue(any("安全に写せない" in n for n in notes), notes)
+
+    def test_a_scoped_allow_is_dropped_not_widened_to_the_whole_tool(self):
+        out, notes = self.render("---\nname: a\ndescription: d\n"
+                                 "tools: Read, Bash(git status*), Bash(git diff:*, git log:*)\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read")
+        self.assertTrue(any("Bash(git status*)" in n and "範囲" in n for n in notes), notes)
+        self.assertTrue(any("Bash(git diff:*, git log:*)" in n for n in notes), notes)
+
+    def test_a_scoped_deny_denies_the_whole_tool(self):
+        out, notes = self.render("---\nname: a\ndescription: d\ndisallowedTools: Bash(git push*), Edit\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read, write, grep, find, ls")
+        self.assertTrue(any("Bash(git push*)" in n and "bash" in n for n in notes), notes)
+
+    def test_disallowed_tools_also_narrow_an_explicit_tools_list(self):
+        out, _ = self.render("---\nname: a\ndescription: d\ntools: Read, Bash\ndisallowedTools: Bash(rm*)\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read")
+
+    def test_sync_removes_only_a_marked_file_that_can_no_longer_be_written_safely(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, dest = tmp / "claude-agents", tmp / "pi-agents"
+            unsafe = "---\nname: %s\ndescription: d\ntools: WebFetch\n---\nb\n"
+            write(src / "narrow.md", unsafe % "narrow")
+            write(src / "mine.md", unsafe % "mine")
+            write(dest / "narrow.md", SYNC.PI_MARK + "\nname: \"narrow\"\n---\nold\n")
+            write(dest / "mine.md", "---\nname: mine\n---\nhand-written\n")
+            dry = SYNC.sync_pi_subagents(src, dest, dry_run=True)
+            self.assertTrue((dest / "narrow.md").exists())
+            self.assertTrue(any("narrow.md" in m and "安全に写せない" in m for m in dry), dry)
+            messages = SYNC.sync_pi_subagents(src, dest)
+            self.assertFalse((dest / "narrow.md").exists())
+            self.assertEqual((dest / "mine.md").read_text(), "---\nname: mine\n---\nhand-written\n")
+            self.assertFalse((dest / "mine.md.pre-agents-sync.bak").exists())
+            self.assertTrue(any("narrow.md" in m and "安全に写せないので作らない" in m and "削除" in m for m in messages),
+                            messages)
+            self.assertTrue(any("mine.md" in m and "安全に写せない" in m for m in messages), messages)
 
     def test_sync_creates_is_idempotent_backs_up_foreign_and_prunes_only_marked_orphans(self):
         with tempfile.TemporaryDirectory() as tmp:
