@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code と Codex の共有設定 (スキルのリンク・Codex 用 subagent・MCP サーバー) を揃える。
+# Claude Code・Codex・Pi の共有設定 (スキルのリンク・Codex と Pi 用の subagent・MCP サーバー) を揃える。
 # 本体は ~/.local/bin/agents-sync。下の行が変わったときだけ chezmoi が再実行する。
 # mcp.json: {{ include "dot_agents/mcp.json" | sha256sum }}
 # skills:{{ range glob (joinPath .chezmoi.sourceDir "dot_agents/skills/*") }} {{ base . }}{{ end }}

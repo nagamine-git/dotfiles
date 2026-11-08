@@ -13,6 +13,11 @@
       "args": ["workspace-mcp"],
       "secrets": ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"]
     },
+    "linear": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp",
+      "clients": ["pi"]
+    },
     "notion": {
       "type": "http",
       "url": "https://mcp.notion.com/mcp"
