@@ -2,8 +2,9 @@
 
 Each test copies the template and the data into a throwaway source dir and runs `chezmoi execute-template
 --with-stdin` with the current settings.json on stdin, as `chezmoi apply` does for a modify-template.
-Needs chezmoi (CI installs it; elsewhere the tests skip). The last test hands the result to the installed
-Pi (pi_real.py: dummy keys, nothing prompted, so no model call) and skips on hosts without it.
+Needs chezmoi (CI installs it; elsewhere the tests skip). The zsh prefix runs in the real zsh (skips
+without it, but not in CI). The real-Pi tests hand the result to the installed Pi (pi_real.py: dummy
+keys, nothing prompted, so no model call) and skip on hosts without it.
 """
 import json
 import os
@@ -19,6 +20,15 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = "dot_pi/agent/modify_settings.json"
 DATA = ".chezmoidata/pi.yaml"
 CHEZMOI = shutil.which("chezmoi")
+ZSH = shutil.which("zsh")
+BASH = shutil.which("bash")
+PREFIX = "\n".join([
+    '[[ -r "$PI_ZSH_SNAPSHOT" ]] && source "$PI_ZSH_SNAPSHOT"',
+    "setopt no_nomatch no_equals",
+    """[[ -n $ZSH_EXECUTION_STRING ]] && { eval "${ZSH_EXECUTION_STRING#*$'\\n'*$'\\n'*$'\\n'}"; exit; }""",
+])
+# A snapshot as pi-jev writes it (alias -L, functions), for the shell tests.
+SNAPSHOT = "alias gss='git status --short'\nalias hello='print -r -- hello-alias'\nmyfn () {\n\tprint -r -- \"fn:$1\"\n}\n"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pi_real  # noqa: E402
 
@@ -47,15 +57,16 @@ class PiSettings(unittest.TestCase):
             shutil.copyfile(ROOT / rel, self.source / rel)
         (self.base / "chezmoi.toml").write_text("")
 
-    def chezmoi(self, *args, stdin=""):
+    def chezmoi(self, *args, stdin="", path=None):
+        env = dict(os.environ, PATH=path) if path is not None else None
         result = subprocess.run([CHEZMOI, "--source", str(self.source), "--config", str(self.base / "chezmoi.toml"),
                                  "--persistent-state", str(self.base / "state.boltdb"), "execute-template", *args],
-                                input=stdin, capture_output=True, text=True, timeout=60)
+                                input=stdin, capture_output=True, text=True, timeout=60, env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
 
-    def render(self, current):
-        return self.chezmoi("--with-stdin", "--file", str(self.source / TEMPLATE), stdin=current)
+    def render(self, current, path=None):
+        return self.chezmoi("--with-stdin", "--file", str(self.source / TEMPLATE), stdin=current, path=path)
 
     def tiers(self):
         return json.loads(self.chezmoi('{{ .pi.models | toJson }}'))
@@ -68,6 +79,7 @@ class PiSettings(unittest.TestCase):
             "defaultThinkingLevel": tiers["default"]["thinking"],
             "modelThinkingLevels": {key(t): tiers[t]["thinking"] for t in TIERS},
             "enabledModels": ["%s:%s" % (key(t), tiers[t]["thinking"]) for t in TIERS],
+            **({"shellPath": ZSH, "shellCommandPrefix": PREFIX} if ZSH else {}),
         }
 
     def test_data_has_three_complete_tiers(self):
@@ -110,6 +122,68 @@ class PiSettings(unittest.TestCase):
                                                 "anthropic/claude-haiku-5-5:medium"])
         self.assertEqual(out["modelThinkingLevels"]["openai/gpt-6.1-terra"], "xhigh")
         self.assertEqual(out["modelThinkingLevels"]["anthropic/claude-opus-5-5"], "xhigh")  # 段から外れたものも残す
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_zsh_becomes_the_shell_with_the_snapshot_prefix(self):
+        out = json.loads(self.render(json.dumps({"shellPath": "/bin/bash", "shellCommandPrefix": "export CI=1"})))
+        self.assertEqual((out["shellPath"], out["shellCommandPrefix"]), (ZSH, PREFIX))
+
+    def test_without_zsh_the_shell_keys_are_left_alone(self):
+        empty = self.base / "no-zsh-here"
+        empty.mkdir()
+        out = json.loads(self.render(json.dumps({"shellPath": "/bin/bash", "shellCommandPrefix": "export CI=1"}),
+                                     path=str(empty)))
+        self.assertEqual((out["shellPath"], out["shellCommandPrefix"]), ("/bin/bash", "export CI=1"))
+        self.assertNotIn("shellPath", json.loads(self.render("", path=str(empty))))
+
+    def project_with_snapshot(self):
+        repo = self.base / "repo"
+        (repo / "src").mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        (repo / "untracked.txt").write_text("x\n")
+        (repo / "src/a.ts").write_text("needle\n")
+        (repo / "src/b.js").write_text("needle\n")
+        snapshot = self.base / "zsh-snapshot.zsh"
+        snapshot.write_text(SNAPSHOT)
+        return repo, snapshot
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_prefix_gives_zsh_the_aliases_functions_and_bash_style_globs(self):
+        repo, snapshot = self.project_with_snapshot()
+        run = lambda shell, cmd, snap=snapshot: subprocess.run(
+            [shell, "-c", PREFIX + "\n" + cmd], cwd=str(repo), timeout=30, capture_output=True, text=True,
+            env=dict(os.environ, PI_ZSH_SNAPSHOT=str(snap)))
+        cases = {
+            "gss": "?? src/\n?? untracked.txt\n",                       # エイリアス (eval で読み直すので効く)
+            "myfn x; hello": "fn:x\nhello-alias\n",                     # 関数とエイリアス
+            "grep -rn --include=*.ts needle .": "./src/a.ts:1:needle\n",  # 合わないグロブもそのまま (no_nomatch)
+            "echo ===; echo =ls": "===\n=ls\n",                         # 語頭の = を展開しない (no_equals)
+            "x=$(hello); print -r -- got:$x": "got:hello-alias\n",
+            "cat <<'EOF'\nliteral $HOME\nEOF": "literal $HOME\n",
+        }
+        for cmd, want in cases.items():
+            with self.subTest(cmd=cmd):
+                result = run(ZSH, cmd)
+                self.assertEqual((result.stdout, result.stderr, result.returncode), (want, "", 0))
+        result = run(ZSH, "print one; exit 3")
+        self.assertEqual((result.stdout, result.returncode), ("one\n", 3))
+        # The eval line runs the command once, not again after it.
+        self.assertEqual(run(ZSH, "print once").stdout, "once\n")
+        # With an unreadable snapshot or another shell the prefix steps aside and the command still runs.
+        self.assertEqual(run(ZSH, "print no-snapshot", snap=self.base / "missing.zsh").stdout, "no-snapshot\n")
+        bash = run(BASH, "echo bash-ok")
+        self.assertEqual(bash.stdout, "bash-ok\n")
+
+    @unittest.skipUnless(pi_real.available() and ZSH, "Pi と zsh が要る (am5-itx だけ)")
+    def test_real_pi_runs_bang_commands_in_zsh_with_the_snapshot(self):
+        repo, snapshot = self.project_with_snapshot()
+        settings = self.render(json.dumps({"lastChangelogVersion": "1.5.0"}))
+        cmd = "cd %s && gss && myfn x && grep -rn --include=*.ts needle . && echo ===" % repo
+        responses, stderr, _ = pi_real.rpc({"settings.json": settings}, [{"type": "bash", "command": cmd}],
+                                           env={"PI_ZSH_SNAPSHOT": str(snapshot)})
+        data = responses.get("c0", {}).get("data") or {}
+        self.assertEqual((data.get("exitCode"), data.get("output")),
+                         (0, "?? src/\n?? untracked.txt\nfn:x\n./src/a.ts:1:needle\n===\n"), stderr)
 
     @unittest.skipUnless(pi_real.available(), "Pi が入っていない (am5-itx だけ)")
     def test_real_pi_starts_on_the_default_tier_and_ctrl_p_cycles_the_tiers(self):

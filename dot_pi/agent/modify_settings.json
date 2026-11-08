@@ -5,7 +5,16 @@
     defaultProvider / defaultModel / defaultThinkingLevel  default 段
     modelThinkingLevels                                     3 段の "provider/id": thinking (ほかのキーは残す)
     enabledModels                                           Ctrl+P の切り替え。"provider/id:thinking" を default・peak・light の順
+    shellPath / shellCommandPrefix                          zsh があるときだけ。bash ツールと ! コマンドを zsh で動かす
   空 (新ホスト) なら {} から作る。何度通しても同じ結果になる。
+
+  Pi は `<shellPath> -c "<shellCommandPrefix>\n<command>"` で起動する。prefix の 3 行は:
+    1. pi-jev が対話の zsh から書き出したエイリアスと関数 ($PI_ZSH_SNAPSHOT) を読む
+    2. モデルが書く bash 流のコマンドを通す。no_nomatch: 合わないグロブ (grep --include=*.ts、URL の ?) を
+       そのまま渡す。no_equals: 語頭の = (echo ===) をコマンドのパスに展開しない
+    3. zsh -c は文字列を全部読んでから実行するので、1 で足したエイリアスは後ろの行では展開されない。
+       $ZSH_EXECUTION_STRING からこの 3 行を除いた残り (コマンド) を eval で読み直して実行する
+       (Claude Code の bash ツールと同じく source してから eval する形)。zsh 以外では素通りする
 */ -}}
 {{- $s := dict -}}
 {{- if trim .chezmoi.stdin -}}
@@ -28,4 +37,13 @@
 {{- end -}}
 {{- $s = set $s "modelThinkingLevels" $levels -}}
 {{- $s = set $s "enabledModels" $cycle -}}
+{{- $zsh := lookPath "zsh" -}}
+{{- if $zsh -}}
+{{-   $s = set $s "shellPath" $zsh -}}
+{{-   $prefix := list
+        `[[ -r "$PI_ZSH_SNAPSHOT" ]] && source "$PI_ZSH_SNAPSHOT"`
+        `setopt no_nomatch no_equals`
+        `[[ -n $ZSH_EXECUTION_STRING ]] && { eval "${ZSH_EXECUTION_STRING#*$'\n'*$'\n'*$'\n'}"; exit; }` -}}
+{{-   $s = set $s "shellCommandPrefix" (join "\n" $prefix) -}}
+{{- end -}}
 {{- toPrettyJson $s -}}
