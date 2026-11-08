@@ -8,7 +8,7 @@
   "font": "'IBM Plex Sans JP', 'UDEV Gothic 35NFLG', sans-serif",
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["clock", "custom/toggl"],
+  "modules-center": ["clock"],
   "modules-right": ["tray", "temperature", "cpu", "custom/gpu", "memory", "custom/disk", "network", "custom/tailscale", "pulseaudio"],
 
 /* "custom/pomodoro": {
@@ -135,13 +135,6 @@
     "interval": 3,
     "tooltip": true,
     "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
-  },
-
-  "custom/toggl": {
-    "exec": "~/.config/waybar/scripts/toggl_status.sh",
-    "interval": 360,
-    "return-type": "json",
-    "tooltip": true
   },
 
   "custom/tailscale": {
