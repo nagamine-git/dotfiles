@@ -6,22 +6,45 @@
  *      settings.json deny list): remote-fetch|shell, outbound mail, 1Password secret
  *      reads, force push / hard reset, publish/delete. These never call a model.
  *   2. jev classifier (TypeSafe, via Pi's model registry) for the gray zone, asking
- *      {allow, confirm, deny} with probabilities. Needs TYPESAFE_API_KEY in the env.
+ *      {allow, confirm, deny} with probabilities. The TypeSafe key is read here with
+ *      op-agent (reference in ~/.config/agents/model-typesafe.env) and passed only to
+ *      the classifier call. It never enters process.env, so commands run by Pi's bash
+ *      tool cannot read it with `env`. A TYPESAFE_API_KEY already in the env still works.
  *
  * Every decision is appended to ~/.pi/agent/jev-gate.log.jsonl so it can be audited
  * and later turned into labelled data. jev errors fail OPEN (allow + log) so the gate
  * never breaks the agent; deterministic denies still apply.
  *
- * Headless behaviour for a "confirm" verdict is set by JEV_GATE_MODE:
- *   ask (default when a UI is present) | allow (default headless) | deny
+ * A "confirm" verdict is asked in the UI. Without a UI (print / JSON mode) nobody can
+ * be asked, so it is denied. JEV_GATE_MODE overrides this: ask | allow | deny.
  */
 import { type ExtensionAPI, isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import { execFile } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
 const LOG = path.join(os.homedir(), ".pi/agent/jev-gate.log.jsonl");
 const GATED = new Set(["bash", "write", "edit"]);
+const TYPESAFE_REF_FILE = path.join(os.homedir(), ".config/agents/model-typesafe.env");
+const OP_AGENT = path.join(os.homedir(), ".local/bin/op-agent");
+
+// Resolved once per Pi process, like Pi's own "!command" keys: a failure lasts until restart.
+let typesafeKey: Promise<string | undefined> | undefined;
+function resolveTypesafeKey(): Promise<string | undefined> {
+  if (process.env.TYPESAFE_API_KEY) return Promise.resolve(undefined); // Pi's registry reads it
+  typesafeKey ??= new Promise((resolve) => {
+    let ref: string | undefined;
+    try {
+      ref = fs.readFileSync(TYPESAFE_REF_FILE, "utf8").match(/^TYPESAFE_API_KEY="?(op:\/\/[^"\s]+)"?\s*$/m)?.[1];
+    } catch { /* no reference on this host: deterministic layer only */ }
+    if (!ref) return resolve(undefined);
+    execFile(OP_AGENT, ["read", ref], { timeout: 15_000, maxBuffer: 64 * 1024 }, (err, stdout) => {
+      resolve(err ? undefined : String(stdout).trim() || undefined);
+    });
+  });
+  return typesafeKey;
+}
 
 // --- Deterministic rules (fast, no model call) ---------------------------------
 const DENY_RULES: { re: RegExp; reason: string }[] = [
@@ -52,6 +75,7 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
 > {
   const jev = ctx.modelRegistry.findOfType?.("classifier", "typesafe", "jev-latest");
   if (!jev) return null;
+  const apiKey = await resolveTypesafeKey();
   try {
     const result = await ctx.modelRegistry.classify(
       jev,
@@ -71,7 +95,7 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
           },
         },
       },
-      { signal: ctx.signal },
+      { signal: ctx.signal, apiKey },
     );
     if (result.stopReason !== "stop") return null;
     const a = result.answers.verdict;
@@ -84,6 +108,7 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
 
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", (_e, ctx) => {
+    void resolveTypesafeKey(); // Fetch early so the first gated call does not wait on op-agent.
     const jev = ctx.modelRegistry.findOfType?.("classifier", "typesafe", "jev-latest");
     ctx.ui?.notify?.(`jev-gate active · classifier: ${jev ? "jev-latest" : "UNAVAILABLE (deterministic only)"}`, "info");
   });
@@ -113,22 +138,23 @@ export default function (pi: ExtensionAPI) {
     }
 
     if (j.decision === "confirm") {
-      // Interactive (ctx.hasUI, Pi's own flag) -> ask the human. Headless/automation
-      // -> auto-allow (deterministic rules + jev "deny" remain the backstop).
-      // Override with JEV_GATE_MODE.
-      const mode = process.env.JEV_GATE_MODE ?? (ctx.hasUI ? "ask" : "allow");
-      if (mode === "deny") {
-        log({ layer: "jev", tool: kind, text, decision: "deny", via: "confirm->deny", confidence: j.confidence });
-        return { block: true, reason: "jev-gate: confirm verdict blocked (JEV_GATE_MODE=deny)" };
-      }
-      if (mode === "ask" && ctx.ui?.confirm) {
+      // Interactive (ctx.hasUI, Pi's own flag) -> ask the human. Headless/automation has
+      // nobody to ask, so deny; JEV_GATE_MODE=allow opts a trusted run back into auto-allow.
+      const mode = process.env.JEV_GATE_MODE ?? (ctx.hasUI ? "ask" : "deny");
+      if (mode === "ask" && ctx.hasUI && ctx.ui?.confirm) {
         const ok = await ctx.ui.confirm("jev-gate", `Allow this ${kind}?\n${text.slice(0, 300)}`);
         log({ layer: "jev", tool: kind, text, decision: ok ? "allow" : "deny", via: "confirm->ask", confidence: j.confidence });
         if (!ok) return { block: true, reason: "jev-gate: denied at confirm prompt" };
         return;
       }
-      log({ layer: "jev", tool: kind, text, decision: "allow", via: "confirm->auto", confidence: j.confidence });
-      return;
+      if (mode === "allow") {
+        log({ layer: "jev", tool: kind, text, decision: "allow", via: "confirm->auto", confidence: j.confidence });
+        return;
+      }
+      // No UI (the default), JEV_GATE_MODE=deny or an unknown mode, or "ask" with no UI to ask in.
+      const why = process.env.JEV_GATE_MODE && mode !== "ask" ? `JEV_GATE_MODE=${mode}` : "no UI to ask";
+      log({ layer: "jev", tool: kind, text, decision: "deny", via: "confirm->deny", why, confidence: j.confidence });
+      return { block: true, reason: `jev-gate: confirm verdict blocked (${why})` };
     }
 
     log({ layer: "jev", tool: kind, text, decision: "allow", confidence: j.confidence });
@@ -142,7 +168,7 @@ export default function (pi: ExtensionAPI) {
       const hit = DENY_RULES.find((r) => r.re.test(text));
       if (hit) { ctx.ui.notify(`deterministic DENY: ${hit.reason}`, "warn"); return; }
       const j = await askJev(ctx, "bash", text);
-      if (!j) { ctx.ui.notify("jev unavailable (check TYPESAFE_API_KEY)", "warn"); return; }
+      if (!j) { ctx.ui.notify("jev unavailable (check ~/.config/agents/model-typesafe.env and op-agent)", "warn"); return; }
       ctx.ui.notify(`jev verdict: ${j.decision} (conf ${j.confidence?.toFixed?.(2)}) p=${JSON.stringify(j.probabilities)}`, "info");
     },
   });
