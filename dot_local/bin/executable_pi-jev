@@ -1,41 +1,40 @@
 #!/usr/bin/env bash
-# pi-jev — launch Pi with the jev-gate classifier enabled.
+# pi-jev — launch Pi with the jev-gate permission gate.
 #
 # The jev-gate extension (~/.pi/agent/extensions/jev-gate.ts) loads on every Pi
-# run, but jev only works when the TypeSafe key is in the environment. This
-# wrapper resolves TYPESAFE_API_KEY (and OPENROUTER_API_KEY, for tier-3 routing)
-# from the Agents vault via op-agent and execs the real Pi. Keys are resolved
-# into the process environment (not through `op run`, whose output masking would
-# corrupt Pi's TUI). Values are never printed or written to disk.
+# run and resolves the TypeSafe key by itself, only for its classifier calls. No
+# key is put in Pi's environment, so commands run by Pi's bash tool cannot read
+# one with `env`. Keys inherited from the caller are dropped for the same reason.
+#
+# OpenRouter (an external, pay-per-use model router) stays off unless
+# PI_JEV_ALLOW_OPENROUTER=1. Only then is OPENROUTER_API_KEY resolved from the
+# Agents vault via op-agent into Pi's environment, where Pi's provider reads it;
+# tool commands of that run can read it too. Keys are resolved into the process
+# environment (not through `op run`, whose output masking would corrupt Pi's
+# TUI). Values are never printed or written to disk.
 #
 # Robust by design: with no service-account token, no op-agent, or when already
-# wrapped, it launches plain Pi so `pi-jev` always starts (the gate still does
-# its deterministic deny layer without jev).
+# wrapped, it launches Pi without resolving anything, so `pi-jev` always starts.
 set -euo pipefail
 
 REAL_PI="$HOME/.pi/agent/bin/pi"
 TOKEN="${OP_AGENT_TOKEN_FILE:-$HOME/.config/op/agents-sa-token}"
-ENV_FILES=(
-  "$HOME/.config/agents/model-typesafe.env"
-  "$HOME/.config/agents/model-openrouter.env"
-)
+OPENROUTER_ENV="$HOME/.config/agents/model-openrouter.env"
 
-if [ -n "${PI_JEV_WRAPPED:-}" ] || [ ! -r "$TOKEN" ] || ! command -v op-agent >/dev/null 2>&1; then
-  exec "$REAL_PI" "$@"
+# Provider keys inherited from the caller would reach every tool command.
+unset TYPESAFE_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY ARTIFICIAL_ANALYSIS_API_KEY
+if [ "${PI_JEV_ALLOW_OPENROUTER:-}" != 1 ]; then
+  unset OPENROUTER_API_KEY
+elif [ -z "${PI_JEV_WRAPPED:-}" ] && [ -r "$TOKEN" ] && [ -r "$OPENROUTER_ENV" ] &&
+  command -v op-agent >/dev/null 2>&1; then
+  # Only the OPENROUTER_API_KEY line, quoted (spaces allowed inside) or bare, as jev-gate.ts
+  # parses its reference; other keys stay out. A read failure still starts Pi.
+  ref="$(sed -nE 's/^OPENROUTER_API_KEY=("(op:\/\/[^"]+)"|(op:\/\/[^[:space:]]+))[[:space:]]*$/\2\3/p' \
+    "$OPENROUTER_ENV" | head -n 1)" || ref=""
+  if [ -n "$ref" ] && val="$(op-agent read "$ref" 2>/dev/null)"; then
+    export OPENROUTER_API_KEY="$val"
+  fi
 fi
-
-for f in "${ENV_FILES[@]}"; do
-  [ -r "$f" ] || continue
-  # Resolve "NAME=op://..." lines (skip comments/blanks) into the environment.
-  while IFS= read -r line; do
-    name=${line%%=*}
-    ref=${line#*=}
-    ref=${ref%\"}; ref=${ref#\"}            # strip optional quotes
-    if val=$(op-agent read "$ref" 2>/dev/null); then
-      export "$name=$val"
-    fi
-  done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=op://' "$f")
-done
 
 export PI_JEV_WRAPPED=1
 exec "$REAL_PI" "$@"

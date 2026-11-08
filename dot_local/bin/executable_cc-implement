@@ -1,0 +1,618 @@
+#!/usr/bin/env python3
+"""Future-only explicit launcher: native Claude Code coder on Opus 5.5 / xhigh.
+
+Starts one fresh native session with fixed selection flags. It never edits
+settings files, agent definitions, the caller's environment, auth, fast mode,
+permissions or tools, and adds no retry, idle timeout or fallback. `cc` and global
+settings stay as they are. Only the native child gets the four MODEL_ENV values, both
+in an inline `--settings` object and in a copied environment, which pin every
+subagent of this launch to the same model and effort.
+
+`--observe` (print mode only) passes native stream-json stdout through unchanged
+and writes sanitized phase records to stderr. A long stretch without output is
+not a timeout, connection failure or unavailable model: the launcher keeps waiting.
+`--observe` and `--dry-run` count only as the leading arguments; native arguments
+are split with the native option arity, and unknown option forms are rejected.
+
+Boundary: only native `claude` is started here; Codex or any other implementation
+path is never invoked. `fallback_allowed: false` is a record, not an enforcement:
+this process cannot stop its parent from editing files outside the wrapper.
+"""
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+
+EXIT_RESULT_ERROR = 1    # --observe: native exited 0 but its terminal result is an error
+EXIT_CONFLICT = 2
+EXIT_INCOMPLETE = 3      # --observe: init or terminal result missing or malformed
+EXIT_MODEL_MISMATCH = 4  # --observe: native reported a model other than MODEL (main or nested)
+EXIT_BLOCKED = 78
+AGENT, MODEL, EFFORT = "coder", "claude-opus-5-5", "xhigh"
+PROFILE = Path.home() / ".claude/profiles/coder-opus.json"
+PROFILE_CONTENT = {"modelSettings": {MODEL: {"effortLevel": EFFORT}}}
+# Native subagent model priority: per-call model > frontmatter > CLAUDE_CODE_SUBAGENT_MODEL > main.
+# FORCE=1 makes the env value replace the first two for every subagent, teammate and workflow
+# agent (>= 2.1.257), and the effort env wins over per-call and frontmatter effort (>= 2.1.292).
+# They go in inline --settings too, because a lower settings file's env would replace a shell
+# value. The last key selects no model and nothing reads it now: the Stop hook that skipped its
+# usage refresh on it was removed, and no Stop hook refreshes usage (tests/claude-usage-cache.py).
+MODEL_ENV = {"CLAUDE_CODE_SUBAGENT_MODEL": MODEL, "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1",
+             "CLAUDE_CODE_EFFORT_LEVEL": EFFORT, "CC_IMPLEMENT_USAGE_NO_MODEL_CALL": "1"}
+MIN_CLI_VERSION = (2, 1, 292)
+# Configured scope only; what native actually ran is checked by --observe, effort not at all.
+SUBAGENT_SCOPE = {"subagent_model": MODEL, "subagent_effort": EFFORT, "subagent_scope": "all",
+                  "min_cli_version": ".".join(map(str, MIN_CLI_VERSION))}
+WRAPPER_OPTIONS = {"--dry-run", "--observe"}  # Honoured only as the leading arguments.
+OBSERVE_FLAGS = ["--output-format", "stream-json", "--verbose"]
+# Caller copies of these would replace the verified selection or resume/attach
+# to a session whose model and effort were chosen elsewhere.
+LONG_CONFLICTS = {
+    "--model", "--fallback-model", "--effort", "--agent", "--agents", "--settings",
+    "--setting-sources", "--resume", "--continue", "--fork-session", "--from-pr",
+    "--teleport", "--cloud",
+    "--bare",       # API-key-only auth and no agent discovery
+    "--safe-mode",  # custom agents such as coder are disabled
+}
+# Native option arity, copied from `claude --help` 2.1.314. A "required" value is the
+# next token whatever it is, an "optional" one only if it does not start with "-",
+# and a "variadic" option given apart also takes each later token up to an option.
+ARITY = {name: kind for kind, names in {
+    "flag": "--allow-dangerously-skip-permissions --ax-screen-reader --bg --background --bare --brief "
+            "--chrome --continue --dangerously-skip-permissions --desktop --disable-slash-commands "
+            "--fork-session --forward-subagent-text --help --ide --include-hook-events "
+            "--include-partial-messages --no-chrome --no-session-persistence --print "
+            "--replay-user-messages --restricted --safe-mode --strict-mcp-config --tmux --verbose --version",
+    "required": "--agent --agents --append-system-prompt --autocompact --debug-file --effort --environment "
+                "--fallback-model --input-format --json-schema --max-budget-usd --model --name "
+                "--output-format --permission-mode --permission-prompts --plugin-dir --plugin-url "
+                "--session-id --setting-sources --settings --system-prompt --system-prompt-snapshot",
+    "optional": "--cloud --debug --from-pr --prompt-suggestions --remote-control --resume --teleport --worktree",
+    "variadic": "--add-dir --betas --file --mcp-config --tools",
+}.items() for name in names.split()}
+SHORT_OPTIONS = {"c": "--continue", "d": "--debug", "h": "--help", "n": "--name", "p": "--print",
+                 "r": "--resume", "v": "--version", "w": "--worktree"}
+MISPLACED_WRAPPER = (
+    "--observe and --dry-run are launcher options and count only as the leading arguments. Found later, "
+    "as an option or an option value, they are rejected rather than guessed: move them to the front, "
+    "or pass literal text after `--`.")
+UNKNOWN_OPTION = (
+    "A native option outside the known claude 2.1.314 options, or a flag given a value, was found "
+    "(not shown). Its values cannot be told apart from a subcommand, so nothing was started; "
+    "run native claude directly for it.")
+SUBCOMMANDS = {
+    "agents", "attach", "auth", "auto-mode", "doctor", "gateway", "import", "install",
+    "logs", "mcp", "plugin", "plugins", "purge", "respawn", "rm", "setup-token", "stop",
+    "kill", "ultrareview", "update", "upgrade",
+}
+# Names only are reported; values are never read into output.
+AUTH_ENV = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+            "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"}
+AUTH_TIMEOUT = 15  # Seconds for the auth metadata read only; the native run itself has no timer.
+AUTH_BLOCKED = {
+    "unverified": "Auth metadata could not be read (failed, timed out or unparseable), so the login is "
+                  "unverified, not judged as failed. No auth switch or fallback attempted.",
+    "not_subscription": "Auth metadata does not show an existing first-party claude.ai Pro/Max login; "
+                        "no auth switch or fallback attempted.",
+}
+VERSION_PATTERN = r"\d+\.\d+\.\d+ \(Claude Code\)"
+VERSION_PARTS = r"(\d{1,6})\.(\d{1,6})\.(\d{1,6}) \(Claude Code\)"
+VERSION_TEXT = r"\d+\.\d+\.\d+"
+MODEL_TEXT = r"[A-Za-z0-9][A-Za-z0-9._:@/\[\]-]{0,99}"
+SYNTHETIC_MODEL = "<synthetic>"  # Native marker on locally generated messages, not a model claim.
+# Exact native codes (assistant `error`, system/api_retry `error`). Anything else,
+# including "unknown", is unclassified; silence, EOF and free text never map to a class.
+ERROR_CLASSES = {
+    "authentication_failed": "auth", "oauth_org_not_allowed": "auth", "cloud_credential_error": "auth",
+    "account_on_hold": "account", "verification_required": "account", "billing_error": "billing",
+    "rate_limit": "rate_limit", "overloaded": "server", "server_error": "server",
+    "connection_error": "connection", "connection_timeout": "connection",
+    "invalid_request": "request", "model_not_found": "request", "max_output_tokens": "request",
+}
+# Token counts only: native cost fields are API-equivalent list prices, not subscription spend.
+USAGE_KEYS = {key: key for key in ("input_tokens", "output_tokens", "cache_creation_input_tokens",
+                                   "cache_read_input_tokens")}
+MODEL_USAGE_KEYS = {"inputTokens": "input_tokens", "outputTokens": "output_tokens",
+                    "cacheCreationInputTokens": "cache_creation_input_tokens",
+                    "cacheReadInputTokens": "cache_read_input_tokens"}
+INTERRUPTED = {130, 143}  # SIGINT / SIGTERM
+# SIGHUP too: the observed child has its own session, so a terminal hangup no longer reaches it.
+RELAYED_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+
+class Conflict(Exception):
+    pass
+
+
+class Blocked(Exception):
+    pass
+
+
+def selection_flags():
+    # Deterministic inline JSON: the verified profile content plus MODEL_ENV, nothing read from disk.
+    settings = json.dumps({**PROFILE_CONTENT, "env": MODEL_ENV}, sort_keys=True, separators=(",", ":"))
+    return ["--agent", AGENT, "--model", MODEL, "--effort", EFFORT, "--settings", settings]
+
+
+def launch_env():
+    """A fresh copy of the caller's environment with only MODEL_ENV set; os.environ is never changed."""
+    env = os.environ.copy()
+    env.update(MODEL_ENV)
+    return env
+
+
+def split_arguments(argv):
+    """Return (wrapper options, forwarded). Wrapper options count only as the leading
+    arguments, so a native option value reading `--observe` is never taken or dropped."""
+    n = 0
+    while n < len(argv) and argv[n] in WRAPPER_OPTIONS:
+        n += 1
+    return set(argv[:n]), argv[n:]
+
+
+def option_like(token):
+    return len(token) > 1 and token.startswith("-")
+
+
+def option_parts(token):
+    """[(name, attached value or None)] for one option token, split like the native parser.
+
+    `-abc` is a run of short flags up to the first letter taking a value, which takes
+    the rest of the token. An unknown letter yields the name None.
+    """
+    if token.startswith("--"):
+        name, equals, value = token.partition("=")
+        return [(name, value if equals else None)]
+    parts = []
+    for n, letter in enumerate(token[1:], 2):
+        name = SHORT_OPTIONS.get(letter)
+        if name is None or ARITY[name] != "flag":
+            return parts + [(name, token[n:] or None)]
+        parts.append((name, None))
+    return parts
+
+
+def parse_forwarded(argv):
+    """Return (conflicting names, print mode, given output formats) for native arguments.
+
+    Each option consumes exactly its native values, so `--name update` and `--debug mcp`
+    stay values while the first operand after them is still checked as a subcommand
+    (`--name example update`). Unknown options and misplaced wrapper options raise
+    Conflict, because what follows them could not be told apart.
+    """
+    found, formats = set(), []
+    print_mode, operand_seen, variadic, n = False, False, False, 0
+    while n < len(argv):
+        token, n = argv[n], n + 1
+        if token == "--":  # Everything after it is an operand.
+            if not operand_seen and n < len(argv) and argv[n] in SUBCOMMANDS:
+                found.add(argv[n])
+            break
+        if variadic and not option_like(token):
+            continue  # One more value of an `--add-dir`-style option.
+        variadic = False
+        if not option_like(token):
+            if not operand_seen and token in SUBCOMMANDS:
+                found.add(token)
+            operand_seen = True
+            continue
+        for name, value in option_parts(token):
+            if name in WRAPPER_OPTIONS:
+                raise Conflict(MISPLACED_WRAPPER)
+            kind = ARITY.get(name)
+            if kind is None or (kind == "flag" and value is not None):
+                raise Conflict(UNKNOWN_OPTION)
+            if name in LONG_CONFLICTS:
+                found.add(name)
+            print_mode = print_mode or name == "--print"
+            if kind != "flag" and value is None and n < len(argv) and (
+                    kind != "optional" or not option_like(argv[n])):
+                value, n = argv[n], n + 1
+                if value in WRAPPER_OPTIONS:
+                    raise Conflict(MISPLACED_WRAPPER)
+                variadic = kind == "variadic"
+            if name == "--output-format":
+                formats.append(value or "")
+    return sorted(found), print_mode, formats
+
+
+def check_request(argv, env, observe=False):
+    flags, print_mode, formats = parse_forwarded(argv)
+    if flags:
+        raise Conflict(
+            "These arguments would replace the fixed coder / claude-opus-5-5 / xhigh selection, "
+            "resume or attach to another session, or run a subcommand instead of a fresh session: "
+            + ", ".join(flags) + ". Run native claude directly for anything else.")
+    if observe and not print_mode:
+        raise Conflict("--observe requires --print (-p). The interactive TUI keeps its native UI; "
+                       "run it without --observe.")
+    if observe and any(value != "stream-json" for value in formats):
+        raise Conflict("--observe sets --output-format stream-json --verbose; another --output-format "
+                       "was given (value not shown). Remove it or run without --observe.")
+    level = env.get("CLAUDE_CODE_EFFORT_LEVEL", "")
+    if level and level != EFFORT:
+        raise Conflict("CLAUDE_CODE_EFFORT_LEVEL is set to another level and takes precedence over "
+                       "--effort. This launcher does not override or unset a caller's other level; unset "
+                       "it in your shell or run native claude.")
+    names = sorted(key for key, value in env.items()
+                   if value and (key in AUTH_ENV or key.startswith("CLAUDE_CODE_USE_")))
+    if names:
+        raise Blocked("Provider/auth override present (" + ", ".join(names) + "); the existing "
+                      "claude.ai subscription path is not switched or verified.")
+
+
+def check_profile(path=None):
+    path = PROFILE if path is None else path
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 4096:
+                raise ValueError
+            data = json.loads(source.read(4097))
+    except (OSError, ValueError, UnicodeError):
+        raise Blocked("Profile missing or not a bounded regular JSON file: " + str(path)) from None
+    if data != PROFILE_CONTENT:
+        raise Blocked("Profile must contain only modelSettings for " + MODEL + " at " + EFFORT)
+
+
+def find_claude():
+    native = Path.home() / ".local/bin/claude"
+    found = str(native) if native.is_file() and os.access(native, os.X_OK) else shutil.which("claude")
+    if not found:
+        raise Blocked("Claude Code executable not found; no install or fallback attempted.")
+    return found
+
+
+def subscription_auth(claude):
+    """"passed" only for an existing first-party claude.ai Pro/Max login, "not_subscription" when
+    the metadata shows anything else, "unverified" when it could not be read; nothing is kept."""
+    try:
+        status = subprocess.run([claude, "auth", "status", "--json"], stdin=subprocess.DEVNULL,
+                                capture_output=True, text=True, timeout=AUTH_TIMEOUT, check=False)
+        info = json.loads(status.stdout)
+    except (OSError, ValueError, RecursionError, subprocess.TimeoutExpired):
+        return "unverified"
+    if status.returncode != 0 or not isinstance(info, dict):
+        return "unverified"
+    return "passed" if (info.get("loggedIn") is True and info.get("authMethod") == "claude.ai"
+                        and info.get("apiProvider") == "firstParty"
+                        and info.get("subscriptionType") in ("pro", "max")) else "not_subscription"
+
+
+def cli_version(claude):
+    try:
+        result = subprocess.run([claude, "--version"], stdin=subprocess.DEVNULL,
+                                capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return "unknown"
+    text = result.stdout.strip()
+    return text if result.returncode == 0 and re.fullmatch(VERSION_PATTERN, text) else "unknown"
+
+
+def version_supported(version):
+    """Only a parsed `X.Y.Z (Claude Code)` at or above MIN_CLI_VERSION; anything else fails closed."""
+    match = re.fullmatch(VERSION_PARTS, version)
+    return match is not None and tuple(int(part) for part in match.groups()) >= MIN_CLI_VERSION
+
+
+def now_utc():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def note(record):
+    print(json.dumps(record, ensure_ascii=False, sort_keys=True), file=sys.stderr, flush=True)
+
+
+def phase(name, **fields):
+    return {"record": "cc_implement_phase", "phase": name, **fields}
+
+
+def exit_status(code):
+    return 128 - code if code < 0 else code
+
+
+def run(command):
+    # The native TUI keeps the terminal and handles Ctrl-C itself; exec restores
+    # the default handler in the child, so only this waiting process ignores it.
+    previous = signal.signal(signal.SIGINT, lambda *_: None)
+    try:
+        with subprocess.Popen(command, env=launch_env()) as proc:
+            code = proc.wait()
+    finally:
+        signal.signal(signal.SIGINT, previous)
+    return exit_status(code)
+
+
+def safe_text(value, pattern):
+    return value if isinstance(value, str) and re.fullmatch(pattern, value) else "unrecognized"
+
+
+def model_matches(value):
+    """The pinned ID, or the same ID with a dated snapshot suffix."""
+    return isinstance(value, str) and re.fullmatch(re.escape(MODEL) + r"(-\d{8})?", value) is not None
+
+
+def count(value):
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def token_counts(value, keys):
+    if not isinstance(value, dict):
+        return None
+    return {name: count(value.get(key)) for key, name in keys.items() if count(value.get(key)) is not None}
+
+
+def model_usage(value):
+    if not isinstance(value, dict):
+        return None
+    return {name: token_counts(counts, MODEL_USAGE_KEYS) for name, counts in list(value.items())[:8]
+            if isinstance(name, str) and re.fullmatch(MODEL_TEXT, name)}
+
+
+def http_status(value):
+    return value if count(value) is not None and 100 <= value <= 599 else None
+
+
+def classify(code, status):
+    """Class from an exact native code, else from an explicit HTTP status; raw codes are not echoed."""
+    if isinstance(code, str) and code in ERROR_CLASSES:
+        return code, ERROR_CLASSES[code]
+    shown, status = ("unknown" if code in (None, "unknown") else "unrecognized"), http_status(status)
+    if status in (401, 403):
+        return shown, "auth"
+    if status == 429:
+        return shown, "rate_limit"
+    return shown, "server" if status is not None and status >= 500 else "unclassified"
+
+
+class Observer:
+    """Keeps fixed, sanitized metadata from native stream-json; raw lines are never stored."""
+
+    def __init__(self):
+        self.initialized, self.running = False, False
+        # actual_model is always the main session's; a nested mismatch goes to mismatched_model.
+        self.actual_model = self.mismatch = self.mismatched_model = self.result = None
+        self.subagent_models = {}  # Sanitized model name -> nested assistant messages; no IDs or text.
+        self.error_classes = set()
+        self.observed = {"assistant_messages": 0, "tool_uses": 0, "api_retries": 0, "unparsed_lines": 0}
+
+    def feed(self, line):
+        """Return the phase records for one native stdout line."""
+        try:
+            event = json.loads(line)
+        except (ValueError, RecursionError):
+            event = None
+        if not isinstance(event, dict):
+            self.observed["unparsed_lines"] += 1  # Counted only; never read as a state.
+            return []
+        kind, subtype = event.get("type"), event.get("subtype")
+        if kind == "system" and subtype == "init":
+            return self.on_init(event)
+        if kind == "system" and subtype == "api_retry":
+            return self.on_retry(event)
+        if kind == "assistant":
+            return self.on_assistant(event)
+        if kind == "user":
+            return self.on_user(event)
+        if kind == "result":
+            self.on_result(event)
+        return []
+
+    def on_init(self, event):
+        model = event.get("model")
+        self.initialized, self.actual_model = True, safe_text(model, MODEL_TEXT)
+        if not model_matches(model):
+            self.mismatch, self.mismatched_model = "init", self.actual_model
+        return [phase("initialized", configured_model=MODEL, actual_model=self.actual_model,
+                      model_match=model_matches(model),
+                      cli_version=safe_text(event.get("claude_code_version"), VERSION_TEXT))]
+
+    def on_retry(self, event):
+        self.observed["api_retries"] += 1
+        code, kind = classify(event.get("error"), event.get("error_status"))
+        self.error_classes.add(kind)
+        return [phase("api_retry_observed", error_code=code, error_class=kind,
+                      http_status=http_status(event.get("error_status")), attempt=count(event.get("attempt")),
+                      max_retries=count(event.get("max_retries")), launcher_retries=0)]
+
+    def on_assistant(self, event):
+        message = event.get("message") if isinstance(event.get("message"), dict) else {}
+        model = message.get("model")
+        # Nested messages (subagents, teammates, workflow agents) are pinned to MODEL as well.
+        nested = event.get("parent_tool_use_id") is not None or event.get("agent_id") is not None
+        if model is not None and model != SYNTHETIC_MODEL:
+            shown = safe_text(model, MODEL_TEXT)
+            if nested:
+                self.subagent_models[shown] = self.subagent_models.get(shown, 0) + 1
+            if not model_matches(model):
+                if not nested:
+                    self.actual_model = shown
+                self.mismatch, self.mismatched_model = "subagent" if nested else "assistant", shown
+                return []  # The launcher reports the mismatch and stops its child.
+        if event.get("error") is not None:
+            code, kind = classify(event.get("error"), None)
+            self.error_classes.add(kind)
+            return [phase("api_error", error_code=code, error_class=kind, source="assistant")]
+        content = message.get("content") if isinstance(message.get("content"), list) else []
+        self.observed["assistant_messages"] += 1
+        self.observed["tool_uses"] += sum(isinstance(block, dict) and block.get("type") == "tool_use"
+                                          for block in content)
+        return self.mark_running("assistant")
+
+    def on_user(self, event):
+        message = event.get("message") if isinstance(event.get("message"), dict) else {}
+        content = message.get("content") if isinstance(message.get("content"), list) else []
+        if any(isinstance(block, dict) and block.get("type") == "tool_result" for block in content):
+            return self.mark_running("tool_result")
+        return []
+
+    def mark_running(self, source):
+        if self.running:
+            return []
+        self.running = True
+        return [phase("running", first_event=source)]
+
+    def on_result(self, event):
+        subtype, is_error = event.get("subtype"), event.get("is_error")
+        if not isinstance(subtype, str) or not isinstance(is_error, bool):
+            self.result = "malformed"
+            return
+        self.result = {"result_subtype": safe_text(subtype, r"[a-z_]{1,40}"), "is_error": is_error,
+                       "num_turns": count(event.get("num_turns")),
+                       "usage": token_counts(event.get("usage"), USAGE_KEYS),
+                       "model_usage": model_usage(event.get("modelUsage"))}
+
+
+def run_observed(command, observer):
+    """Pass native stdout through and report phases; return the raw native exit status.
+
+    Reads block until native output or EOF. No timer is armed, so silence never
+    ends the run. The print-only child gets its own session, so a terminal Ctrl-C
+    reaches only this process, which relays each signal once and only to that child.
+    """
+    out, child, pending, stopped = sys.stdout.buffer, [], [], False
+
+    def relay(number, _frame):
+        if child:
+            child[0].send_signal(number)
+        else:
+            pending.append(number)  # Arrived while the child was starting; sent once it exists.
+
+    previous = {sig: signal.signal(sig, relay) for sig in RELAYED_SIGNALS}
+    try:
+        with subprocess.Popen(command, stdout=subprocess.PIPE, start_new_session=True, env=launch_env()) as proc:
+            child.append(proc)
+            while pending:
+                proc.send_signal(pending.pop(0))
+            note(phase("waiting", waiting_for="native_init", idle_timeout=None))
+            for line in proc.stdout:
+                if stopped:
+                    continue  # Drain only, so the stopped child is never blocked on a full pipe.
+                for record in observer.feed(line):
+                    note(record)
+                if observer.mismatch:
+                    stopped = True
+                    note(phase("model_mismatch", configured_model=MODEL, actual_model=observer.actual_model,
+                               mismatched_model=observer.mismatched_model, source=observer.mismatch,
+                               action="sigterm_own_child"))
+                    proc.terminate()
+                    continue
+                if out is not None:
+                    try:
+                        out.write(line)
+                        out.flush()
+                    except (OSError, ValueError):
+                        out = None  # Reader went away; keep observing until native exits.
+            return proc.wait()
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def observed_outcome(raw, observer):
+    """Return (launcher exit code, outcome, reason); only a clean native result is completed."""
+    code, result = exit_status(raw), observer.result
+    if observer.mismatch:
+        return EXIT_MODEL_MISMATCH, "error", "model_mismatch"
+    if raw < 0 or code in INTERRUPTED:
+        return code, "interrupted", "native_interrupted"
+    if code != 0:
+        return code, "error", "native_exit_nonzero"
+    if not observer.initialized:
+        return EXIT_INCOMPLETE, "incomplete", "missing_init"
+    if result is None:
+        return EXIT_INCOMPLETE, "incomplete", "missing_result"
+    if result == "malformed":
+        return EXIT_INCOMPLETE, "incomplete", "malformed_result"
+    if result["is_error"] or result["result_subtype"] != "success":
+        return EXIT_RESULT_ERROR, "error", "result_error"
+    return 0, "completed", "cli_completed"
+
+
+def observe(command, started):
+    observer = Observer()
+    raw = run_observed(command, observer)
+    code, outcome, reason = observed_outcome(raw, observer)
+    result = observer.result if isinstance(observer.result, dict) else {}
+    # A completed CLI run proves neither edits nor tests; the parent verifies those.
+    note({"record": "cc_implement_finish", "observe": True, "phase": "terminal", "outcome": outcome,
+          "reason": reason, "exit_code": code, "native_exit_code": exit_status(raw),
+          "cli_completed": outcome == "completed", "implementation_verified": False,
+          "tests": "unknown", "rework": "unknown", "fallback_allowed": False, "launcher_retries": 0,
+          "configured_model": MODEL, "actual_model": observer.actual_model,
+          "mismatch_source": observer.mismatch, "subagent_models": observer.subagent_models,
+          # Effort is not read from the stream, env or modelUsage; configured is not actual.
+          "configured_effort": EFFORT, "actual_effort": "unknown",
+          "result_subtype": result.get("result_subtype"), "num_turns": result.get("num_turns"),
+          "usage": result.get("usage") or "unknown", "model_usage": result.get("model_usage") or "unknown",
+          "observed": observer.observed, "observed_error_classes": sorted(observer.error_classes),
+          "duration_seconds": round(time.monotonic() - started, 3), "finished_at": now_utc()})
+    return code
+
+
+def main(argv=None):
+    options, forwarded = split_arguments(list(sys.argv[1:] if argv is None else argv))
+    observing = "--observe" in options
+    try:
+        check_request(forwarded, os.environ, observing)
+        check_profile()
+        if "--dry-run" in options:
+            # Fixed values only: prompts and other arguments may be sensitive.
+            plan = {"dry_run": True, "tool": "claude", "agent": AGENT, "model": MODEL, "effort": EFFORT,
+                    **SUBAGENT_SCOPE, "profile": str(PROFILE), "selection_flags": selection_flags()}
+            if observing:
+                plan.update(observe=True, observe_flags=OBSERVE_FLAGS)
+            print(json.dumps(plan, sort_keys=True))
+            return 0
+        claude = find_claude()
+        if observing:  # The bounded metadata read below may take up to AUTH_TIMEOUT seconds.
+            note(phase("auth_check", state="checking", metadata_timeout_seconds=AUTH_TIMEOUT))
+        auth = subscription_auth(claude)
+        if auth != "passed":
+            if observing:
+                note(phase("auth_check", state=auth))
+            raise Blocked(AUTH_BLOCKED[auth])
+        version = cli_version(claude)  # Read once: checked here and reported in the start record.
+        if not version_supported(version):
+            raise Blocked("Claude Code version " + version + " is not a parsed version at or above "
+                          + SUBAGENT_SCOPE["min_cli_version"] + ", which forcing the subagent model and "
+                          "effort needs; no install, upgrade or fallback attempted.")
+        start = {"record": "cc_implement_start", "observe": observing, "tool": "claude", "agent": AGENT,
+                 "model": MODEL, "effort": EFFORT, **SUBAGENT_SCOPE, "version": version,
+                 "subscription_auth": True, "started_at": now_utc()}
+        if observing:
+            start.update(phase="launch", auth_check="passed", idle_timeout=None, launcher_retries=0)
+        note(start)
+        started = time.monotonic()
+        command = [claude, *selection_flags(), *(OBSERVE_FLAGS if observing else []), *forwarded]
+        if observing:
+            return observe(command, started)
+        code = run(command)
+        outcome = "exited" if code == 0 else "interrupted" if code in INTERRUPTED else "error"
+        note({"record": "cc_implement_finish", "observe": False, "exit_code": code, "outcome": outcome,
+              "duration_seconds": round(time.monotonic() - started, 3), "usage": "unknown",
+              "tests": "unknown", "rework": "unknown", "implementation_verified": False,
+              "fallback_allowed": False, "finished_at": now_utc()})
+        return code
+    except Conflict as exc:
+        note({"state": "conflict", "reason": str(exc), "model_started": False, "fallback_allowed": False})
+        return EXIT_CONFLICT
+    except Blocked as exc:
+        note({"state": "blocked", "reason": str(exc), "model_started": False, "fallback_allowed": False})
+        return EXIT_BLOCKED
+    except OSError:
+        note({"state": "blocked", "reason": "Claude Code could not be started; details suppressed",
+              "model_started": False, "fallback_allowed": False})
+        return EXIT_BLOCKED
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

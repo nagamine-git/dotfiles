@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""Offline routing proposals only. No model, network, credential, or shell access."""
+import argparse
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import stat
+import tempfile
+import time
+import uuid
+
+MODELS = {
+    "codex": "gpt-6.1-sol",
+    "opus": "claude-opus-5-5",
+    "fable": "claude-fable-5-1",
+}
+POLICY_KEYS = {
+    "version", "execution_enabled", "claude_auth_mode", "timeout_ms",
+    "per_call_limit_cents", "daily_limit_cents", "monthly_limit_cents",
+}
+TASK_KEYS = {
+    "task_id", "authorization", "safety_status", "non_confidential",
+    "distinct_failed_hypotheses", "important_independent_review",
+    "explicit_fable_exception", "estimated_cost_cents",
+}
+MAX_BYTES = 1024 * 1024
+DECISION_KEYS = {
+    "state", "task_id", "route", "candidate_route", "model", "reason", "auth_mode",
+    "cost_guard", "reserved_cents", "execution_enabled", "ready_to_execute",
+    "model_started", "external_calls", "deduplicated", "classifier_source",
+}
+REASONS = {
+    "authorization_or_safety_stop", "classifier_unavailable_use_openai",
+    "claude_context_not_cleared", "openai_default", "classifier_cannot_expand_local_permission",
+    "explicit_fable_exception", "bounded_opus_exception", "api_budget_guard",
+}
+
+
+class Blocked(Exception):
+    """A rejected proposal; diagnostics must not include untrusted input."""
+
+
+def unique_object(pairs):
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise Blocked("Duplicate JSON fields are not accepted")
+        obj[key] = value
+    return obj
+
+
+def read_json(path, limit=65536):
+    # FIFOs, symlinks and devices cannot turn a metadata read into another action.
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
+                raise Blocked("Input must be a bounded regular JSON file")
+            raw = source.read(limit + 1)
+        if len(raw) > limit:
+            raise Blocked("JSON input exceeds its size limit")
+        return json.loads(raw, object_pairs_hook=unique_object)
+    except (OSError, ValueError, UnicodeError):
+        raise Blocked("Cannot read valid regular JSON input") from None
+
+
+def integer(value, low=0, high=100000000):
+    return type(value) is int and low <= value <= high
+
+
+def validate(policy, task):
+    if not isinstance(policy, dict) or set(policy) != POLICY_KEYS:
+        raise Blocked("Policy schema mismatch")
+    if type(policy["version"]) is not int or policy["version"] != 1:
+        raise Blocked("Unsupported policy version")
+    # There is intentionally no runtime implementation or enable switch.
+    if policy["execution_enabled"] is not False:
+        raise Blocked("Execution cannot be enabled in this offline planner")
+    if policy["claude_auth_mode"] not in ("claude_subscription", "anthropic_api"):
+        raise Blocked("Authentication mode must be explicit")
+    if not integer(policy["timeout_ms"], 1, 5000):
+        raise Blocked("Planning timeout must be between 1 and 5000 ms")
+    for key in ("per_call_limit_cents", "daily_limit_cents", "monthly_limit_cents"):
+        if not integer(policy[key]):
+            raise Blocked("Budget limits must be nonnegative integer cents")
+    if not isinstance(task, dict) or set(task) != TASK_KEYS:
+        raise Blocked("Task must contain only the supported metadata fields")
+    try:
+        task_uuid = uuid.UUID(task["task_id"])
+        if str(task_uuid) != task["task_id"]:
+            raise ValueError
+    except (ValueError, TypeError, AttributeError):
+        raise Blocked("Task identifier must be a canonical UUID") from None
+    if task["authorization"] not in ("allowed", "pending", "denied"):
+        raise Blocked("Invalid authorization metadata")
+    if task["safety_status"] not in ("clear", "pending", "refused"):
+        raise Blocked("Invalid safety metadata")
+    for key in ("non_confidential", "important_independent_review", "explicit_fable_exception"):
+        if type(task[key]) is not bool:
+            raise Blocked("Task flags must be booleans")
+    if not integer(task["distinct_failed_hypotheses"], 0, 100):
+        raise Blocked("Failure count must be an integer between 0 and 100")
+    if not integer(task["estimated_cost_cents"]):
+        raise Blocked("Estimated cost must be nonnegative integer cents")
+
+
+def classifier_features(task):
+    """A possible future classifier payload; no task ID, text, paths or secrets."""
+    return {key: task[key] for key in (
+        "distinct_failed_hypotheses", "important_independent_review",
+        "explicit_fable_exception",
+    )}
+
+
+def normalize_fixture(fixture):
+    if fixture is None:
+        return {"status": "local", "recommendation": "local"}
+    if (isinstance(fixture, dict) and set(fixture) == {"status", "recommendation"}
+            and fixture["status"] in ("ok", "unknown", "timeout", "unavailable", "error")
+            and fixture["recommendation"] in ("codex", "opus", "fable", "unknown")):
+        return fixture.copy()
+    return {"status": "error", "recommendation": "unknown"}
+
+
+def select(task, fixture):
+    if task["authorization"] != "allowed" or task["safety_status"] != "clear":
+        return "stop", "authorization_or_safety_stop"
+    if fixture["status"] not in ("local", "ok") or fixture["recommendation"] == "unknown":
+        return "codex", "classifier_unavailable_use_openai"
+    if not task["non_confidential"]:
+        return "codex", "claude_context_not_cleared"
+    if task["explicit_fable_exception"]:
+        eligible = "fable"
+    elif task["distinct_failed_hypotheses"] >= 2 or task["important_independent_review"]:
+        eligible = "opus"
+    else:
+        return "codex", "openai_default"
+    if fixture["status"] == "ok" and fixture["recommendation"] != eligible:
+        return "codex", "classifier_cannot_expand_local_permission"
+    return eligible, "explicit_fable_exception" if eligible == "fable" else "bounded_opus_exception"
+
+
+def deadline_check(deadline, clock):
+    if clock() >= deadline:
+        raise Blocked("Planning deadline exceeded; no execution is available")
+
+
+@contextmanager
+def state_lock(directory):
+    directory = Path(directory)
+    directory.mkdir(mode=0o700, parents=False, exist_ok=True)
+    info = directory.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o700):
+        raise Blocked("State directory must be owned by the caller and mode 0700")
+    fd = os.open(directory / "planner.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid():
+            raise Blocked("Unsafe state lock")
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Blocked("Another proposal is being reserved; no retry attempted") from None
+        yield directory
+    finally:
+        os.close(fd)
+
+
+def load_records(directory):
+    ledger = directory / "proposals.json"
+    if not ledger.exists() and not ledger.is_symlink():
+        return {}
+    data = read_json(ledger, MAX_BYTES)
+    if (not isinstance(data, dict) or set(data) != {"version", "records"}
+            or type(data["version"]) is not int or data["version"] != 1
+            or not isinstance(data["records"], dict)):
+        raise Blocked("Invalid proposal ledger; no reset or retry attempted")
+    records = data["records"]
+    for task_id, record in records.items():
+        if (not isinstance(record, dict) or set(record) != {"fingerprint", "day", "month", "reserved_cents", "decision"}
+                or not isinstance(record["fingerprint"], str)
+                or re.fullmatch(r"[0-9a-f]{64}", record["fingerprint"]) is None
+                or not integer(record["reserved_cents"]) or not isinstance(record["day"], str)
+                or not isinstance(record["month"], str) or not isinstance(record["decision"], dict)):
+            raise Blocked("Invalid proposal ledger record")
+        decision = record["decision"]
+        if set(decision) != DECISION_KEYS:
+            raise Blocked("Invalid stored proposal schema")
+        if any(not isinstance(decision[key], str) for key in (
+                "state", "task_id", "route", "candidate_route", "reason", "cost_guard", "classifier_source")):
+            raise Blocked("Invalid stored proposal field types")
+        try:
+            valid_id = str(uuid.UUID(task_id)) == task_id
+            valid_day = datetime.strptime(record["day"], "%Y-%m-%d").strftime("%Y-%m-%d") == record["day"]
+        except (TypeError, ValueError, AttributeError):
+            raise Blocked("Invalid proposal ledger identifiers") from None
+        route = decision["route"]
+        if (not isinstance(route, str) or route not in (*MODELS, "stop")
+                or decision["candidate_route"] not in (*MODELS, "stop")
+                or not valid_id or not valid_day or record["month"] != record["day"][:7]
+                or decision["state"] != "planned_only" or decision["task_id"] != task_id
+                or decision["model"] != MODELS.get(route)
+                or decision["reason"] not in REASONS
+                or decision["auth_mode"] not in ("codex_subscription", "claude_subscription", "anthropic_api", None)
+                or decision["cost_guard"] not in ("not_applicable", "live_subscription_check_required", "simulated_api_budget_blocked", "simulated_reservation_only")
+                or not integer(decision["reserved_cents"])
+                or decision["reserved_cents"] != record["reserved_cents"]
+                or any(decision[k] is not False for k in ("execution_enabled", "ready_to_execute", "model_started", "deduplicated"))
+                or type(decision["external_calls"]) is not int or decision["external_calls"] != 0
+                or decision["classifier_source"] not in ("local_rules", "offline_fixture")):
+            raise Blocked("Invalid stored proposal values")
+    return records
+
+
+def save_records(directory, records):
+    payload = json.dumps({"version": 1, "records": records}, sort_keys=True, indent=2) + "\n"
+    if len(payload.encode()) > MAX_BYTES:
+        raise Blocked("Proposal ledger is full; no records were discarded")
+    fd, temporary = tempfile.mkstemp(prefix=".proposals-", dir=directory)
+    try:
+        with os.fdopen(fd, "w") as output:
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, directory / "proposals.json")
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def prepare(policy, task, directory, fixture=None, *, clock=time.monotonic, now=None):
+    started = clock()
+    validate(policy, task)
+    deadline = started + policy["timeout_ms"] / 1000
+    fixture = normalize_fixture(fixture)
+    fingerprint = hashlib.sha256(json.dumps([policy, task, fixture], sort_keys=True).encode()).hexdigest()
+    route, reason = select(task, fixture)
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None or now.utcoffset() != timezone.utc.utcoffset(now):
+        raise Blocked("Budget dates must be UTC")
+    day, month = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m")
+    deadline_check(deadline, clock)
+    with state_lock(directory) as state:
+        records = load_records(state)
+        if task["task_id"] in records:
+            previous = records[task["task_id"]]
+            if previous["fingerprint"] != fingerprint:
+                raise Blocked("Task identifier was already reserved for a different proposal")
+            deadline_check(deadline, clock)
+            return {**previous["decision"], "deduplicated": True}
+        candidate = route
+        reserved = 0
+        auth_mode = "codex_subscription" if route == "codex" else policy["claude_auth_mode"]
+        cost_guard = "not_applicable" if route in ("codex", "stop") else "live_subscription_check_required"
+        if route in ("opus", "fable") and auth_mode == "anthropic_api":
+            quote = task["estimated_cost_cents"]
+            daily = sum(r["reserved_cents"] for r in records.values() if r["day"] == day)
+            monthly = sum(r["reserved_cents"] for r in records.values() if r["month"] == month)
+            if (quote <= 0 or quote > policy["per_call_limit_cents"]
+                    or daily + quote > policy["daily_limit_cents"]
+                    or monthly + quote > policy["monthly_limit_cents"]):
+                route, reason, auth_mode = "codex", "api_budget_guard", "codex_subscription"
+                cost_guard = "simulated_api_budget_blocked"
+            else:
+                reserved, cost_guard = quote, "simulated_reservation_only"
+        decision = {
+            "state": "planned_only", "task_id": task["task_id"], "route": route,
+            "candidate_route": candidate, "model": MODELS.get(route), "reason": reason,
+            "auth_mode": auth_mode if route != "stop" else None,
+            "cost_guard": cost_guard, "reserved_cents": reserved,
+            "execution_enabled": False, "ready_to_execute": False,
+            "model_started": False, "external_calls": 0, "deduplicated": False,
+            "classifier_source": "local_rules" if fixture["status"] == "local" else "offline_fixture",
+        }
+        deadline_check(deadline, clock)
+        records[task["task_id"]] = {
+            "fingerprint": fingerprint, "day": day, "month": month,
+            "reserved_cents": reserved, "decision": decision,
+        }
+        save_records(state, records)
+        return decision
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--task", type=Path, required=True)
+    parser.add_argument("--state-dir", type=Path, required=True)
+    parser.add_argument("--classifier-fixture", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        policy, task = read_json(args.policy), read_json(args.task)
+        fixture = None
+        if args.classifier_fixture is not None:
+            try:
+                fixture = read_json(args.classifier_fixture)
+            except Blocked:
+                fixture = {"status": "error", "recommendation": "unknown"}
+        print(json.dumps(prepare(policy, task, args.state_dir, fixture), sort_keys=True))
+        return 0
+    except Blocked as exc:
+        # Blocked messages are static program text, never raw JSON or OS errors.
+        print(json.dumps({"state": "blocked", "execution_enabled": False,
+                          "model_started": False, "external_calls": 0,
+                          "reason": str(exc)}))
+        return 78
+    except OSError:
+        print(json.dumps({"state": "blocked", "execution_enabled": False,
+                          "model_started": False, "external_calls": 0,
+                          "reason": "Local state access failed; filesystem details suppressed"}))
+        return 78
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

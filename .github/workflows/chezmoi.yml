@@ -38,9 +38,16 @@ jobs:
           python3 tests/agent-memory-dir.py
           python3 tests/codex-config.py
 
+      - name: Verify model routing without credentials, network, or model calls
+        run: |
+          python3 -B tests/model-route-plan.py
+          python3 -B tests/model-route.py
+          python3 -B tests/cc-implement.py
+
       - name: Verify Slack bot logic without network or model calls
         run: |
           python3 tests/slack-claude.py
+          python3 tests/slack-notify.py
 
       - name: Verify herdr agent summary hook with stubbed claude/herdr
         run: |
@@ -54,8 +61,25 @@ jobs:
 
       - name: Verify notifications and desktop launch with stubbed tools
         run: |
+          bash -n dot_local/bin/executable_chatgpt-launch
+          shellcheck dot_local/bin/executable_chatgpt-launch
           python3 tests/claude-notify.py
           python3 tests/desktop-autostart.py
+          python3 tests/chatgpt-launch.py
+
+      - name: Install Node 24 (tests/jev-gate.py loads the TypeScript extension by stripping its types)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Verify Pi wrapper and jev gate with stubbed tools (no keys, no model calls)
+        run: |
+          bash -n dot_local/bin/executable_pi-jev
+          shellcheck dot_local/bin/executable_pi-jev
+          python3 tests/pi-jev.py
+          node --version
+          # With CI set, an old Node fails this step instead of skipping it.
+          python3 tests/jev-gate.py
 
       - name: Verify Vicinae launcher config and Meet script with stubbed tools
         run: |

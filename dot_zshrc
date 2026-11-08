@@ -84,8 +84,9 @@ unset PROMPT_EOL_MARK
 alias history='fc -il 1'
 
 # alias
-# Pi は常に jev 許可ゲートつきで起動する (~/.local/bin/pi-jev が TypeSafe 鍵を注入)
-alias pi='pi-jev'
+# Pi は jev 許可ゲートつきで起動する。pi-jev は Pi を入れた am5-itx にだけ置く
+# (TypeSafe 鍵は jev-gate が分類のときだけ自分で取り、Pi の環境変数には入れない)
+[[ -x "$HOME/.local/bin/pi-jev" ]] && alias pi='pi-jev'
 alias vim='nvim'
 alias svim='vim ~/.note.gpg'
 
@@ -295,9 +296,12 @@ code() {
 
 
 # ChatGPT はデスクトップ (Hyprland の起動・desktop entry) と同じく Wayland で起動し、端末から切り離す。
+# chatgpt-launch を置いているホスト (am5-itx) では、それを通してメモリ上限を付ける。
 chatgpt() {
   if [[ "$OSTYPE" == darwin* ]]; then
     command chatgpt "$@"
+  elif [[ -x "$HOME/.local/bin/chatgpt-launch" ]]; then
+    "$HOME/.local/bin/chatgpt-launch" "$@" >/dev/null 2>&1 &!
   else
     command chatgpt --ozone-platform=wayland "$@" >/dev/null 2>&1 &!
   fi

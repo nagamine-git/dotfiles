@@ -1,5 +1,6 @@
 README.md
 AGENTS.md
+REVIEW.md
 PLAN.md
 pkglist.txt
 .editorconfig
@@ -103,10 +104,46 @@ Library
 Library/**
 {{ end }}
 
+# ChatGPT のメモリ上限は am5-itx で測った値なので、起動スクリプトは am5-itx だけに置く
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/chatgpt-launch
+{{ end -}}
+
 # Slack から Claude Code に依頼する bot は am5-itx 専用
 {{ if ne .chezmoi.hostname "am5-itx" -}}
 .local/bin/slack-claude
 .config/systemd/user/slack-claude.service
+{{ end -}}
+
+# Busy Desk は BUSY Bar を設置しているホストだけで起動する
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.config/systemd/user/busy-desk-bridge.service
+.config/agents/busy-desk.env
+{{ end -}}
+
+# Model routing is installed only on the explicitly authorized host.
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/model-route
+.local/bin/model-route-plan
+.local/bin/cc-implement
+.claude/profiles/coder-opus.json
+.local/lib/model-routing
+.local/lib/model-routing/**
+.config/model-routing
+.config/model-routing/**
+.config/agents/model-typesafe.env
+.config/agents/model-anthropic.env
+.agents/skills/model-routing
+.agents/skills/model-routing/**
+{{ end -}}
+
+# Pi (本体は ~/.pi/agent/bin/pi に手で入れる) は am5-itx だけで使う。ほかのホストには
+# 本体が無く、jev-gate の TypeSafe 鍵の参照 (model-typesafe.env) も am5-itx だけに置いている
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/pi-jev
+.pi
+.pi/**
+.config/agents/model-openrouter.env
 {{ end -}}
 
 # tower (新規事業ループの司令塔) は am5-itx 専用

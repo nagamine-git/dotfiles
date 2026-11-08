@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Start ChatGPT on Wayland and limit the memory of the app scope it creates for itself.
+set -eu
+
+usage() {
+  printf '%s\n' 'usage: chatgpt-launch [URI...]' >&2
+  exit 2
+}
+
+# Memory budget for the ChatGPT app scope, measured on am5-itx (60 GiB RAM + 32 GiB zram)
+# on 2026-10-28: the scope holding the main process and everything it spawns (Codex,
+# MCP servers, their Chrome) sat at about 11 GiB and peaked at 19.4 GiB right after start.
+# Both global OOMs that killed ChatGPT (10/21, 10/26) ran with swap exhausted and the main
+# process alone at 6.6 / 12.2 GiB (rss + swap). High is 1.4x the steady state: above it only
+# ChatGPT is throttled and reclaimed. Max sits above the start-up peak: a runaway dies alone
+# instead of a renderer picked by the global OOM killer. SwapMax keeps it from filling zram.
+chatgpt_mem_high_gib=16
+chatgpt_mem_max_gib=24
+chatgpt_mem_swap_max_gib=8
+
+notify() {
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notify-send -u "$1" -a ChatGPT "$2" "$3" >/dev/null 2>&1 || true
+}
+
+gib() { awk -v b="$1" 'BEGIN { printf "%.1f", b / 1073741824 }'; }
+
+# Chromium moves its main process, and every child spawned afterwards, into its own
+# app-*.scope under app.slice, so a systemd-run scope around chatgpt would not hold them.
+# Wait for that scope, limit it, then warn once as it nears High and once as it nears Max.
+chatgpt_watch() {
+  pid="$1"
+  scope=
+  for _ in {1..120}; do
+    scope="$(systemctl --user list-units --plain --no-legend --no-pager \
+      "app-*-$pid.scope" 2>/dev/null | awk 'NR == 1 { print $1 }')" || scope=
+    [ -z "$scope" ] || break
+    kill -0 "$pid" 2>/dev/null || return 0
+    sleep 0.5
+  done
+  # Release the launch lock inherited as fd 9: the scope is there (or never came), so a
+  # waiting launcher can go on and find the running instance.
+  exec 9>&-
+  if [ -z "$scope" ] || ! systemctl --user set-property --runtime "$scope" \
+    "MemoryHigh=${chatgpt_mem_high_gib}G" "MemoryMax=${chatgpt_mem_max_gib}G" \
+    "MemorySwapMax=${chatgpt_mem_swap_max_gib}G" >/dev/null 2>&1; then
+    kill -0 "$pid" 2>/dev/null || return 0
+    notify critical 'ChatGPT のメモリ上限を設定できませんでした' \
+      'app scope が見つからないか set-property に失敗しました。上限なしで動いています。'
+    return 0
+  fi
+  near_high=$((chatgpt_mem_high_gib * 1073741824 * 9 / 10))
+  near_max=$((chatgpt_mem_max_gib * 1073741824 * 9 / 10))
+  warned_high=0
+  warned_max=0
+  # Stop with the scope too, so a reused pid alone does not keep the watcher alive.
+  while kill -0 "$pid" 2>/dev/null && systemctl --user is-active --quiet "$scope" 2>/dev/null; do
+    current="$(systemctl --user show -p MemoryCurrent --value "$scope" 2>/dev/null)" || current=
+    case "$current" in
+      ''|*[!0-9]*) ;;
+      *)
+        if [ "$warned_max" = 0 ] && [ "$current" -ge "$near_max" ]; then
+          warned_max=1
+          notify critical 'ChatGPT が強制終了される寸前です' \
+            "$(gib "$current") / ${chatgpt_mem_max_gib} GiB。上限を超えると ChatGPT の scope ごと終了します。保存して再起動してください。"
+        elif [ "$warned_high" = 0 ] && [ "$current" -ge "$near_high" ]; then
+          warned_high=1
+          notify normal 'ChatGPT のメモリが上限に近づいています' \
+            "$(gib "$current") / ${chatgpt_mem_high_gib} GiB。超えると ChatGPT だけが減速します。重くなる前に再起動してください。"
+        fi
+        ;;
+    esac
+    sleep "${CHATGPT_WATCH_INTERVAL:-15}"
+  done
+}
+
+if [ "${1:-}" = --watch-chatgpt ]; then
+  shift
+  case "${1:-}" in ''|*[!0-9]*) usage ;; esac
+  [ "$#" -eq 1 ] || usage
+  chatgpt_watch "$1"
+  exit 0
+fi
+
+command -v chatgpt >/dev/null 2>&1 || {
+  printf '%s\n' 'chatgpt-launch: chatgpt is not installed' >&2
+  exit 127
+}
+# Serialize first launches. A second launcher waits here until the first watcher has found
+# the app scope (or gave up), then sees the running instance and only forwards its URIs.
+runtime="${XDG_RUNTIME_DIR:-}"
+if [ -n "$runtime" ] && [ -d "$runtime" ] && [ -O "$runtime" ]; then
+  exec 9>>"$runtime/chatgpt-launch.lock"
+  flock -w 15 9 || printf '%s\n' 'chatgpt-launch: launch lock timed out; launching anyway' >&2
+fi
+if pgrep -u "$(id -u)" -x ChatGPT >/dev/null; then
+  exec 9>&-
+  # Preserve the app's single-instance focus and URI forwarding. This short-lived process
+  # gets no scope of its own; the running instance keeps the limit set when it started.
+  exec chatgpt --ozone-platform=wayland "$@"
+fi
+# exec keeps this pid, so the watcher finds the app-*-<pid>.scope that ChatGPT creates.
+# The subshell detaches the watcher so it is not a child of ChatGPT. Only the watcher keeps
+# the lock (fd 9) until the scope appears; ChatGPT gets the fd closed.
+( "$(readlink -f "$0")" --watch-chatgpt "$$" </dev/null >/dev/null 2>&1 & )
+exec 9>&-
+exec chatgpt --ozone-platform=wayland "$@"
