@@ -27,10 +27,7 @@
     },
     "tavily-mcp": {
       "command": "agent-tavily-mcp",
-      "args": [],
-      "secrets": [
-        "TAVILY_API_KEY"
-      ]
+      "args": []
     },
     "toggl": {
       "command": "npx",
