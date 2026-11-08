@@ -175,6 +175,35 @@ class Notify(Base):
         self.assertEqual(self.calls("notify-send"), [])
         self.assertFalse(self.last.exists())
 
+    def test_app_name_comes_from_claude_notify_app(self):
+        # Pi's notify.ts passes CLAUDE_NOTIFY_APP=Pi and its text as arguments, with no hook JSON on stdin.
+        app = {"CLAUDE_NOTIFY_APP": "Pi"}
+        r = self.run_script(NOTIFY, "stop", "直しました", env=app)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = self.run_script(NOTIFY, "notification", "jev-gate: 承認待ち", env=app)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        stop, waiting = (c["args"] for c in self.calls("notify-send"))
+        self.assertIn("--app-name=Pi", stop)
+        self.assertIn("Pi: 完了", stop)
+        self.assertTrue(stop[-1].startswith("直しました"))
+        self.assertIn("--app-name=Pi", waiting)
+        self.assertIn("Pi: 入力待ち", waiting)
+        self.assertTrue(waiting[-1].startswith("jev-gate: 承認待ち"))
+
+    def test_app_name_reaches_the_phone_and_defaults_to_claude_code(self):
+        conf = self.d / "config/claude-notify"
+        conf.mkdir()
+        (conf / "config").write_text("NTFY_SERVER=https://ntfy.example\nNTFY_TOPIC=topic\n")
+        phone = {"CLAUDE_NOTIFY_PHONE": "always"}
+        r = self.run_script(NOTIFY, "stop", inside=True, stdin=self.hook(), env=dict(phone, CLAUDE_NOTIFY_APP="Pi"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = self.run_script(NOTIFY, "stop", stdin=self.hook(), env=dict(phone, CLAUDE_NOTIFY_APP=""))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        titles = [a for c in self.calls("curl") for a in c["args"] if a.startswith("Title: ")]
+        self.assertEqual(sorted(titles), ["Title: Claude Code: 完了 [chezmoi @ testhost]",
+                                          "Title: Pi: 完了 [chezmoi @ testhost]"])
+        self.assertIn("--app-name=Claude Code", self.calls("notify-send")[0]["args"])
+
     def test_macos_uses_osascript(self):
         (self.bin / "notify-send").unlink()
         r = self.run_script(NOTIFY, "stop", stdin=self.hook())

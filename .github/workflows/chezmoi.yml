@@ -61,8 +61,8 @@ jobs:
 
       - name: Verify notifications and desktop launch with stubbed tools
         run: |
-          bash -n dot_local/bin/executable_chatgpt-launch
-          shellcheck dot_local/bin/executable_chatgpt-launch
+          bash -n dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify
+          shellcheck dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify
           python3 tests/claude-notify.py
           python3 tests/desktop-autostart.py
           python3 tests/chatgpt-launch.py
@@ -72,14 +72,15 @@ jobs:
         with:
           node-version: 24
 
-      - name: Verify Pi wrapper and jev gate with stubbed tools (no keys, no model calls)
+      - name: Verify Pi wrapper, jev gate and notify with stubbed tools (no keys, no model calls)
         run: |
           bash -n dot_local/bin/executable_pi-jev
           shellcheck dot_local/bin/executable_pi-jev
           python3 tests/pi-jev.py
           node --version
-          # With CI set, an old Node fails this step instead of skipping it.
+          # With CI set, an old Node fails these instead of skipping them.
           python3 tests/jev-gate.py
+          python3 tests/pi-notify.py
 
       - name: Verify Vicinae launcher config and Meet script with stubbed tools
         run: |
