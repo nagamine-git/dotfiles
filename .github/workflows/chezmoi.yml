@@ -72,6 +72,11 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install zsh (Pi's shell; tests/pi-jev.py and tests/pi-settings.py run the real one)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zsh
+
       - name: Verify Pi wrapper, jev gate, notify, delegate, subagent loader and settings with stubbed tools (no keys, no model calls)
         run: |
           bash -n dot_local/bin/executable_pi-jev
