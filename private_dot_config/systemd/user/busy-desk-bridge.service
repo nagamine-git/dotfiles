@@ -2,7 +2,9 @@
 Description=Busy Desk herdr bridge
 ConditionPathExists=%h/.config/agents/busy-desk.env
 ConditionPathExists=%h/ghq/github.com/nagamine-git/busybar-desk/config.json
-StartLimitIntervalSec=0
+# 失敗が続いても際限なく再起動しない。10 分間の起動が 5 回を超えたら止める
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Service]
 Type=exec
