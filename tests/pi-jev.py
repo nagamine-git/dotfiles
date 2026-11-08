@@ -1,4 +1,4 @@
-"""pi-jev. Disposable HOME, fake Pi and op-agent, synthetic op:// references only."""
+"""pi-jev and where Pi is installed. Disposable HOME, fake Pi and op-agent, synthetic op:// references only."""
 import json
 from pathlib import Path
 import shutil
@@ -8,6 +8,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "dot_local/bin/executable_pi-jev"
+IGNORE = ROOT / ".chezmoiignore"
+ZSHRC = ROOT / "dot_zshrc"
+CHEZMOI = shutil.which("chezmoi")
 KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY")
 
 FAKE_PI = '''#!/usr/bin/env python3
@@ -87,6 +90,28 @@ class PiJev(unittest.TestCase):
         (self.home / "pi-runs.jsonl").unlink()
         self.assertNotIn("OPENROUTER_API_KEY", self.run_wrapper(**nested)["env"])
         self.assertEqual(self.calls("op-agent-calls.jsonl"), [])
+
+    def test_zsh_alias_only_when_pi_jev_is_installed(self):
+        zshrc = ZSHRC.read_text()
+        self.assertNotIn("\nalias pi='pi-jev'\n", zshrc)
+        self.assertIn("[[ -x \"$HOME/.local/bin/pi-jev\" ]] && alias pi='pi-jev'\n", zshrc)
+
+
+def render(path, hostname, os_name):
+    data = {"chezmoi": {"hostname": hostname, "os": os_name, "homeDir": "/fixture"}}
+    return subprocess.run([CHEZMOI, "--source", str(ROOT), "execute-template", "--override-data", json.dumps(data)],
+                          input=path.read_text(), capture_output=True, text=True, check=True).stdout
+
+
+@unittest.skipUnless(CHEZMOI, "chezmoi が必要")
+class PiHosts(unittest.TestCase):
+    def test_pi_files_are_installed_only_on_am5_itx(self):
+        targets = [".local/bin/pi-jev", ".pi", ".pi/**", ".config/agents/model-openrouter.env"]
+        for hostname, os_name in (("am5-itx", "linux"), ("fp7-e14", "linux"), ("m1pro", "darwin")):
+            with self.subTest(hostname=hostname):
+                ignored = render(IGNORE, hostname, os_name).splitlines()
+                for target in targets:
+                    self.assertEqual(target in ignored, hostname != "am5-itx", target)
 
 
 if __name__ == "__main__":
