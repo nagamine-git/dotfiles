@@ -1,9 +1,15 @@
-"""pi-jev and where Pi is installed. Disposable HOME, fake Pi and op-agent, synthetic op:// references only."""
+"""pi-jev and where Pi is installed. Disposable HOME, fake Pi and op-agent, synthetic op:// references only.
+
+The zsh snapshot tests run the real zsh on a fixture ~/.zshrc (they skip without zsh, but not in CI) and a
+fake zsh for the failure paths.
+"""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +17,7 @@ SCRIPT = ROOT / "dot_local/bin/executable_pi-jev"
 IGNORE = ROOT / ".chezmoiignore"
 ZSHRC = ROOT / "dot_zshrc"
 CHEZMOI = shutil.which("chezmoi")
+ZSH = shutil.which("zsh")
 KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")
 
 FAKE_PI = '''#!/usr/bin/env python3
@@ -18,7 +25,25 @@ import json, os, pathlib, sys
 keys = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
         "PI_JEV_WRAPPED")
 with (pathlib.Path(os.environ["HOME"])/"pi-runs.jsonl").open("a") as f:
-    f.write(json.dumps({"args": sys.argv[1:], "env": {k: os.environ[k] for k in keys if k in os.environ}})+"\\n")
+    f.write(json.dumps({"args": sys.argv[1:], "env": {k: os.environ[k] for k in keys if k in os.environ},
+                        "snapshot": os.environ.get("PI_ZSH_SNAPSHOT")})+"\\n")
+'''
+
+# What the owner's ~/.zshrc might hold: plain aliases and functions to keep, and ones the snapshot must leave out.
+FIXTURE_ZSHRC = r'''
+echo NOISE-FROM-ZSHRC
+print -u2 NOISE-ON-STDERR
+setopt noclobber
+alias gss='git status --short'
+alias hello='print -r -- hello-alias'
+alias ls='ls --color=always'
+alias lsi='eza --icons'
+alias lc='ls -l --color=always'
+alias cat='bat --paging=never'
+myfn () { print -r -- "fn:$1" }
+sort () { print -r -- shadowed }
+command_not_found_handler () { print -r -- handler }
+TRAPEXIT () { : }
 '''
 
 FAKE_OP_AGENT = '''#!/usr/bin/env python3
@@ -55,7 +80,7 @@ class PiJev(unittest.TestCase):
         self.env = {"HOME": str(self.home), "PATH": str(self.bin) + ":/usr/bin:/bin", "LANG": "C.UTF-8"}
 
     def run_wrapper(self, *args, **extra):
-        result = subprocess.run([str(self.wrapper), *args], env=dict(self.env, **extra),
+        result = subprocess.run([str(self.wrapper), *args], env=dict(self.env, **extra), cwd=str(self.home),
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("SYNTHETIC-VALUE", result.stdout + result.stderr)
@@ -122,6 +147,77 @@ class PiJev(unittest.TestCase):
         (self.home / "pi-runs.jsonl").unlink()
         self.assertNotIn("OPENROUTER_API_KEY", self.run_wrapper(**nested)["env"])
         self.assertEqual(self.calls("op-agent-calls.jsonl"), [])
+
+    def snapshot(self):
+        return self.home / ".cache/pi/zsh-snapshot.zsh"
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_zsh_snapshot_keeps_plain_aliases_and_functions_and_leaves_out_noisy_or_shadowing_ones(self):
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
+        run = self.run_wrapper()
+        snap = self.snapshot()
+        self.assertEqual(run["snapshot"], str(snap))
+        text = snap.read_text()
+        self.assertIn("alias gss='git status --short'", text)
+        self.assertIn("myfn () {", text)
+        for gone in ("alias ls=", "alias lsi=", "alias lc=", "alias cat=", "sort () {", "command_not_found_handler",
+                     "TRAPEXIT", "NOISE"):
+            self.assertNotIn(gone, text)
+        self.assertEqual(snap.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(snap.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(sorted(p.name for p in snap.parent.iterdir()), ["zsh-snapshot.zsh"])
+        out = subprocess.run([ZSH, "-fc", 'source "$1"; myfn x; eval hello', "zsh", str(snap)],
+                             capture_output=True, text=True, timeout=10)
+        self.assertEqual((out.stdout, out.stderr), ("fn:x\nhello-alias\n", ""))
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_xdg_cache_home_moves_the_snapshot(self):
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
+        cache = self.home / "xdg-cache"
+        run = self.run_wrapper(XDG_CACHE_HOME=str(cache))
+        self.assertEqual(run["snapshot"], str(cache / "pi/zsh-snapshot.zsh"))
+        self.assertIn("alias gss=", (cache / "pi/zsh-snapshot.zsh").read_text())
+        self.assertFalse(self.snapshot().exists())
+
+    def fake_zsh(self, body):
+        zsh = self.bin / "zsh"
+        zsh.write_text("#!/bin/sh\necho called >> \"$HOME/zsh-calls\"\n" + body)
+        zsh.chmod(0o700)
+
+    def old_snapshot(self):
+        self.snapshot().parent.mkdir(parents=True)
+        self.snapshot().write_text("alias old='true'\n")
+
+    def test_nested_launch_reuses_the_snapshot_without_running_zsh(self):
+        self.fake_zsh("exit 0\n")
+        self.old_snapshot()
+        run = self.run_wrapper(PI_JEV_WRAPPED="1")
+        self.assertEqual(run["snapshot"], str(self.snapshot()))
+        self.assertEqual(self.snapshot().read_text(), "alias old='true'\n")
+        self.assertFalse((self.home / "zsh-calls").exists())
+
+    def test_failing_or_hanging_zsh_keeps_the_old_snapshot_and_still_starts_pi(self):
+        for body in ("echo partial > \"$4\"; exit 1\n", "exec sleep 30\n"):
+            with self.subTest(body=body):
+                (self.home / "pi-runs.jsonl").unlink(missing_ok=True)
+                shutil.rmtree(self.home / ".cache", ignore_errors=True)
+                self.fake_zsh(body)
+                self.old_snapshot()
+                started = time.monotonic()
+                run = self.run_wrapper()
+                self.assertLess(time.monotonic() - started, 9)
+                self.assertEqual(run["snapshot"], str(self.snapshot()))
+                self.assertEqual(self.snapshot().read_text(), "alias old='true'\n")
+                self.assertEqual(sorted(p.name for p in self.snapshot().parent.iterdir()), ["zsh-snapshot.zsh"])
+
+    def test_without_zsh_pi_starts_with_no_snapshot(self):
+        tools = self.home / "tools"
+        tools.mkdir()
+        for name in ("bash", "python3"):
+            (tools / name).symlink_to(shutil.which(name))
+        run = self.run_wrapper(PATH="%s:%s" % (self.bin, tools))
+        self.assertEqual(run["snapshot"], str(self.snapshot()))
+        self.assertFalse(self.snapshot().exists())
 
     def test_zsh_alias_only_when_pi_jev_is_installed(self):
         zshrc = ZSHRC.read_text()

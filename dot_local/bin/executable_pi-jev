@@ -36,5 +36,43 @@ elif [ -z "${PI_JEV_WRAPPED:-}" ] && [ -r "$TOKEN" ] && [ -r "$OPENROUTER_ENV" ]
   fi
 fi
 
+# zsh のエイリアスと関数を、Pi の bash ツールと ! コマンドでも使えるように書き出す。Pi は settings.json の
+# shellPath (zsh) で `zsh -c "<shellCommandPrefix>\n<command>"` を起動し、その prefix がこのファイルを読む
+# (dot_pi/agent/modify_settings.json)。非対話の zsh -c は ~/.zshrc を読まないので、起動のたびに 1 回だけ
+# 対話の zsh から取る。PATH などの環境変数は書かない (Pi が起動時の環境を引き継ぐ)。次は書き出さない:
+#   - --color=always や --icons を含むエイリアス (ls = eza --icons --color=always など)。出力に ANSI の色コードと
+#     アイコンの文字が混ざり、モデルには雑音になる。ls・ll・la は素の ls になる
+#   - PATH のコマンドや組み込みと同じ名前のエイリアスと関数 (cc = Claude を起動する関数、ld = lazydocker など)。
+#     モデルが書く標準のコマンドが別物にすり替わる
+#   - 名前で呼ばずに動く関数 (command_not_found_handler・TRAP*・chpwd など)
+# zshrc が標準出力に書くものは捨てる (スナップショットに混ざるとコマンドとして実行される)。zsh が無い・失敗した・
+# 5 秒で終わらないときは前のスナップショットのまま (無ければ無しで) Pi を起動する。
+PI_ZSH_SNAPSHOT="${XDG_CACHE_HOME:-$HOME/.cache}/pi/zsh-snapshot.zsh"
+# zsh に渡すコードなので、$ は bash ではなく zsh が展開する
+# shellcheck disable=SC2016
+ZSH_DUMP='zmodload zsh/parameter
+{
+  for n in ${(ko)aliases}; do
+    (( $+commands[$n] || $+builtins[$n] )) || [[ $aliases[$n] == *(--color=always|--icons)* ]] || builtin alias -L -- $n
+  done
+  for n in ${(ko)functions}; do
+    (( $+commands[$n] || $+builtins[$n] )) ||
+      [[ $n == (command_not_found_handler|TRAP*|precmd|preexec|chpwd|periodic|zshexit|zshaddhistory) ]] ||
+      builtin functions -- $n
+  done
+} >| $1 && exit 0'
+if [ -z "${PI_JEV_WRAPPED:-}" ] && command -v zsh >/dev/null 2>&1; then
+  (
+    umask 077
+    mkdir -p "${PI_ZSH_SNAPSHOT%/*}" && tmp="$(mktemp "$PI_ZSH_SNAPSHOT.XXXXXX")" || exit 0
+    if timeout 5 zsh -ic "$ZSH_DUMP" zsh "$tmp" </dev/null >/dev/null 2>&1 && [ -s "$tmp" ]; then
+      mv -f "$tmp" "$PI_ZSH_SNAPSHOT"
+    else
+      rm -f "$tmp"
+    fi
+  ) || true
+fi
+export PI_ZSH_SNAPSHOT
+
 export PI_JEV_WRAPPED=1
 exec "$REAL_PI" "$@"
