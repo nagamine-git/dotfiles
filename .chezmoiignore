@@ -1,5 +1,6 @@
 README.md
 AGENTS.md
+REVIEW.md
 PLAN.md
 pkglist.txt
 .editorconfig
@@ -118,6 +119,28 @@ tests/desktop-apps-tmux.py
 {{ if ne .chezmoi.hostname "am5-itx" -}}
 .local/bin/slack-claude
 .config/systemd/user/slack-claude.service
+{{ end -}}
+
+# Busy Desk は BUSY Bar を設置しているホストだけで起動する
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.config/systemd/user/busy-desk-bridge.service
+.config/agents/busy-desk.env
+{{ end -}}
+
+# Model routing is installed only on the explicitly authorized host.
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/model-route
+.local/bin/model-route-plan
+.local/bin/cc-implement
+.claude/profiles/coder-opus.json
+.local/lib/model-routing
+.local/lib/model-routing/**
+.config/model-routing
+.config/model-routing/**
+.config/agents/model-typesafe.env
+.config/agents/model-anthropic.env
+.agents/skills/model-routing
+.agents/skills/model-routing/**
 {{ end -}}
 
 # tower (新規事業ループの司令塔) は am5-itx 専用

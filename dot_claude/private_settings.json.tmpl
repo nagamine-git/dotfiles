@@ -64,7 +64,15 @@
             "timeout": 5
           }{{ end }}
         ]
-      }
+      }{{ if eq .chezmoi.hostname "am5-itx" }},
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CC_IMPLEMENT_USAGE_NO_MODEL_CALL:-}\" != \"1\" ]; then {{ .chezmoi.homeDir }}/.local/bin/claude-usage --refresh >/dev/null 2>&1; fi"
+          }
+        ]
+      }{{ end }}
     ]
 {{- $herdr := lookPath "herdr" }}
 {{- $herdrAgentState := stat (joinPath .chezmoi.homeDir ".claude/hooks/herdr-agent-state.sh") }}
@@ -185,7 +193,8 @@
       "gh repo create --private で nagamine-git / efg-technologies 配下に private リポジトリを作るのは許可",
       "am5-itx / fp7-e14 / m1pro-mbp14 への ssh・scp・rsync とそこでのコマンド実行は許可 (本人所有機)",
       "ユーザーが設定変更を依頼したときの ~/.claude, ~/.codex, ~/.local/share/chezmoi の編集と chezmoi apply / chezmoi update は許可",
-      "Bash(gh issue create:*) — scoped to efg-technologies/lab coordination issues assigned to nagamine-git, per pre-existing project authorization dated 2026-04-30"
+      "Bash(gh issue create:*) — scoped to efg-technologies/lab coordination issues assigned to nagamine-git, per pre-existing project authorization dated 2026-04-30",
+      "Linear (EFG ワークスペース) の課題・コメント・状態・ラベル・プロジェクトの作成と更新は許可。Linear は会社のタスクの正本で、AI が調査結果や決定を日常的に書き戻す。削除・アーカイブは除く"
     ],
     "soft_deny": [
       "$defaults",
