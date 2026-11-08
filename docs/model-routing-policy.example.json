@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "execution_enabled": false,
+  "claude_auth_mode": "claude_subscription",
+  "timeout_ms": 1000,
+  "per_call_limit_cents": 0,
+  "daily_limit_cents": 0,
+  "monthly_limit_cents": 0
+}

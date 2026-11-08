@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "monthly_api_limit_cents": 2000,
+  "per_request_target_cents": 500,
+  "request_timeout_seconds": 120
+}

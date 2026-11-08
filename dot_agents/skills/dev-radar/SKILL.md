@@ -1,100 +1,31 @@
 ---
 name: dev-radar
-description: neovim/zsh/tmux/claude code 周辺と 1段メタな代替ツールの新動向を WebSearch し、chezmoi 管理下の現環境と照合して取り込み価値を週次で判定するスキャン。「現状維持で十分」結論も尊重する。Use when /dev-radar, 開発環境のアップデート確認, 新ツール調査。
-argument-hint: "[--since YYYY-MM-DD] [--detail]"
+description: chezmoi管理下の現環境と開発ツールの新動向を比較し、取り込み価値を判定する。/dev-radar、開発環境の更新確認、代替ツール調査で使う。
 allowed-tools: Read, Write, Bash, Grep, Glob, WebSearch
 ---
 
 # dev-radar
 
-前回実行 → 今日の期間で登場した開発環境ツールを検出し、現環境への取り込み価値を判定する。
+新しいという理由では採用せず、今の環境で得られる実利と移行費用を比較する。導入・設定変更は依頼があるときだけ行う。
 
-## 引数
-- `--since YYYY-MM-DD`: 期間下限を上書き (省略時は state ファイル or 30 日前)
-- `--detail`: 各候補に URL / 既存比較を併記
+## 範囲と期間
 
-## 手順
+- `--since YYYY-MM-DD`で期間下限を指定できる。省略時は`~/.local/state/dev-radar/last_run.json`の`last_run`、初回は30日前から今日まで。
+- chezmoiの実際のソース先、現在のOS、関連する設定・導入バージョンから調査範囲を決める。ユーザー指定の範囲を優先し、使っているツールと具体的な困りごとを解消し得る代替を調べる。
+- 毎回すべてのエディタ・WM・OSを調べる必要はない。大きな移行は互換性・設定の作り直し・習熟も費用として扱う。
 
-### 1. 期間決定
-```bash
-STATE=~/.local/state/dev-radar/last_run.json
-mkdir -p "$(dirname "$STATE")"
-SINCE=$([ -f "$STATE" ] && jq -r .last_run "$STATE" || date -d '30 days ago' +%Y-%m-%d)
-TODAY=$(date +%Y-%m-%d)
-```
+## 調査と判断
 
-### 2. 環境スキャン
-chezmoi 管理下から「使用中ツール一覧」を Grep / Read で抽出:
+対象期間の公式Release・changelog・announcementを優先する。コミュニティ記事は発見の手掛かりに使い、公開日と実際のリリース日を区別する。
 
-| ソース | 抽出対象 |
-|---|---|
-| `~/.local/share/chezmoi/private_dot_config/mise/config.toml` | runtime |
-| `~/.local/share/chezmoi/private_dot_config/sheldon/plugins.toml` | zsh plugin |
-| `~/.local/share/chezmoi/dot_tmux.conf*` | `set -g @plugin '...'` |
-| `~/.local/share/chezmoi/private_dot_config/nvim/init.lua*` | lazy spec (`'owner/repo'`) |
-| `~/.local/share/chezmoi/dot_claude/` | agents, skills, settings |
-| `~/.local/share/chezmoi/private_dot_config/hypr/` | WM/compositor (Hyprland) 設定・バージョン |
-| `pacman -Qqe` (実行) / `/etc/os-release` | システムパッケージ・ディストリ |
-| `sw_vers` (darwin) / `uname -sr` | OS 種別・カーネル (Mac か Linux かで判定軸が変わる) |
+各候補を、既存環境との違い、得られる実利、互換性、移行と保守の費用で評価する。star数や話題性を採用の根拠にしない。実利がなければ「現状維持で十分」とする。aliasは提案しない。
 
-### 3. WebSearch (カテゴリ別 / 期間内動向)
-- 補完エンジン (nvim-cmp / blink.cmp)
-- fuzzy finder (telescope / fzf-lua / snacks.picker)
-- LSP / formatter (conform / nvim-lint / vim.lsp.config)
-- git TUI (lazygit / gitui / jujutsu)
-- zsh plugin manager (sheldon 代替)
-- tmux / 代替 (zellij)
-- エディタ代替 1段メタ (helix / zed)
-- dotfiles 管理 1段メタ (home-manager / nix-darwin)
-- AI コーディング (claude code / cursor / aider)
-- パッケージ管理 1段メタ (nix / mise / homebrew)
-- **WM/compositor (Linux)** — Hyprland の動向 + 代替 (niri / river / sway)。スクロール式 (niri) 等のパラダイム変化を見る
-- **WM/タイリング (macOS)** — AeroSpace / yabai。Mac で Hyprland 風タイリングを求める場合の選択肢。**現状 macOS ネイティブで足りているなら ⌀**
-- **ディストリ/OS-base 2段メタ** — CachyOS/EndeavourOS(Arch) 継続妥当性、immutable 系 (bazzite/Aurora)、Apple Silicon の Asahi Linux。**移行コスト >> 便益が常態なので原則 ⌀、地殻変動時のみ ★**
+根拠の確度を`[確認済]`・`[推定]`・`[不明]`で示す。公式情報で確認した事実と、ユーザー環境への効果の見込みは分ける。
 
-ソース: GitHub Release / Hacker News / 各 changelog。
+結論、推奨アクションを最大3件、理由と出典URLを簡潔に報告する。`--detail`では既存比較と移行費用を詳しく示す。取得できなかった情報は未確認とする。
 
-> WM/distro は「キャッチアップ」が主目的で「乗り換え」はめったに正解にならない層。
-> デファクトの地殻変動 (例: X11→Wayland 級) を**見逃さない**ためにスキャンするのであって、
-> 流行ごとに動くためではない。判定は辛口に、「現状維持で十分」を恐れない。
+## 状態保存
 
-### 4. 判定
-
-| ★ | 意味 |
-|---|---|
-| ★★★ | 既導入の実質後継・上位互換 (nvim-cmp→blink.cmp 級) |
-| ★★ | 同カテゴリ新興、ユーザ環境に直接ヒット |
-| ★ | 別カテゴリ・情報として有用 |
-| ⌀ | 現状維持で十分 |
-
-機能互換 or 上位互換 + メンテ活発 → ★★★ / 部分代替 → ★★ / それ以外 → ★ or ⌀。
-
-### 5. 出力 (200字想定)
-
-```markdown
-## dev-radar (期間 SINCE → TODAY, N日)
-検出 M件 / 取込価値 K件
-
-### 推奨アクション (上位3まで)
-1. <ツール> ★★★ - <一言根拠> [確認済]
-2. <ツール> ★★ - <一言根拠> [推定]
-
-### 結論
-- アクションあり: 別議論で <ツール> を検討
-- なし: 現状維持で十分
-```
-
-`--detail` 時のみ各候補に URL / 既存比較 / 移行コストを追加。
-
-### 6. 状態保存
-```bash
-jq -n --arg d "$TODAY" '{last_run:$d, deferred:[]}' > "$STATE"
-```
-
-`deferred` には「判断保留」を `{tool, decided_at, decision}` で記録。次回スキャンで重複提示を回避する。
-
-## 必須ルール
-
-- **確度併記**: `[確認済]` (release / 公式 announcement) / `[推定]` (HN / 複数ブログ) / `[不明]` (散発情報)
-- **煽り禁止**: 革新なしなら「現状維持で十分」を堂々と書く。star 数バズ駆動禁止。ユーザ既存環境との実利で判定
-- **alias 提案禁止**: 個人ローカル化で共有性が落ちる
+- 調査と報告が正常に完了した後だけ`last_run`を更新する。主要な情報源の取得失敗で調査が不完全なら進めない。
+- 既存の`deferred`を上書きで空にしない。保留の記録は`{tool, decided_at, decision}`で保持する。
+- 保留中の候補は、保留理由を解消し得る新情報かユーザーの再検討指示があるときだけ再提示する。

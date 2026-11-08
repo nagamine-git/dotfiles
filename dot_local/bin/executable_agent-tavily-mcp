@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Resolve only the Tavily key at process startup; never persist its value.
+set -eu
+exec op-agent run --env-file "$HOME/.config/agents/tavily.env" -- env -u OP_SERVICE_ACCOUNT_TOKEN npx -y tavily-mcp "$@"

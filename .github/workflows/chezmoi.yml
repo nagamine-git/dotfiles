@@ -38,9 +38,16 @@ jobs:
           python3 tests/agent-memory-dir.py
           python3 tests/codex-config.py
 
+      - name: Verify model routing without credentials, network, or model calls
+        run: |
+          python3 -B tests/model-route-plan.py
+          python3 -B tests/model-route.py
+          python3 -B tests/cc-implement.py
+
       - name: Verify Slack bot logic without network or model calls
         run: |
           python3 tests/slack-claude.py
+          python3 tests/slack-notify.py
 
       - name: Verify herdr agent summary hook with stubbed claude/herdr
         run: |
@@ -54,8 +61,11 @@ jobs:
 
       - name: Verify notifications and desktop launch with stubbed tools
         run: |
+          bash -n dot_local/bin/executable_chatgpt-launch
+          shellcheck dot_local/bin/executable_chatgpt-launch
           python3 tests/claude-notify.py
           python3 tests/desktop-autostart.py
+          python3 tests/chatgpt-launch.py
 
       - name: Verify Vicinae launcher config and Meet script with stubbed tools
         run: |

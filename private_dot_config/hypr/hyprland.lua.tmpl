@@ -52,7 +52,8 @@ hl.on("hyprland.start", function()
     {{ if eq .chezmoi.hostname "am5-itx" -}}
     -- ログイン時に ChatGPT と Codex の app-server daemon を起動する。起動済みならどちらも既存のものを使う
     -- (ChatGPT は single-instance。daemon start は動いていないときだけ起動する)
-    hl.exec_cmd("chatgpt --ozone-platform=wayland")
+    -- ChatGPT は chatgpt-launch から起動し、メモリ上限を付ける (docs/chatgpt-launch.md)
+    hl.exec_cmd("~/.local/bin/chatgpt-launch")
     hl.exec_cmd("~/.local/bin/codex app-server daemon start")
     {{ end -}}
     hl.exec_cmd("1password --silent &")

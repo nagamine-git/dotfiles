@@ -295,9 +295,12 @@ code() {
 
 
 # ChatGPT はデスクトップ (Hyprland の起動・desktop entry) と同じく Wayland で起動し、端末から切り離す。
+# chatgpt-launch を置いているホスト (am5-itx) では、それを通してメモリ上限を付ける。
 chatgpt() {
   if [[ "$OSTYPE" == darwin* ]]; then
     command chatgpt "$@"
+  elif [[ -x "$HOME/.local/bin/chatgpt-launch" ]]; then
+    "$HOME/.local/bin/chatgpt-launch" "$@" >/dev/null 2>&1 &!
   else
     command chatgpt --ozone-platform=wayland "$@" >/dev/null 2>&1 &!
   fi

@@ -1,0 +1,16 @@
+[Unit]
+Description=Busy Desk herdr bridge
+ConditionPathExists=%h/.config/agents/busy-desk.env
+ConditionPathExists=%h/ghq/github.com/nagamine-git/busybar-desk/config.json
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+WorkingDirectory=%h/ghq/github.com/nagamine-git/busybar-desk
+Environment="PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/busy-desk.env -- /usr/bin/env -u OP_SERVICE_ACCOUNT_TOKEN /usr/bin/mise exec node@24.11.1 -- node bridge/server.mjs
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=default.target
