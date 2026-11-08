@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# pi-jev — launch Pi with the jev-gate classifier enabled.
+#
+# The jev-gate extension (~/.pi/agent/extensions/jev-gate.ts) loads on every Pi
+# run, but jev only works when the TypeSafe key is in the environment. This
+# wrapper resolves TYPESAFE_API_KEY (and OPENROUTER_API_KEY, for tier-3 routing)
+# from the Agents vault via op-agent and execs the real Pi. Keys are resolved
+# into the process environment (not through `op run`, whose output masking would
+# corrupt Pi's TUI). Values are never printed or written to disk.
+#
+# Robust by design: with no service-account token, no op-agent, or when already
+# wrapped, it launches plain Pi so `pi-jev` always starts (the gate still does
+# its deterministic deny layer without jev).
+set -euo pipefail
+
+REAL_PI="$HOME/.pi/agent/bin/pi"
+TOKEN="${OP_AGENT_TOKEN_FILE:-$HOME/.config/op/agents-sa-token}"
+ENV_FILES=(
+  "$HOME/.config/agents/model-typesafe.env"
+  "$HOME/.config/agents/model-openrouter.env"
+)
+
+if [ -n "${PI_JEV_WRAPPED:-}" ] || [ ! -r "$TOKEN" ] || ! command -v op-agent >/dev/null 2>&1; then
+  exec "$REAL_PI" "$@"
+fi
+
+for f in "${ENV_FILES[@]}"; do
+  [ -r "$f" ] || continue
+  # Resolve "NAME=op://..." lines (skip comments/blanks) into the environment.
+  while IFS= read -r line; do
+    name=${line%%=*}
+    ref=${line#*=}
+    ref=${ref%\"}; ref=${ref#\"}            # strip optional quotes
+    if val=$(op-agent read "$ref" 2>/dev/null); then
+      export "$name=$val"
+    fi
+  done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=op://' "$f")
+done
+
+export PI_JEV_WRAPPED=1
+exec "$REAL_PI" "$@"

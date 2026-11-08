@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""model-radar — propose the tier-3 (heavy/frontier) model from Artificial
+Analysis intelligence + price. Proposes only; never rewrites live model config.
+Secrets come from the environment (op-agent injects them):
+  ARTIFICIAL_ANALYSIS_API_KEY  (free tier is enough; /free endpoint)
+  OPENROUTER_API_KEY           (optional; maps the pick to an executable id)
+"""
+import json, os, sys, urllib.request, datetime, argparse
+
+AA_KEY = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY")
+OR_KEY = os.environ.get("OPENROUTER_API_KEY")
+STATE = os.path.expanduser("~/.config/model-radar/proposal.json")
+AA_BASE = "https://artificialanalysis.ai/api/v2/language/models/free"
+
+# Heavy-tier candidate families -> substrings matched against the AA slug.
+# Small/cheap models are excluded on purpose; tier-3 is the "break glass" model.
+HEAVY = ["claude-opus", "gpt-6", "gpt-5-2", "gpt-5-5", "gemini-3-pro", "gemini-4",
+         "grok-4", "deepseek-r", "deepseek-v3", "qwen3-max", "kimi-k2"]
+
+def get(url, headers):
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=25) as r:
+        return json.load(r)
+
+def aa_models():
+    """Return [{slug,name,intel,price_in,price_out,blended}] for models that
+    have an Artificial Analysis intelligence index. Needs AA_KEY."""
+    if not AA_KEY:
+        return [], "no-aa-key"
+    out, page = [], 1
+    while True:
+        try:
+            d = get(f"{AA_BASE}?page={page}", {"x-api-key": AA_KEY})
+        except Exception as e:
+            return out, f"aa-fetch-failed:{e}"
+        for r in d.get("data", []):
+            ev = r.get("evaluations") or {}
+            ii = ev.get("artificial_analysis_intelligence_index")
+            if ii is None:
+                continue
+            pr = r.get("pricing") or {}
+            pin = pr.get("price_1m_input_tokens") or 0
+            pout = pr.get("price_1m_output_tokens") or 0
+            out.append({"slug": r.get("slug"), "name": r.get("name"),
+                        "intel": float(ii), "price_in": pin, "price_out": pout,
+                        "blended": round((pin + 3 * pout) / 4, 3),
+                        "coding": ev.get("artificial_analysis_coding_index"),
+                        "agentic": ev.get("artificial_analysis_agentic_index")})
+        pg = d.get("pagination") or {}
+        if not pg.get("has_more"):
+            break
+        page += 1
+    return out, "ok"
+
+def or_ids():
+    if not OR_KEY:
+        return []
+    try:
+        return [m["id"] for m in get("https://openrouter.ai/api/v1/models",
+                {"Authorization": "Bearer " + OR_KEY})["data"]]
+    except Exception:
+        return []
+
+def or_match(slug, ids):
+    base = slug.rsplit("-", 1)[0] if slug else slug  # drop effort suffix
+    key = (slug or "").replace("-", "")
+    for i in ids:
+        tail = i.split("/")[-1].replace("-", "").replace(".", "")
+        if key[:14] and (key[:14] in tail or tail[:14] in key):
+            return i
+    return None
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--by", choices=["intel", "coding", "agentic", "efficiency"], default="coding")
+    a = ap.parse_args()
+
+    models, status = aa_models()
+    cands = [m for m in models if any(h in (m["slug"] or "") for h in HEAVY)]
+    ids = or_ids()
+    for m in cands:
+        score = m.get(a.by) if a.by != "efficiency" else (
+            round(m["intel"] / m["blended"], 2) if m["blended"] else None)
+        m["_score"] = score if score is not None else -1
+        m["openrouter_id"] = or_match(m["slug"], ids)
+    cands.sort(key=lambda m: (-m["_score"], m["blended"]))
+    chosen = cands[0] if cands else None
+
+    report = {
+        "generated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "aa_status": status,
+        "rank_by": a.by,
+        "recommended_tier3": chosen,
+        "candidates": [{k: m[k] for k in ("slug", "intel", "coding", "agentic",
+                        "blended", "openrouter_id")} for m in cands[:a.top]],
+        "note": "proposal only; does not change any live model config",
+    }
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    with open(STATE, "w") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+
+    if a.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2)); return
+    if status != "ok":
+        print("model-radar: AA status:", status);
+    print("model-radar", report["generated"], "| rank by:", a.by)
+    for m in cands[:a.top]:
+        orid = m["openrouter_id"] or "-"
+        print(f"  {m['slug']:28s} intel={m['intel']:<5} code={m.get('coding')} "
+              f"${m['blended']}/Mtok  OR:{orid}")
+    print("-> recommend tier-3:", chosen["slug"] if chosen else "none",
+          "(OR:", (chosen or {}).get("openrouter_id"), ")")
+    print("written:", STATE)
+
+if __name__ == "__main__":
+    main()

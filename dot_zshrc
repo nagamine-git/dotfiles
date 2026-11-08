@@ -84,6 +84,8 @@ unset PROMPT_EOL_MARK
 alias history='fc -il 1'
 
 # alias
+# Pi は常に jev 許可ゲートつきで起動する (~/.local/bin/pi-jev が TypeSafe 鍵を注入)
+alias pi='pi-jev'
 alias vim='nvim'
 alias svim='vim ~/.note.gpg'
 
