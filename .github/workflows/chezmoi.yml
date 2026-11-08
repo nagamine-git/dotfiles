@@ -32,7 +32,7 @@ jobs:
           shellcheck dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
           python3 tests/agent-lifecycle.py
 
-      - name: Verify shared agent config (Claude Code / Codex) without model calls
+      - name: Verify shared agent config (Claude Code / Codex / Pi) without model calls
         run: |
           python3 tests/agents-sync.py
           python3 tests/agent-memory-dir.py
@@ -72,7 +72,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Verify Pi wrapper, jev gate and notify with stubbed tools (no keys, no model calls)
+      - name: Verify Pi wrapper, jev gate, notify, delegate, subagent loader and settings with stubbed tools (no keys, no model calls)
         run: |
           bash -n dot_local/bin/executable_pi-jev
           shellcheck dot_local/bin/executable_pi-jev
@@ -81,6 +81,10 @@ jobs:
           # With CI set, an old Node fails these instead of skipping them.
           python3 tests/jev-gate.py
           python3 tests/pi-notify.py
+          python3 tests/pi-delegate.py
+          # Their checks against the installed Pi skip here: Pi is only on am5-itx. pi-settings uses chezmoi from above.
+          python3 tests/pi-subagent.py
+          python3 tests/pi-settings.py
 
       - name: Verify Vicinae launcher config and Meet script with stubbed tools
         run: |
