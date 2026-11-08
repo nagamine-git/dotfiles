@@ -47,6 +47,25 @@ with (h/'events.jsonl').open('a') as f:
  f.write(json.dumps({'role':'codex','mode':mode,'args':sys.argv[1:],'keys':list(os.environ)})+'\\n')
 '''
 
+FAKE_SYSTEMCTL = '''#!/usr/bin/env python3
+import json, os, pathlib, sys
+h = pathlib.Path(os.environ['HOME']); args = sys.argv[1:]
+with (h/'systemctl-calls.jsonl').open('a') as f: f.write(json.dumps(args)+'\\n')
+if args[1] == 'list-units' and (h/'scope-ready').exists():
+ print(args[-1].replace('app-*-', 'app-org.example.Fixture-') + ' loaded active running fixture')
+elif args[1] == 'set-property': sys.exit(1 if (h/'fail-set-property').exists() else 0)
+elif args[1] == 'show':
+ current = h/'memory-current'
+ print(current.read_text().strip() if current.exists() else '0')
+'''
+
+FAKE_NOTIFY = '''#!/usr/bin/env python3
+import json, os, pathlib, sys
+with (pathlib.Path(os.environ['HOME'])/'notify-calls.jsonl').open('a') as f: f.write(json.dumps(sys.argv[1:], ensure_ascii=False)+'\\n')
+'''
+
+GIB = 1024 ** 3
+
 
 class DesktopAppsTmux(unittest.TestCase):
     def setUp(self):
@@ -67,6 +86,8 @@ class DesktopAppsTmux(unittest.TestCase):
             "tmux": FAKE_TMUX,
             "chatgpt": FAKE_GUI,
             "codex": FAKE_CODEX,
+            "systemctl": FAKE_SYSTEMCTL,
+            "notify-send": FAKE_NOTIFY,
             "pgrep": '#!/bin/sh\ntest -f "$HOME/gui-running"\n',
             "op": '#!/bin/sh\ntouch "$HOME/unexpected-op"\nexit 99\n',
             "ssh": '#!/bin/sh\ntouch "$HOME/unexpected-ssh"\nexit 99\n',
@@ -93,6 +114,30 @@ class DesktopAppsTmux(unittest.TestCase):
     def events(self):
         path = self.home / "events.jsonl"
         return [json.loads(x) for x in path.read_text().splitlines()] if path.exists() else []
+
+    def calls(self, name):
+        path = self.home / name
+        return [json.loads(x) for x in path.read_text().splitlines()] if path.exists() else []
+
+    def wait_for(self, condition, timeout=3):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            value = condition()
+            if value:
+                return value
+            time.sleep(.02)
+        self.fail("condition not met in time")
+
+    def start_watcher(self):
+        target = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(target.wait)
+        self.addCleanup(target.kill)
+        env = dict(self.env, DESKTOP_APPS_WATCH_INTERVAL="0.05")
+        watcher = subprocess.Popen([str(self.wrapper), "--watch-chatgpt", str(target.pid)], env=env,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.addCleanup(watcher.wait)
+        self.addCleanup(watcher.kill)
+        return target, watcher
 
     def assert_no_auth_calls(self):
         self.assertFalse((self.home / "unexpected-op").exists())
@@ -140,6 +185,7 @@ class DesktopAppsTmux(unittest.TestCase):
         self.assertEqual(self.events()[0]["mode"], "forward")
         self.assertEqual(self.events()[0]["args"], ["--ozone-platform=wayland", "codex://fixture"])
         self.assertFalse((self.home / "tmux-calls.jsonl").exists())
+        self.assertFalse((self.home / "systemctl-calls.jsonl").exists())
         self.assert_no_auth_calls()
 
     def test_pending_gui_does_not_silently_drop_uri(self):
@@ -152,6 +198,8 @@ class DesktopAppsTmux(unittest.TestCase):
     def test_invalid_action_and_missing_runtime_fail_before_launch(self):
         self.assertEqual(self.run_wrapper("codex-daemon", "restart").returncode, 2)
         self.assertEqual(self.run_wrapper("--pane", "unknown").returncode, 2)
+        self.assertEqual(self.run_wrapper("--watch-chatgpt").returncode, 2)
+        self.assertEqual(self.run_wrapper("--watch-chatgpt", "not-a-pid").returncode, 2)
         env = dict(self.env)
         env.pop("XDG_RUNTIME_DIR")
         self.assertEqual(self.run_wrapper("autostart", env=env).returncode, 1)
@@ -161,6 +209,70 @@ class DesktopAppsTmux(unittest.TestCase):
         (self.home / "fail-tmux").touch()
         self.assertEqual(self.run_wrapper("autostart").returncode, 42)
         self.assertEqual(self.events(), [])
+
+    def test_pane_execs_chatgpt_directly_and_watches_its_app_scope(self):
+        (self.home / "hold-gui").touch()
+        pane = subprocess.Popen([str(self.wrapper), "--pane", "chatgpt", "codex://fixture"], env=self.env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(pane.wait)
+        self.addCleanup(pane.kill)
+        event = self.wait_for(lambda: self.events() and self.events()[0])
+        self.assertEqual(event["args"], ["--ozone-platform=wayland", "codex://fixture"])
+        self.assertEqual(event["pid"], pane.pid)
+        pattern = "app-*-%d.scope" % pane.pid
+        self.wait_for(lambda: any(c[-1] == pattern for c in self.calls("systemctl-calls.jsonl")))
+        (self.home / "hold-gui").unlink()
+        pane.communicate(timeout=3)
+        self.assertEqual(pane.returncode, 0)
+        self.assert_no_auth_calls()
+
+    def test_watcher_limits_the_app_scope_and_warns_once_per_threshold(self):
+        (self.home / "scope-ready").touch()
+        target, watcher = self.start_watcher()
+        scope = "app-org.example.Fixture-%d.scope" % target.pid
+        self.wait_for(lambda: any(c[1] == "set-property" for c in self.calls("systemctl-calls.jsonl")))
+        [call] = [c for c in self.calls("systemctl-calls.jsonl") if c[1] == "set-property"]
+        self.assertEqual(call, ["--user", "set-property", "--runtime", scope,
+                                "MemoryHigh=16G", "MemoryMax=24G", "MemorySwapMax=8G"])
+        time.sleep(.3)
+        self.assertEqual(self.calls("notify-calls.jsonl"), [])
+        (self.home / "memory-current").write_text(str(15 * GIB))
+        self.wait_for(lambda: len(self.calls("notify-calls.jsonl")) == 1)
+        time.sleep(.3)
+        [near_high] = self.calls("notify-calls.jsonl")
+        self.assertEqual(near_high[:4], ["-u", "normal", "-a", "ChatGPT"])
+        self.assertIn("上限に近づいています", near_high[4])
+        self.assertIn("15.0 / 16 GiB", near_high[5])
+        (self.home / "memory-current").write_text(str(22 * GIB))
+        self.wait_for(lambda: len(self.calls("notify-calls.jsonl")) == 2)
+        time.sleep(.3)
+        near_max = self.calls("notify-calls.jsonl")[1]
+        self.assertEqual(len(self.calls("notify-calls.jsonl")), 2)
+        self.assertEqual(near_max[:4], ["-u", "critical", "-a", "ChatGPT"])
+        self.assertIn("強制終了", near_max[4])
+        self.assertIn("22.0 / 24 GiB", near_max[5])
+        target.kill()
+        target.wait()
+        self.assertEqual(watcher.wait(timeout=3), 0)
+
+    def test_watcher_reports_when_limits_cannot_be_applied(self):
+        (self.home / "scope-ready").touch()
+        (self.home / "fail-set-property").touch()
+        _, watcher = self.start_watcher()
+        self.assertEqual(watcher.wait(timeout=3), 0)
+        [note] = self.calls("notify-calls.jsonl")
+        self.assertEqual(note[:2], ["-u", "critical"])
+        self.assertIn("設定できませんでした", note[4])
+        self.assertFalse(any(c[1] == "show" for c in self.calls("systemctl-calls.jsonl")))
+
+    def test_watcher_stays_quiet_when_chatgpt_exits_before_its_scope_appears(self):
+        target, watcher = self.start_watcher()
+        self.wait_for(lambda: self.calls("systemctl-calls.jsonl"))
+        target.kill()
+        target.wait()
+        self.assertEqual(watcher.wait(timeout=3), 0)
+        self.assertEqual(self.calls("notify-calls.jsonl"), [])
+        self.assertFalse(any(c[1] == "set-property" for c in self.calls("systemctl-calls.jsonl")))
 
     def test_host_scoping_and_desktop_uri_entry_with_real_template_renderer(self):
         chezmoi = shutil.which("chezmoi", path="/usr/bin:/bin")

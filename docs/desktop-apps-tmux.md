@@ -21,11 +21,27 @@ tmux の session environment 更新は、新しい pane に適用される。起
 Wayland / DBus 環境を更新するものではない。ログアウト後の GUI 継続は保証しない。
 1Password が認識する承認対象と承認再利用の効果は未検証。
 
+## ChatGPT のメモリ上限
+
+ChatGPT (Chromium) は起動後に自分で `app-*.scope` を作ってメイン process を移す。
+`systemd-run --scope` で包んでも、移った時点で元の scope は空になり上限は残らない
+(使い捨ての scope で確認済み)。そこで pane が `--watch-chatgpt <pid>` を裏で走らせ、
+`app-*-<pid>.scope` が現れたら `systemctl --user set-property --runtime` で上限を付ける。
+この scope にはメイン process と、その後に生む Codex・MCP サーバー・その Chrome が入る。
+zygote 経由の子 (renderer / GPU など) の大半は元の tmux pane の scope に残り、上限の対象外。
+
+- 値は High 16 GiB / Max 24 GiB / SwapMax 8 GiB。根拠の実測はスクリプト冒頭のコメント。
+- High を超えると ChatGPT だけが減速・swap へ回収される。Max を超えると
+  `OOMPolicy=stop` により scope ごと終了する (Codex のセッションも止まる)。
+- High と Max それぞれの 90% で一度ずつ `notify-send` する。上限を付けられなかったときも通知する。
+- 付与は runtime のみ。ChatGPT を起動するたびに付け直す。起動済みの ChatGPT には次の起動まで効かない。
+- 既存 GUI への URI 転送は従来どおりで、scope も watcher も作らない。
+
 ## source と反映
 
 - `private_dot_config/hypr/hyprland.lua.tmpl`: 既存 am5-itx 条件内の二つの起動を一つへ統合。
 - `dot_local/share/applications/chatgpt.desktop.tmpl`: am5-itx だけ wrapper を選択。URI/MIME を保持。
-- `dot_local/bin/executable_desktop-apps-tmux`: 引数を shell 展開せず直接渡し、role ごとの lock を使用。
+- `dot_local/bin/executable_desktop-apps-tmux`: 引数を shell 展開せず直接渡し、role ごとの lock を使用。ChatGPT の scope に上限を付ける watcher も持つ。
 - `private_dot_config/desktop-apps/tmux.conf`: 専用 server の最小設定。
 - `.chezmoiignore`: wrapper/config を他ホストでは配置しない。
 
