@@ -42,7 +42,8 @@ PROFILE_CONTENT = {"modelSettings": {MODEL: {"effortLevel": EFFORT}}}
 # FORCE=1 makes the env value replace the first two for every subagent, teammate and workflow
 # agent (>= 2.1.257), and the effort env wins over per-call and frontmatter effort (>= 2.1.292).
 # They go in inline --settings too, because a lower settings file's env would replace a shell
-# value. The last key selects no model: it only makes the reviewed Stop hook skip its usage refresh.
+# value. The last key selects no model and nothing reads it now: the Stop hook that skipped its
+# usage refresh on it was removed, and no Stop hook refreshes usage (tests/claude-usage-cache.py).
 MODEL_ENV = {"CLAUDE_CODE_SUBAGENT_MODEL": MODEL, "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1",
              "CLAUDE_CODE_EFFORT_LEVEL": EFFORT, "CC_IMPLEMENT_USAGE_NO_MODEL_CALL": "1"}
 MIN_CLI_VERSION = (2, 1, 292)

@@ -169,7 +169,7 @@ native の subagent の model は、呼出しごとの指定 > frontmatter > `CL
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `claude-opus-5-5` | subagent の既定 model |
 | `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` | `1` | 上の値を frontmatter と呼出しごとの指定より優先し、Agent の起動 parameter から model を除く (2.1.257 以上) |
 | `CLAUDE_CODE_EFFORT_LEVEL` | `xhigh` | frontmatter と呼出しごとの effort より優先する (呼出しごとの effort は 2.1.292 以上) |
-| `CC_IMPLEMENT_USAGE_NO_MODEL_CALL` | `1` | model を選ばない。下の usage telemetry の Stop hook に refresh を飛ばさせるだけ |
+| `CC_IMPLEMENT_USAGE_NO_MODEL_CALL` | `1` | model を選ばない。今はどこからも読まれない (下の「usage telemetry の refresh」) |
 
 同じ4つを inline `--settings` の `env` と、子プロセス用に `os.environ.copy()` した環境の両方に入れる。shell の環境だけでは、優先度の低い settings ファイルの `env` (user 設定の既定 `CLAUDE_CODE_SUBAGENT_MODEL=opus` など) に上書きされ得るため、user・project・local の settings より上位の CLI 引数の settings に置く。
 既存の user 設定の既定 `opus` は、この明示経路の中だけで `claude-opus-5-5` に置き換わる。global の振り分け、`cc`、`model-route`、settings ファイル、呼出し元の `os.environ` は変えず、子の環境では4つ以外の変数・端末・stdin / stdout・cwd・signal の扱いを従来どおりに保つ。
@@ -177,7 +177,7 @@ managed policy は CLI 引数よりさらに上位なので、そこで model �
 4つの値は呼出し元が同じ名前を設定していても子の側で上書きし、競合とはしない。ただし `CLAUDE_CODE_EFFORT_LEVEL` が xhigh 以外なら、従来どおり起動前に exit 2 で止める。
 
 範囲は、この起動の main・subagent・teammate・workflow agent のすべてである。Explore やレビュー用の agent も Opus 5.5 / xhigh になり、fork / inherit は同じ固定の main を引き継ぐ。
-子孫のプロセスは4つの値を環境として受け継ぐ。そのため、この session の Bash tool や hook から別の native `claude` を起動すると、その中の subagent も Opus 5.5 / xhigh に固定され、usage の refresh も飛ばされる。
+子孫のプロセスは4つの値を環境として受け継ぐ。そのため、この session の Bash tool や hook から別の native `claude` を起動すると、その中の subagent も Opus 5.5 / xhigh に固定される。
 費用の境界として、Explore などの安い既定 model よりサブスクの枠を多く使う可能性がある。これは本人が実装の品質を優先して承認した選択で、費用の Pareto や利用枠の削減を主張するものではない。増加量は測定していない。
 通常の `cc`・`model-route` の workflow・既存の Pareto 候補は変えないので、安い既定で調べたいときは cc-implement の外で行う。
 
@@ -189,9 +189,9 @@ FORCE は native が subagent を選ぶ前の強制である。`--observe` の�
 
 ##### usage telemetry の refresh
 
-global の Stop hook のうち usage telemetry の1つ (`claude-usage --refresh`。固定の Haiku に送信する) だけが、`CC_IMPLEMENT_USAGE_NO_MODEL_CALL` が `1` のときに実行を飛ばす条件付きになっている。この条件は、この Claude process より前に、別のレビューを経た model を使わない bootstrap で反映済みであり、この wrapper の変更には含まれない。
-他の hook と runtime の設定値は変えておらず、安全用の hook は無効にしない。変数がない、または `1` 以外の通常の起動では従来どおり refresh する。
-wrapper は hook が入っているかを検証せず、変数を付けるだけである。cc-implement の起動の後は quota の snapshot が更新されないので、その値は古いか unknown として扱い、新しい値があるかのように記録しない。
+global の Stop hook は usage を refresh しない。`claude-usage --refresh` は固定の Haiku に送信してモデルを起動し、Stop のたびに利用枠を使うためである (docs/agent-lifecycle.md、tests/claude-usage-cache.py)。
+以前は am5-itx の Stop hook に、`CC_IMPLEMENT_USAGE_NO_MODEL_CALL` が `1` のときだけ飛ばす条件付きの refresh があったが、外した。wrapper はこの変数を今も子に付けるが、読む hook は無い。
+そのため、cc-implement の起動でも通常の起動でも、Stop では quota の snapshot が更新されない。その値は古いか unknown として扱い、新しい値があるかのように記録しない。
 global の source と runtime の間には、この変更とは無関係の model / effort の既存のずれがあり、bootstrap はそれを保持した。ここでは直していない。そのずれは source から settings をそのまま再反映すると変わり得るので、別に判断する。
 
 #### 強制できる範囲
@@ -238,7 +238,7 @@ quota の50超・unknown・停止・反復失敗で別の workflow に選び直�
 反映前のファイルは親作業がバックアップディレクトリに保持している。
 `model-route` を戻すときはバックアップの source に戻し、対象を指定した chezmoi diff / apply を行う。旧版検査 0.163.0 に戻すと、実機 0.166.0 では起動前に停止する (fail closed)。
 `cc-implement` と `~/.claude/profiles/coder-opus.json` は新規ファイルなので、source と反映済みの2ファイルを削除すれば戻る。global 設定は変えていないので戻す必要はない。
-subagent の固定は wrapper の引数と子の環境だけにあるので、wrapper を以前の版に戻せば消える。usage telemetry の Stop hook の条件は変数がなければ従来どおり refresh するため、wrapper を戻しても害はなく、残すか戻すかは別に判断する。
+subagent の固定は wrapper の引数と子の環境だけにあるので、wrapper を以前の版に戻せば消える。usage を refresh する Stop hook は無いので、wrapper を戻しても usage の扱いは変わらない。
 
 ## 秘密・個人情報と状態
 

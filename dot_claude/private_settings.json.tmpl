@@ -64,15 +64,7 @@
             "timeout": 5
           }{{ end }}
         ]
-      }{{ if eq .chezmoi.hostname "am5-itx" }},
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ \"${CC_IMPLEMENT_USAGE_NO_MODEL_CALL:-}\" != \"1\" ]; then {{ .chezmoi.homeDir }}/.local/bin/claude-usage --refresh >/dev/null 2>&1; fi"
-          }
-        ]
-      }{{ end }}
+      }
     ]
 {{- $herdr := lookPath "herdr" }}
 {{- $herdrAgentState := stat (joinPath .chezmoi.homeDir ".claude/hooks/herdr-agent-state.sh") }}
