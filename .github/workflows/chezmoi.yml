@@ -67,12 +67,18 @@ jobs:
           python3 tests/desktop-autostart.py
           python3 tests/chatgpt-launch.py
 
+      - name: Install Node 24 (tests/jev-gate.py loads the TypeScript extension by stripping its types)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Verify Pi wrapper and jev gate with stubbed tools (no keys, no model calls)
         run: |
           bash -n dot_local/bin/executable_pi-jev
           shellcheck dot_local/bin/executable_pi-jev
           python3 tests/pi-jev.py
-          # Skips when the runner's Node is older than 23.6 (no TypeScript type stripping).
+          node --version
+          # With CI set, an old Node fails this step instead of skipping it.
           python3 tests/jev-gate.py
 
       - name: Verify Vicinae launcher config and Meet script with stubbed tools
