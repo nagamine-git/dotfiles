@@ -47,6 +47,9 @@ myfn () { print -r -- "fn:$1" }
 # before the function would expand the name in the definition, a parse error.
 both () { print -r -- fn-both }
 alias both='print -r -- alias-both'
+# zsh itself defines alias run-help=man (even under zsh -f), and Ubuntu's /etc/zsh/zshrc also autoloads a
+# run-help function: whatever reads the snapshot already has the alias when it meets "run-help () {".
+autoload -Uz run-help
 sort () { print -r -- shadowed }
 command_not_found_handler () { print -r -- handler }
 TRAPEXIT () { : }

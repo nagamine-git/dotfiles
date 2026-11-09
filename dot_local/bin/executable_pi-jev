@@ -45,9 +45,10 @@ fi
 #   - PATH のコマンドや組み込みと同じ名前のエイリアスと関数 (cc = Claude を起動する関数、ld = lazydocker など)。
 #     モデルが書く標準のコマンドが別物にすり替わる
 #   - 名前で呼ばずに動く関数 (command_not_found_handler・TRAP*・chpwd など)
-# 関数を先に、エイリアスを後に書く。同じ名前のエイリアスと関数があると (Ubuntu の /etc/zsh/zshrc の run-help)、
-# エイリアスが先では関数の定義名がエイリアスとして展開されて読めない。functions の本体は定義した時点で
-# エイリアスが展開済みなので、この順でも意味は変わらない (後から読む側でエイリアスを二重に展開しない)。
+# 読む側のエイリアスを消してから、関数、エイリアスの順に書く。同じ名前のエイリアスと関数があると、関数の
+# 定義名がエイリアスとして展開されて読めない。zsh は -f でも alias run-help=man を持っていて、Ubuntu の
+# /etc/zsh/zshrc は run-help 関数も autoload するので、読む側に先にあるエイリアスも消す必要がある。
+# functions の本体は定義した時点でエイリアスが展開済みなので、この順でも意味は変わらない。
 # zshrc が標準出力に書くものは捨てる (スナップショットに混ざるとコマンドとして実行される)。
 # 毎回のコマンドの前に source するので、書いたらファイルを 0400、ディレクトリを 0500 にし (作り直すときだけ
 # ここで書き込み権を戻す)、書いた中身の sha256 を PI_ZSH_SNAPSHOT_SHA256 で渡す。prefix と jev-gate は中身が
@@ -58,6 +59,7 @@ fi
 # shellcheck disable=SC2016
 ZSH_DUMP='zmodload zsh/parameter
 {
+  builtin print -r -- "builtin unalias -m \*"
   for n in ${(ko)functions}; do
     (( $+commands[$n] || $+builtins[$n] )) ||
       [[ $n == (command_not_found_handler|TRAP*|precmd|preexec|chpwd|periodic|zshexit|zshaddhistory) ]] ||
