@@ -1,4 +1,4 @@
-"""No model calls: agents-sync runs against disposable homes and fake claude/codex executables."""
+"""No model calls: agents-sync runs against disposable homes and fake claude/codex executables (Pi is files only)."""
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
 import json
@@ -136,6 +136,146 @@ class Subagents(unittest.TestCase):
             self.assertFalse((tmp / "b").exists())
 
 
+class PiSubagents(unittest.TestCase):
+    def render(self, text):
+        meta, body = SYNC.parse_agent_md(text)
+        return SYNC.render_pi_agent(meta, body, "x.md")
+
+    def frontmatter(self, out):
+        self.assertTrue(out.startswith(SYNC.PI_MARK + "\n"))
+        head, sep, body = out[4:].partition("\n---\n")
+        self.assertTrue(sep)
+        meta = {}
+        for line in head.splitlines():
+            if not line.startswith("#"):
+                key, _, value = line.partition(": ")
+                meta[key] = json.loads(value)
+        return meta, body
+
+    def test_model_gets_the_provider_and_the_effort_as_thinking(self):
+        out, notes = self.render(AGENT_MD.replace("disallowedTools: Agent, Edit, Write, NotebookEdit\n", "")
+                                 .replace("effort: low", "model: claude-opus-5-5\neffort: max"))
+        meta, body = self.frontmatter(out)
+        self.assertEqual(meta["model"], "anthropic/claude-opus-5-5:max")
+        self.assertEqual(meta["description"], 'Read-only search agent — use "medium" or "very thorough".')
+        self.assertNotIn("tools", meta)  # Claude でも制限なし → Pi も既定の道具
+        self.assertTrue(body.lstrip().startswith("読み取り専用"))
+        self.assertEqual(notes, [])
+        for effort in ("low", "medium", "high", "xhigh"):
+            out, _ = self.render("---\nname: a\ndescription: d\nmodel: openai/gpt-6.1-sol\neffort: %s\n---\nb\n" % effort)
+            self.assertEqual(self.frontmatter(out)[0]["model"], "openai/gpt-6.1-sol:" + effort)
+
+    def test_unknown_effort_and_inherited_model_are_reported_not_guessed(self):
+        out, notes = self.render("---\nname: a\ndescription: d\nmodel: claude-opus-5-5\neffort: ultra\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["model"], "anthropic/claude-opus-5-5")
+        self.assertTrue(any("ultra" in n for n in notes))
+        for model in ("", "model: inherit\n"):
+            out, notes = self.render("---\nname: a\ndescription: d\n%seffort: low\n---\nb\n" % model)
+            self.assertNotIn("model", self.frontmatter(out)[0])
+            self.assertTrue(any("low" in n for n in notes))
+
+    def test_tools_are_renamed_and_unmapped_ones_dropped(self):
+        out, notes = self.render("---\nname: a\ndescription: d\ntools: Read, Glob, Grep, WebFetch, Bash(git:*), LS\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read, find, grep, ls")
+        self.assertTrue(any("WebFetch" in n for n in notes), notes)
+        self.assertTrue(any("Bash(git:*)" in n for n in notes), notes)
+        out, _ = self.render("---\nname: a\ndescription: d\ntools: [\"Edit\", Write]\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "edit, write")
+
+    def test_disallowed_tools_become_an_allowlist_so_read_only_stays_read_only(self):
+        out, _ = self.render(AGENT_MD)
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read, bash, grep, find, ls")
+
+    # Pi の公式例は tools が無い・空なら既定の道具 (read/bash/edit/write) を全部渡す。権限が広がる向きには倒さない。
+    def test_an_agent_with_no_pi_tool_left_is_not_generated(self):
+        for spec in ("tools: WebFetch, Agent", "tools: Bash(git status*)",
+                     "disallowedTools: Read, Edit, Write, Bash, Grep, Glob, LS"):
+            with self.subTest(spec=spec):
+                out, notes = self.render("---\nname: a\ndescription: d\n%s\n---\nb\n" % spec)
+                self.assertIsNone(out)
+                self.assertTrue(any("安全に写せない" in n for n in notes), notes)
+
+    def test_a_scoped_allow_is_dropped_not_widened_to_the_whole_tool(self):
+        out, notes = self.render("---\nname: a\ndescription: d\n"
+                                 "tools: Read, Bash(git status*), Bash(git diff:*, git log:*)\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read")
+        self.assertTrue(any("Bash(git status*)" in n and "範囲" in n for n in notes), notes)
+        self.assertTrue(any("Bash(git diff:*, git log:*)" in n for n in notes), notes)
+
+    def test_a_scoped_deny_denies_the_whole_tool(self):
+        out, notes = self.render("---\nname: a\ndescription: d\ndisallowedTools: Bash(git push*), Edit\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read, write, grep, find, ls")
+        self.assertTrue(any("Bash(git push*)" in n and "bash" in n for n in notes), notes)
+
+    def test_disallowed_tools_also_narrow_an_explicit_tools_list(self):
+        out, _ = self.render("---\nname: a\ndescription: d\ntools: Read, Bash\ndisallowedTools: Bash(rm*)\n---\nb\n")
+        self.assertEqual(self.frontmatter(out)[0]["tools"], "read")
+
+    def test_sync_removes_only_a_marked_file_that_can_no_longer_be_written_safely(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, dest = tmp / "claude-agents", tmp / "pi-agents"
+            unsafe = "---\nname: %s\ndescription: d\ntools: WebFetch\n---\nb\n"
+            write(src / "narrow.md", unsafe % "narrow")
+            write(src / "mine.md", unsafe % "mine")
+            write(dest / "narrow.md", SYNC.PI_MARK + "\nname: \"narrow\"\n---\nold\n")
+            write(dest / "mine.md", "---\nname: mine\n---\nhand-written\n")
+            dry = SYNC.sync_pi_subagents(src, dest, dry_run=True)
+            self.assertTrue((dest / "narrow.md").exists())
+            self.assertTrue(any("narrow.md" in m and "安全に写せない" in m for m in dry), dry)
+            messages = SYNC.sync_pi_subagents(src, dest)
+            self.assertFalse((dest / "narrow.md").exists())
+            self.assertEqual((dest / "mine.md").read_text(), "---\nname: mine\n---\nhand-written\n")
+            self.assertFalse((dest / "mine.md.pre-agents-sync.bak").exists())
+            self.assertTrue(any("narrow.md" in m and "安全に写せないので作らない" in m and "削除" in m for m in messages),
+                            messages)
+            self.assertTrue(any("mine.md" in m and "安全に写せない" in m for m in messages), messages)
+
+    def test_sync_creates_is_idempotent_backs_up_foreign_and_prunes_only_marked_orphans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src, dest = tmp / "claude-agents", tmp / "pi-agents"
+            write(src / "Explore.md", AGENT_MD)
+            write(src / "coder.md", AGENT_MD.replace("name: Explore", "name: coder"))
+            write(dest / "coder.md", "---\nname: coder\ndescription: mine\n---\nhand-written\n")
+            write(dest / "Gone.md", SYNC.PI_MARK + "\nname: \"Gone\"\n---\nold\n")
+            write(dest / "scout.md", "---\nname: scout\ndescription: mine\n---\nkeep\n")
+            first = SYNC.sync_pi_subagents(src, dest)
+            self.assertTrue((dest / "Explore.md").read_text().startswith(SYNC.PI_MARK))
+            self.assertEqual((dest / "coder.md.pre-agents-sync.bak").read_text(), "---\nname: coder\ndescription: mine\n---\nhand-written\n")
+            self.assertFalse((dest / "Gone.md").exists())
+            self.assertTrue((dest / "scout.md").exists())
+            self.assertTrue(any("Gone" in m and "削除" in m for m in first))
+            self.assertFalse(any("scout" in m for m in first))
+            before = (dest / "Explore.md").stat().st_mtime_ns
+            self.assertEqual(SYNC.sync_pi_subagents(src, dest), [])
+            self.assertEqual((dest / "Explore.md").stat().st_mtime_ns, before)
+
+    def test_dry_run_neither_writes_nor_deletes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "a/Explore.md", AGENT_MD)
+            write(tmp / "b/Gone.md", SYNC.PI_MARK + "\n---\n")
+            messages = SYNC.sync_pi_subagents(tmp / "a", tmp / "b", dry_run=True)
+            self.assertTrue(any("Explore.md" in m for m in messages) and any("Gone.md" in m for m in messages))
+            self.assertEqual(sorted(p.name for p in (tmp / "b").iterdir()), ["Gone.md"])
+
+    def test_cli_skips_pi_without_its_agent_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            write(home / ".claude/agents/Explore.md", AGENT_MD)
+            env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR")}
+            env["HOME"] = str(home)
+            run = lambda: subprocess.run([sys.executable, str(SCRIPT), "subagents"], env=env, capture_output=True, text=True)
+            self.assertEqual(run().returncode, 0)
+            self.assertFalse((home / ".pi").exists())
+            (home / ".pi/agent").mkdir(parents=True)
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((home / ".pi/agent/agents/Explore.md").exists())
+            self.assertIn("subagents/pi: Explore.md を作成", result.stdout)
+
+
 class Skills(unittest.TestCase):
     def make(self, tmp):
         tmp = Path(tmp)
@@ -237,6 +377,18 @@ class McpPlanning(unittest.TestCase):
         plan = SYNC.plan_mcp(self.SHARED, {"extra": {"kind": ("stdio", "x", ()), "has_env": False}})
         self.assertNotIn("extra", plan)
 
+    def test_clients_limits_a_server_to_the_named_tools(self):
+        shared = dict(self.SHARED, only_pi={"url": "https://x/mcp", "clients": ["pi"]},
+                      two={"command": "y", "clients": ["codex", "pi"]})
+        self.assertEqual(sorted(SYNC.for_client(shared, "claude")), ["ctx", "key", "web"])
+        self.assertEqual(sorted(SYNC.for_client(shared, "codex")), ["ctx", "key", "two", "web"])
+        self.assertEqual(sorted(SYNC.for_client(shared, "pi")), ["ctx", "key", "only_pi", "two", "web"])
+
+    def test_pi_normalisation_matches_the_shared_form(self):
+        self.assertEqual(SYNC.norm_pi({"command": "npx", "args": ["-y", "ctx"], "env": {"A": "b"}}),
+                         SYNC.norm_shared(self.SHARED["ctx"]))
+        self.assertEqual(SYNC.norm_pi({"url": "https://example.com/mcp", "oauth": {}}), SYNC.norm_shared(self.SHARED["web"]))
+
 
 FAKE_CLAUDE = """#!/bin/sh
 echo "claude $*" >> "$FAKE_LOG"
@@ -285,7 +437,7 @@ class McpEndToEnd(unittest.TestCase):
     def run_sync(self, *args):
         env = {**os.environ, "HOME": str(self.home), "PATH": "%s:%s" % (self.bin, os.environ["PATH"]),
                "FAKE_LOG": str(self.log), "FAKE_CODEX_LIST": str(self.codex_list)}
-        for var in ("CLAUDE_CONFIG_DIR", "CODEX_HOME"):
+        for var in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR"):
             env.pop(var, None)
         result = subprocess.run([sys.executable, str(SCRIPT), "mcp", *args], env=env, capture_output=True,
                                 text=True, cwd=str(self.home))
@@ -314,11 +466,101 @@ class McpEndToEnd(unittest.TestCase):
         (self.bin / "codex").unlink()
         env = {**os.environ, "HOME": str(self.home), "PATH": str(self.bin),
                "FAKE_LOG": str(self.log), "FAKE_CODEX_LIST": str(self.codex_list)}
-        for var in ("CLAUDE_CONFIG_DIR", "CODEX_HOME"):
+        for var in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR"):
             env.pop(var, None)
         result = subprocess.run([sys.executable, str(SCRIPT), "mcp"], env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("codex", result.stdout + result.stderr)
+
+    def test_clients_keep_a_server_away_from_claude_and_codex(self):
+        shared = json.loads((self.home / ".agents/mcp.json").read_text())
+        shared["mcpServers"]["linear"] = {"type": "http", "url": "https://mcp.linear.app/mcp", "clients": ["pi"]}
+        shared["mcpServers"]["cx"] = {"command": "cx", "clients": ["codex"]}
+        write(self.home / ".agents/mcp.json", json.dumps(shared))
+        result, calls = self.run_sync()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse([c for c in calls if "linear" in c])
+        self.assertIn("codex mcp add cx -- cx", calls)
+        self.assertFalse([c for c in calls if c.startswith("claude") and " cx" in c])
+
+
+class PiMcp(unittest.TestCase):
+    """~/.pi/agent/mcp.json is written by agents-sync itself (Pi has no add-json); claude/codex are absent here."""
+    SHARED = {
+        "ctx": {"command": "npx", "args": ["-y", "ctx"]},
+        "web": {"type": "http", "url": "https://example.com/mcp"},
+        "key": {"command": "npx", "args": ["key"], "secrets": ["API_KEY"]},
+        "moved": {"command": "new-bin", "args": ["--serve"]},
+        "only-pi": {"type": "http", "url": "https://pi.example/mcp", "clients": ["pi"]},
+        "not-pi": {"command": "x", "clients": ["claude", "codex"]},
+    }
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.home = Path(tmp.name)
+        self.pi = self.home / ".pi/agent/mcp.json"
+        self.pi.parent.mkdir(parents=True)
+        write(self.home / ".agents/mcp.json", json.dumps({"mcpServers": self.SHARED}))
+
+    def run_sync(self, *args):
+        env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR")}
+        env.update(HOME=str(self.home), PATH=str(self.home / "no-bin"))  # claude と codex は見つからない
+        result = subprocess.run([sys.executable, str(SCRIPT), "mcp", *args], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_new_file_gets_only_non_secret_pi_servers_without_type_secrets_or_clients(self):
+        out = self.run_sync()
+        servers = json.loads(self.pi.read_text())["mcpServers"]
+        self.assertEqual(servers, {"ctx": {"command": "npx", "args": ["-y", "ctx"]},
+                                   "web": {"url": "https://example.com/mcp"},
+                                   "moved": {"command": "new-bin", "args": ["--serve"]},
+                                   "only-pi": {"url": "https://pi.example/mcp"}})
+        self.assertIn("mcp/pi: key は秘密の環境変数 (API_KEY) が要る", out)
+        self.assertEqual(self.pi.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(list(self.pi.parent.iterdir()), [self.pi])  # 一時ファイルが残らない
+
+    def test_existing_settings_and_pi_only_servers_are_kept_and_reported(self):
+        self.pi.write_text(json.dumps({"autoEnableCodemode": False, "mcpServers": {
+            "ctx": {"command": "npx", "args": ["-y", "ctx"], "enabled": False, "exposure": "direct"},
+            "web": {"type": "http", "url": "https://old.example/mcp", "description": "mine", "oauth": {"clientName": "x"},
+                    "toolExposure": {"get_*": "direct"}, "timeout": 30},
+            "moved": {"command": "old-bin", "cwd": "~/w", "exposure": "deferred"},
+            "key": {"command": "npx", "args": ["key", "--old"], "env": {"API_KEY": "${API_KEY}"}},
+            "mine": {"command": "added-by-pi-mcp-add", "env": {"T": "SECRET-VALUE"}},
+        }}))
+        self.pi.chmod(0o640)
+        out = self.run_sync()
+        data = json.loads(self.pi.read_text())
+        servers = data["mcpServers"]
+        self.assertIs(data["autoEnableCodemode"], False)
+        self.assertEqual(servers["ctx"], {"command": "npx", "args": ["-y", "ctx"], "enabled": False, "exposure": "direct"})
+        self.assertEqual(servers["web"], {"url": "https://example.com/mcp", "description": "mine", "oauth": {"clientName": "x"},
+                                          "toolExposure": {"get_*": "direct"}, "timeout": 30})
+        self.assertEqual(servers["moved"], {"command": "new-bin", "args": ["--serve"], "cwd": "~/w", "exposure": "deferred"})
+        self.assertEqual(servers["key"], {"command": "npx", "args": ["key", "--old"], "env": {"API_KEY": "${API_KEY}"}})
+        self.assertEqual(servers["mine"], {"command": "added-by-pi-mcp-add", "env": {"T": "SECRET-VALUE"}})
+        self.assertIn("mcp/pi: web を入れ替え", out)
+        self.assertIn("mcp/pi: key の定義が mcp.json と違う", out)
+        self.assertIn("mcp/pi: mine は Pi だけにある (残した)", out)
+        self.assertNotIn("SECRET-VALUE", out)
+        self.assertEqual(self.pi.stat().st_mode & 0o777, 0o640)
+
+    def test_second_run_and_dry_run_do_not_write(self):
+        self.assertIn("[dry-run] mcp/pi: ctx を追加", self.run_sync("--dry-run"))
+        self.assertFalse(self.pi.exists())
+        self.run_sync()
+        before = (self.pi.read_text(), self.pi.stat().st_mtime_ns, self.pi.stat().st_ino)
+        out = self.run_sync()
+        self.assertEqual((self.pi.read_text(), self.pi.stat().st_mtime_ns, self.pi.stat().st_ino), before)
+        self.assertNotIn("を追加", out)
+
+    def test_unreadable_file_is_left_alone(self):
+        self.pi.write_text("{ not json")
+        out = self.run_sync()
+        self.assertEqual(self.pi.read_text(), "{ not json")
+        self.assertIn("mcp/pi:", out)
 
 
 class Cli(unittest.TestCase):

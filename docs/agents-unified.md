@@ -1,6 +1,6 @@
-# Claude Code と Codex の共通設定
+# Claude Code・Codex・Pi の共通設定
 
-どのリポジトリでも、リポジトリ側にファイルを足さずに Claude Code と Codex が同じ指示・スキル・MCP を使えるようにする。
+どのリポジトリでも、リポジトリ側にファイルを足さずに Claude Code・Codex・Pi が同じ指示・スキル・MCP を使えるようにする。
 正本はこの dotfiles (chezmoi)。`~` 側は直接編集せず、ここを直して `chezmoi apply` する。
 
 ## 共有しているもの
@@ -15,14 +15,32 @@
 | メモリ | Claude の自動メモリ `~/.claude/projects/<repo>/memory/` | 自動で読み書き | `agent-memory-dir` で場所を知り、指示どおり読み書き |
 | 引き継ぎ | Linear のチケット / PR | 同左 | 同左 (セッションは共有されない) |
 
-反映は `run_onchange_after_agents-sync.sh.tmpl` が `agents-sync all` を呼ぶ。mcp.json・スキル名・subagent の md が変わったときだけ走る。
-手で走らせるなら `agents-sync all [--dry-run]`。何度実行しても同じ結果で、消すのは中身が同一の複製だけ。
+## Pi (am5-itx だけ。Claude Code と Codex をまとめて扱う主入口)
 
-## 追加のしかた (1 回書けば両方に入る)
+グローバル指示は `~/.pi/agent/AGENTS.md` で、`dot_pi/agent/AGENTS.md.tmpl` が Codex と同じく `dot_agents/AGENTS.md` の内容を出す。
+スキルは Pi が `~/.agents/skills` を標準で読むのでリンクは要らない。メモリは Codex と同じく `agent-memory-dir` で場所を知って読む。
+
+- モデル: 既定 (default)・ここぞ (peak)・軽量 (light) の 3 段を `.chezmoidata/pi.yaml` に置き、`dot_pi/agent/modify_settings.json` (modify-template) が `~/.pi/agent/settings.json` の `defaultProvider` / `defaultModel` / `defaultThinkingLevel` (default 段)・`modelThinkingLevels` (3 段の `provider/id`)・`enabledModels` (Ctrl+P の順。`provider/id:thinking` で、切り替えると thinking も変わる) だけを上書きする。Pi が書くほかのキー (`lastChangelogVersion`・`deviceId` など) と `modelThinkingLevels` のほかの項目は残す。段の値はクラウドの model-radar が PR で直す。
+- シェル: bash ツールと `!` コマンドは zsh で動く。`modify_settings.json` が `shellPath` (chezmoi の `lookPath "zsh"`。無ければ触らない) と `shellCommandPrefix` を書く。prefix は、pi-jev が起動のたびに対話の zsh から書き出したエイリアスと関数 (`~/.cache/pi/zsh-snapshot.zsh`、0600、`PI_ZSH_SNAPSHOT`) を読み、`setopt no_nomatch no_equals` で bash 流の `grep --include=*.ts` や `echo ===` を通し、`zsh -c` は後ろの行でエイリアスを展開しないのでコマンドを eval で読み直す (Claude Code と同じく source してから eval)。色やアイコンを付けるエイリアス (`ls` = eza) と、PATH のコマンドや組み込みと同じ名前のもの (`cc`・`ld`・`gm`・`vim` など) と `command_not_found_handler` は書き出さない。
+  スナップショットは毎回 source されるので、pi-jev は書いたらファイルを 0400、ディレクトリを 0500 にし (作り直すときだけ書き込み権を戻す)、書いた中身の sha256 を `PI_ZSH_SNAPSHOT_SHA256` で渡す (入れ子の起動は親の値を引き継ぐ。作り直せなかったときは前のファイルを使わず、スナップショット無しで動く)。prefix は中身が一致するときだけ読む (違えば stderr に 1 行警告して、エイリアスと関数なしで続ける。確認は `command -p sha256sum` 1 回で約 1ms、prefix 全体で約 5ms)。確認と source の間の短い隙は残る (書き換えるには先に書き込み権を戻す必要があり、そのための chmod も下の規則で拒否される)。jev-gate は、そのディレクトリへの write・edit と、`~/.cache/pi`・`zsh-snapshot`・`PI_ZSH_SNAPSHOT`・`PI_JEV_WRAPPED` に触れる bash (読むだけでも) を拒否する。
+  jev-gate は bash の判定の前に、コマンドの単語のうちエイリアスと関数を、スナップショットを読んだ `zsh -fc` 1 回 (約 5ms) で 3 段まで展開し、`# expanded:` として足してから決まった規則・injection-guard・分類器に渡す (`gpf!`・`ggf`・`ggfl` は force push として拒否)。展開できない (zsh が無い・時間切れ・読めない・3 段より深い・sha256 が違う) ときも素のコマンドを分類器にかけ、deny なら拒否、それ以外は confirm (UI が無ければ拒否。`JEV_GATE_MODE=allow` でも分類器が allow のときだけ通す)。実行時にコマンド名を組み立てる書き方 (コマンドの位置の `$(...)` や変数、組み立てた文字列の eval) は文字列から解決できないので、分類器の confirm の基準に入れてある。どの位置の単語も展開するので、引数にエイリアスと同じ単語があるだけでも展開が足される。単語の分割・配列の添字・`${var,,}`・`mapfile` などは bash と違うまま。
+- MCP: `agents-sync mcp` が `~/.pi/agent/mcp.json` を直接書く (Pi に add-json が無いため)。共有の定義から作るのは `command` / `args` / `url` だけで、`type`・`secrets`・`clients` は書かない。`enabled`・`exposure`・`toolExposure`・`description`・`oauth`・`env`・`headers` など本人や `/mcp` が足したキーと、`pi mcp add` で入れた Pi だけの定義は残す (後者は「Pi だけにある」と報告)。変更があるときだけ一時ファイルから置き換える。OAuth は `pi mcp login <name>` で 1 回ずつ (トークンは `~/.pi/agent/mcp-auth.json`)。
+- subagent: `extensions/subagent.ts` が、動いている Pi の同梱例 `examples/extensions/subagent/index.ts` (`getExamplesPath()` の下) を読み込むだけの口で、写しは持たない。Pi を更新すると例も追従し、読めなければ起動時に警告して `subagent` ツールなしで動く。定義 `~/.pi/agent/agents/*.md` は `agents-sync subagents` が `~/.claude/agents/*.md` から作る。`model` は `anthropic/<id>:<effort>` (Claude の effort low〜max は Pi の thinking にそのままある)。`model` の無い agent は呼び出し元のその時のモデルと thinking を引き継ぐので effort は写らない (Explore・Plan・general-purpose は Claude の low ではなく、今の段の thinking で動く)。`tools` は Pi の名前に直し (Glob は find)、対応の無いものは落とす。`disallowedTools` は Pi の組み込みの道具 (`tools` があればその中) から外した許可リストにして、読み取り専用を Pi でも守る。Pi は範囲を表せないので、`Bash(git status*)` のような範囲つきの許可は落とし、範囲つきの禁止は道具ごと禁止する。道具が 1 つも残らない agent は、tools を書かないと Pi の既定の道具が全部渡るので Pi 用には作らない (前の生成物があれば消す)。生成物は frontmatter の先頭に目印があり、元の md が無くなった目印つきのものだけを消す。子は `pi --mode json -p` で動き jev-gate も読み込むので、UI が無く、confirm の判定や分類器が使えないときの bash・write・edit は拒否になる。
+- delegate: `extensions/delegate.ts` の `delegate` ツールで、Claude Code (`claude -p --output-format json`。モデル・effort・権限モードは Claude 側の設定のまま) か Codex (`codex exec -s workspace-write`) に 1 件任せて最後の答えを受け取る。claude.ai のコネクタ (Slack・Google・Claude Docs)・Chrome・独立レビューは claude、OS の隔離が要る作業は codex。子には herdr のペインの環境変数を渡さず (子の hook が Pi のペインの名前と状態を上書きしないように)、`CLAUDE_NOTIFY_PHONE=never` でスマホ通知を重ねない。Claude の費用は見積もり (サブスクリプションでは API 換算の目安) として返す。子は作業場所の下ならどこでも書けるので、作業場所は Pi の作業ディレクトリかその下 (realpath で判定) に限り、`$HOME` そのものと、ホーム直下のドットディレクトリ (`~/.ssh`・`~/.config` など) の中は断る (Pi 自身がそのドットディレクトリの中で動いていれば、その下は許す)。子が返した文字列は、秘密鍵のブロックや `ghp_`・`sk-`・`ops_`・`xoxb-`・`AKIA` などのトークンらしい形を伏せ字にして、件数を添えて返す。jev-gate も bash と同じく判定し (ただし分類器が使えないときは素通しせず confirm)、作業場所が保護パス (資格情報・スナップショット) の中か、それを含むなら拒否し、作業場所と task の文にも決まった規則 (bash の規則に、資格情報の場所と `PI_JEV_*` を足したもの。injection-guard は当てない) を当ててから、`delegate harness=<h> cwd=<dir>` と task を分類器に渡す。task は地の文なので、`credentials` や `~/.ssh` のような語を含むだけでも拒否されることがある。作業場所は `~` を展開した realpath の 1 通りで解決し、`@` や `file:` で始まるものは断る。
+
+拡張 `dot_pi/agent/extensions/jev-gate.ts` は、path 引数を持つツールで `~/.ssh`・`~/.config/op`・auth.json・MCP の OAuth トークン (`~/.pi/agent/mcp-auth.json`)・`*credentials*` などの保護パス (read と grep は `.env` も) をモデルを呼ばずに拒否し、bash は Claude Code の `~/.claude/hooks/injection-guard.sh` をそのまま呼んで同じ規則で止める (hook が無い、または Pi の起動後に試験コマンドを拒否しなかったときは、そのセッションの bash をすべて拒否する)。hook は照合の前にコマンドの改行を空白に変えるので、行をまたいだ `curl … |` と `bash` も捕まる (無関係な行どうしで誤って拒否することもある。Claude Code 側にも効く)。
+`notify.ts` は承認待ちと完了を `claude-notify` (`CLAUDE_NOTIFY_APP=Pi`) に渡し、Claude Code の Stop / Notification フックと同じ通知にする。
+
+## 反映
+
+反映は `run_onchange_after_agents-sync.sh.tmpl` が `agents-sync all` を呼ぶ。mcp.json・スキル名・subagent の md が変わったときだけ走る。
+手で走らせるなら `agents-sync all [--dry-run]`。何度実行しても同じ結果で、消すのは中身が同一の複製と、元の md が無くなった Pi 用の subagent の生成物だけ (Codex 用は報告だけ)。`~/.pi/agent` が無いホストでは Pi の分を飛ばす。
+
+## 追加のしかた (1 回書けば全部に入る)
 
 - スキル: `dot_agents/skills/<name>/SKILL.md` を作って `chezmoi apply`。`npx skills add` で `~/.agents/skills` に入れたものも `agents-sync skills` が Claude 側にリンクする。
-- MCP サーバー: `dot_agents/mcp.json` に名前・`command` / `args` または `type: http` と `url` を足して `chezmoi apply`。秘密の環境変数は `secrets` に名前だけ書く (値は書かない。自動では足されないので `claude mcp add -e` / `codex mcp add --env` で 1 回入れる)。
-- subagent: `dot_claude/agents/<name>.md` を書く。Codex 用 toml は自動生成。
+- MCP サーバー: `dot_agents/mcp.json` に名前・`command` / `args` または `type: http` と `url` を足して `chezmoi apply`。秘密の環境変数は `secrets` に名前だけ書く (値は書かない。自動では足されないので `claude mcp add -e` / `codex mcp add --env` / `pi mcp add --env` で 1 回入れる)。一部の道具だけに配るなら `"clients": ["pi"]` のように道具の名前 (`claude` / `codex` / `pi`) を並べる (例: Linear は Claude に claude.ai のコネクタがあるので Pi だけ)。後から `clients` で外しても、すでに入った道具からは消さない。
+- subagent: `dot_claude/agents/<name>.md` を書く。Codex 用 toml と Pi 用 md は自動生成。
 - 指示: `dot_agents/AGENTS.md` を直す。道具固有の規則は「道具ごとの差」に書く。
 
 ## 日本語の回答と ChatGPT / dot
@@ -56,10 +74,10 @@ Codex 自身の `~/.codex/memories` は自動生成物であり、手で編集�
 
 ## 共有できないもの
 
-- 認証: MCP の OAuth は道具ごとに 1 回ずつ。Codex は `codex mcp login <name>`、Claude Code は `/mcp`。API キーなどの秘密は各道具の設定に残っている (dotfiles には置かない)。
+- 認証: MCP の OAuth は道具ごとに 1 回ずつ。Codex は `codex mcp login <name>`、Claude Code は `/mcp`、Pi は `pi mcp login <name>`。API キーなどの秘密は各道具の設定に残っている (dotfiles には置かない)。
 - フック・権限・サンドボックス・モデル・effort: 形式も意味も違う。`~/.claude/hooks` と `~/.codex/hooks` は別々の複製。Codex のフックは内容のハッシュを本人が信頼登録する。
 - スラッシュコマンド (`~/.claude/commands`): Claude Code だけ。Codex のデスクトップ取り込みはスキル (`source-command-*`) に変換するが、`agents-sync` は Claude に戻さない。
-- subagent の `disallowedTools` (読み取り専用の強制): Codex に対応する設定がない。Codex 側は本文の指示だけが頼り。
+- subagent の `disallowedTools` (読み取り専用の強制): Codex に対応する設定がない。Codex 側は本文の指示だけが頼り。Pi は許可リスト (`tools`) に直して守る。
 - repo の `CLAUDE.md` 内の `@` 読み込み: Codex は展開しない。さらに repo に `AGENTS.md` と `CLAUDE.md` の両方があると Codex は `AGENTS.md` だけを読む。repo 側は `CLAUDE.md` の先頭を `@AGENTS.md` にして中身を `AGENTS.md` に集める (リポジトリごとの作業)。
 - 指示中の HTML コメント: Claude Code は除くが Codex は読む。`<!-- 要確認 -->` は Codex の文脈に残る。
 - スキル `freee-monthly`: Claude 側と Codex 側が意図的に別内容 (Codex 版に Chrome 手順などの追記がある)。どちらも残してあり、統合は未決。
@@ -75,9 +93,11 @@ Codex のデスクトップアプリは Claude Code の設定 (settings.json・�
 ```sh
 agents-sync all --dry-run                 # 何を直すか
 claude mcp list; codex mcp list           # 同じ名前が並ぶ (Codex 側の内蔵・プラグイン分は別)
+pi mcp list                               # Pi の MCP (つながるかも確かめる)
 codex debug prompt-input hello            # Codex が読む指示・スキルの一覧 (モデル呼び出しなし)
 agent-memory-dir                          # 今の repo の Claude メモリの場所
 python3 tests/agents-sync.py              # 他に tests/agent-memory-dir.py, tests/codex-config.py
+python3 tests/pi-settings.py              # 他に tests/pi-subagent.py, tests/pi-delegate.py (Pi が入っていれば本物の Pi でも確かめる)
 ```
 
 ## Slack から am5-itx の Claude Code に依頼する bot

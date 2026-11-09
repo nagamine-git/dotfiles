@@ -8,11 +8,13 @@
 # herdr の中の stop / notification は、エージェントの完了と承認待ちとして herdr が通知する ([ui.toast])。
 # ここではデスクトップに出さず、スマホへの送信と Super+Shift+R (claude-notify-focus --last) の移動先の記録だけをする。
 # スマホへ送る条件は ~/.config/claude-notify/config の PHONE_MODE で決める。
+# CLAUDE_NOTIFY_APP (既定 "Claude Code") はタイトルの接頭辞と notify-send の app 名。Pi の notify.ts は Pi を渡す。
 set -euo pipefail
 
 mode="${1:-stop}"
 summary_arg="${2:-}"
 body_arg="${3:-}"
+app="${CLAUDE_NOTIFY_APP:-Claude Code}"
 
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/claude-code-notify"
 mkdir -p "$runtime_dir"
@@ -63,22 +65,22 @@ fi
 # ---- 本文 -------------------------------------------------------------------
 # agent_event: herdr がエージェントの状態から通知できるもの (完了と承認待ち)
 agent_event=0
-summary="Claude Code"
+summary="$app"
 body=""
 case "$mode" in
   stop)
     agent_event=1
-    summary="Claude Code: 完了"
+    summary="$app: 完了"
     body="${summary_arg:-$(last_assistant_text)}"
     body="${body:-作業が完了しました}"
     ;;
   notification)
     agent_event=1
-    summary="Claude Code: ${hook_title:-入力待ち}"
+    summary="$app: ${hook_title:-入力待ち}"
     body="${summary_arg:-${hook_message:-確認や許可を待っています}}"
     ;;
   *)
-    summary="Claude Code"
+    summary="$app"
     body="${summary_arg:-${hook_message:-通知}}"
     ;;
 esac
@@ -131,7 +133,7 @@ push_phone &
 if [ "$in_herdr" = 1 ] && [ "$agent_event" = 1 ]; then
   : # herdr が通知する。二重に出さない
 elif command -v notify-send >/dev/null 2>&1; then
-  notify-send --app-name="Claude Code" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
+  notify-send --app-name="$app" --icon=dialog-information --expire-time=15000 "$summary" "$full_body" >/dev/null 2>&1 || true
 elif command -v osascript >/dev/null 2>&1; then
   # macOS: osascript で表示 (argv 渡しでクオート問題を回避)
   osascript -e 'on run argv' \

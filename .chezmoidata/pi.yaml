@@ -1,0 +1,23 @@
+# Pi (am5-itx) のモデルの 3 段。dot_pi/agent/modify_settings.json が ~/.pi/agent/settings.json に写す
+# (default は起動時の defaultProvider / defaultModel / defaultThinkingLevel、3 段とも modelThinkingLevels と
+# Ctrl+P で切り替える enabledModels に default・peak・light の順で入る)。
+# 値はクラウドの定期ルーティン model-radar が Artificial Analysis の測定をもとに見直す。変更は model-radar の PR で行う。
+# provider と id は `pi --list-models` の表記。thinking は off / minimal / low / medium / high / xhigh / max で、
+# モデルのカタログ (thinkingLevelMap) が対応する値にする。
+pi:
+  models:
+    # default: 普段の作業。Pi を起動したときのモデル
+    default:
+      provider: openai
+      id: gpt-6.1-sol
+      thinking: max
+    # peak: ここぞという時 (難しい設計・重要な変更・詰まったとき)
+    peak:
+      provider: anthropic
+      id: claude-opus-5-5
+      thinking: max
+    # light: 落としてもよい時 (定型作業・要約・下調べ)
+    light:
+      provider: anthropic
+      id: claude-haiku-5-5
+      thinking: high

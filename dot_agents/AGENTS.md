@@ -1,4 +1,4 @@
-# 個人の作業ポリシー (Claude Code / Codex 共通)
+# 個人の作業ポリシー (Claude Code / Codex / Pi 共通)
 
 正本は chezmoi の `dot_agents/AGENTS.md`。`~` 側を直接編集せず、ソースから反映する。同期・道具ごとの差は dotfiles の `docs/agents-unified.md` を参照する。
 これは本人の既定であり、会社・顧客の運用は対象組織の規約とリポジトリの指示に従う。
@@ -24,9 +24,10 @@
 
 - Claude Code: 実装・修正・テスト・リファクタは設定済みの `coder`、調査・計画は対応する subagent に任せる。利用枠は推測せず `/usage` で確認する。
 - Codex: `~/.codex/config.toml` の既定を使う。独立した調査・実装の分担が有用なら subagent を使い、担当範囲を明確にする。
+- Pi: 主入口。既定は `~/.pi/agent/settings.json`。既定・ここぞ・軽量の 3 段は `.chezmoidata/pi.yaml` (model-radar が調整) で、Ctrl+P で切り替える。subagent は `subagent` ツール (定義は agents-sync が `~/.claude/agents` から作る)。Claude Code にしか無い接続や独立レビューは `delegate` で claude、OS の隔離が要る作業は codex に任せる。
 
 ## メモリと共有設定
 
-- 長期メモリの正本は Claude の `~/.claude/projects/<repo>/memory/`。Codex は開始時に `agent-memory-dir` を実行し、`MEMORY.md` と今回に関係するファイルを読む。現在のコード・本人の指示を優先し、古い情報は確かめる。
+- 長期メモリの正本は Claude の `~/.claude/projects/<repo>/memory/`。Codex と Pi は開始時に `agent-memory-dir` を実行し、`MEMORY.md` と今回に関係するファイルを読む。現在のコード・本人の指示を優先し、古い情報は確かめる。
 - メモリを残すときの形式と索引の上限は dotfiles の `docs/agents-unified.md`「メモリの追記」に従う。秘密・個人データは残さず、Codex 自身の `~/.codex/memories` は手で編集しない。
 - スキルと MCP の正本は `~/.agents/skills` と `~/.agents/mcp.json`。repo に `AGENTS.md` と `CLAUDE.md` がある場合、`CLAUDE.md` の先頭を `@AGENTS.md` にして共通本文を一つにする。
