@@ -60,6 +60,7 @@ class PiJev(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
+        self.addCleanup(self.unlock)  # runs before the cleanup above: pi-jev leaves the snapshot read-only
         self.bin = self.home / ".local/bin"
         self.bin.mkdir(parents=True)
         self.wrapper = self.bin / "pi-jev"
@@ -153,6 +154,10 @@ class PiJev(unittest.TestCase):
     def snapshot(self):
         return self.home / ".cache/pi/zsh-snapshot.zsh"
 
+    def unlock(self):
+        if self.snapshot().parent.is_dir():
+            self.snapshot().parent.chmod(0o700)
+
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_zsh_snapshot_keeps_plain_aliases_and_functions_and_leaves_out_noisy_or_shadowing_ones(self):
         (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
@@ -165,12 +170,24 @@ class PiJev(unittest.TestCase):
         for gone in ("alias ls=", "alias lsi=", "alias lc=", "alias cat=", "sort () {", "command_not_found_handler",
                      "TRAPEXIT", "NOISE"):
             self.assertNotIn(gone, text)
-        self.assertEqual(snap.stat().st_mode & 0o777, 0o600)
-        self.assertEqual(snap.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(snap.stat().st_mode & 0o777, 0o400)  # read-only until pi-jev rebuilds it
+        self.assertEqual(snap.parent.stat().st_mode & 0o777, 0o500)
         self.assertEqual(sorted(p.name for p in snap.parent.iterdir()), ["zsh-snapshot.zsh"])
         out = subprocess.run([ZSH, "-fc", 'source "$1"; myfn x; eval hello', "zsh", str(snap)],
                              capture_output=True, text=True, timeout=10)
         self.assertEqual((out.stdout, out.stderr), ("fn:x\nhello-alias\n", ""))
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_the_next_launch_rebuilds_the_read_only_snapshot(self):
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
+        self.run_wrapper()
+        (self.home / "pi-runs.jsonl").unlink()
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC + "alias later='true'\n")
+        run = self.run_wrapper()
+        self.assertIn("alias later=", self.snapshot().read_text())
+        self.assertEqual(run["sha256"], self.sha256())
+        self.assertEqual((self.snapshot().stat().st_mode & 0o777, self.snapshot().parent.stat().st_mode & 0o777),
+                         (0o400, 0o500))
 
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_xdg_cache_home_moves_the_snapshot(self):
@@ -193,7 +210,7 @@ class PiJev(unittest.TestCase):
     def test_nested_launch_reuses_the_snapshot_without_running_zsh(self):
         self.fake_zsh("exit 0\n")
         self.old_snapshot()
-        run = self.run_wrapper(PI_JEV_WRAPPED="1")
+        run = self.run_wrapper(PI_JEV_WRAPPED="1", PI_ZSH_SNAPSHOT=str(self.snapshot()))
         self.assertEqual(run["snapshot"], str(self.snapshot()))
         self.assertEqual(self.snapshot().read_text(), "alias old='true'\n")
         self.assertFalse((self.home / "zsh-calls").exists())
@@ -202,13 +219,15 @@ class PiJev(unittest.TestCase):
         for body in ("echo partial > \"$4\"; exit 1\n", "exec sleep 30\n"):
             with self.subTest(body=body):
                 (self.home / "pi-runs.jsonl").unlink(missing_ok=True)
+                self.unlock()
                 shutil.rmtree(self.home / ".cache", ignore_errors=True)
                 self.fake_zsh(body)
                 self.old_snapshot()
                 started = time.monotonic()
                 run = self.run_wrapper()
                 self.assertLess(time.monotonic() - started, 9)
-                self.assertEqual(run["snapshot"], str(self.snapshot()))
+                # The old file is left alone but not used: Pi runs without a snapshot.
+                self.assertEqual((run["snapshot"], run["sha256"]), (None, None))
                 self.assertEqual(self.snapshot().read_text(), "alias old='true'\n")
                 self.assertEqual(sorted(p.name for p in self.snapshot().parent.iterdir()), ["zsh-snapshot.zsh"])
 
@@ -220,20 +239,19 @@ class PiJev(unittest.TestCase):
         (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
         self.assertEqual(self.run_wrapper()["sha256"], self.sha256())
 
-    def test_without_a_new_snapshot_the_existing_file_is_hashed(self):
+    def test_a_failed_rebuild_runs_without_a_snapshot_even_if_one_was_inherited(self):
         self.fake_zsh("exit 1\n")
         self.old_snapshot()
-        self.assertEqual(self.run_wrapper()["sha256"], self.sha256())
-        (self.home / "pi-runs.jsonl").unlink()
-        self.snapshot().unlink()
-        self.assertIsNone(self.run_wrapper(PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-STALE")["sha256"])
+        run = self.run_wrapper(PI_ZSH_SNAPSHOT=str(self.snapshot()), PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-STALE")
+        self.assertEqual((run["snapshot"], run["sha256"]), (None, None))
 
     def test_nested_launch_keeps_the_hash_it_inherited(self):
         # A snapshot changed during the session must not become trusted by starting Pi again from inside Pi.
         self.fake_zsh("exit 0\n")
         self.old_snapshot()
-        run = self.run_wrapper(PI_JEV_WRAPPED="1", PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-PARENT-HASH")
-        self.assertEqual(run["sha256"], "SYNTHETIC-PARENT-HASH")
+        run = self.run_wrapper(PI_JEV_WRAPPED="1", PI_ZSH_SNAPSHOT=str(self.snapshot()),
+                               PI_ZSH_SNAPSHOT_SHA256="SYNTHETIC-PARENT-HASH")
+        self.assertEqual((run["snapshot"], run["sha256"]), (str(self.snapshot()), "SYNTHETIC-PARENT-HASH"))
         (self.home / "pi-runs.jsonl").unlink()
         self.assertIsNone(self.run_wrapper(PI_JEV_WRAPPED="1")["sha256"])
 
@@ -243,7 +261,7 @@ class PiJev(unittest.TestCase):
         for name in ("bash", "python3"):
             (tools / name).symlink_to(shutil.which(name))
         run = self.run_wrapper(PATH="%s:%s" % (self.bin, tools))
-        self.assertEqual(run["snapshot"], str(self.snapshot()))
+        self.assertEqual((run["snapshot"], run["sha256"]), (None, None))
         self.assertFalse(self.snapshot().exists())
 
     def test_zsh_alias_only_when_pi_jev_is_installed(self):

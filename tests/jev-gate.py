@@ -53,7 +53,7 @@ const scenario = JSON.parse(process.argv[2]);
 const { default: register } = await import("./jev-gate.ts");
 const handlers = {};
 const commands = {};
-const seen = { classify: [], confirms: 0, notes: [], results: [], emits: [], emitsAtConfirm: [] };
+const seen = { classify: [], confirms: 0, confirmTexts: [], notes: [], results: [], emits: [], emitsAtConfirm: [] };
 register({
   on: (name, fn) => { handlers[name] = fn; },
   registerCommand: (name, options) => { commands[name] = options.handler; },
@@ -64,8 +64,9 @@ const ctx = {
   cwd: scenario.cwd ?? process.cwd(),
   ui: {
     notify: (message) => { seen.notes.push(message); },
-    confirm: async () => {
+    confirm: async (_title, message) => {
       seen.confirms += 1;
+      seen.confirmTexts.push(message);
       seen.emitsAtConfirm.push(seen.emits.length);
       if (scenario.confirmThrows) throw new Error("synthetic confirm failure");
       return scenario.confirmAnswer;
@@ -75,7 +76,7 @@ const ctx = {
     findOfType: () => (scenario.noClassifier ? undefined : { id: "jev-latest" }),
     classify: async (_model, context, options) => {
       seen.classify.push({ apiKey: options?.apiKey ?? null, envKey: process.env.TYPESAFE_API_KEY ?? null,
-                           state: context.state });
+                           state: context.state, confirmCriteria: context.questions.verdict.criteria.confirm });
       if (scenario.classifyThrows) throw new Error("synthetic classifier failure");
       return { stopReason: scenario.stopReason ?? "stop",
                answers: { verdict: { type: "choice", choice: scenario.verdict, probabilities: {}, confidence: 0.9 } } };
@@ -254,6 +255,23 @@ class JevGate(unittest.TestCase):
         seen = self.run_gate(["rm -r build"], verdict="confirm", confirm_answer=False)
         self.assertTrue(seen["results"][0]["block"])
         self.assertEqual(seen["confirms"], 1)
+
+    def test_the_confirm_prompt_shows_the_end_of_a_long_command(self):
+        command = "echo " + "a" * 1000 + " && rm -rf build"
+        seen = self.run_gate([command], verdict="confirm")
+        [shown] = seen["confirmTexts"]
+        self.assertIn("echo aaa", shown)
+        self.assertTrue(shown.endswith("&& rm -rf build"), shown[-40:])
+        self.assertIn("省略", shown)
+        self.assertLess(len(shown), 400)
+        [short] = self.run_gate(["rm -r build"], verdict="confirm")["confirmTexts"]
+        self.assertTrue(short.endswith("\nrm -r build"))
+        self.assertNotIn("省略", short)
+
+    def test_the_classifier_is_told_that_names_built_at_run_time_are_worth_a_glance(self):
+        [classified] = self.run_gate(["ls"])["classify"]
+        for part in ("$(...)", "eval", "run time"):
+            self.assertIn(part, classified["confirmCriteria"])
 
     def test_unknown_answer_is_treated_as_confirm(self):
         seen = self.run_gate(["rm -r build"], verdict="maybe")
@@ -506,13 +524,30 @@ class JevGate(unittest.TestCase):
             with self.subTest(name):
                 env = make_env()
                 seen = self.run_gate([command], **env)
-                self.assertEqual((seen["results"], seen["confirms"], seen["classify"]), ([None], 1, []))
+                self.assertEqual((seen["results"], seen["confirms"]), ([None], 1))
+                # The classifier still sees the bare command first.
+                self.assertEqual([c["state"]["command_or_path"] for c in seen["classify"]], [command])
                 seen = self.run_gate([command], confirm_answer=False, **env)
                 self.assertTrue(seen["results"][0]["block"])
                 [blocked] = self.run_gate([command], has_ui=False, **env)["results"]
                 self.assertIsNotNone(blocked)
                 self.assertTrue(blocked["block"])
                 self.assertIn("zsh", blocked["reason"])
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_a_failed_resolution_follows_a_deny_and_is_never_auto_allowed_on_a_doubt(self):
+        env = self.with_snapshot(sha="0" * 64)
+        seen = self.run_gate(["gss"], verdict="deny", **env)
+        self.assertTrue(seen["results"][0]["block"])
+        self.assertEqual(seen["confirms"], 0)
+        # JEV_GATE_MODE=allow lets it through only on a clear allow.
+        self.assertEqual(self.run_gate(["gss"], has_ui=False, JEV_GATE_MODE="allow", **env)["results"], [None])
+        for verdict, scenario in (("confirm", {}), ("maybe", {}), ("allow", {"noClassifier": True})):
+            with self.subTest(verdict=verdict, scenario=scenario):
+                [result] = self.run_gate(["gss"], verdict=verdict, has_ui=False, scenario=scenario,
+                                         JEV_GATE_MODE="allow", **env)["results"]
+                self.assertIsNotNone(result)
+                self.assertTrue(result["block"])
 
     def test_without_a_snapshot_nothing_changes(self):
         zsh = self.home / "counting-zsh"
@@ -559,7 +594,11 @@ class JevGate(unittest.TestCase):
     def test_bash_may_not_touch_the_snapshot(self):
         for command in ("cat ~/.cache/pi/zsh-snapshot.zsh", "printf 'git () { :; }' >> $HOME/.cache/pi/zsh-snapshot.zsh",
                         "cp evil.zsh ~/.cache/pi/", "sed -i s/a/b/ zsh-snapshot.zsh", "echo $PI_ZSH_SNAPSHOT",
-                        "printenv PI_ZSH_SNAPSHOT_SHA256", 'echo x > "${XDG_CACHE_HOME}/pi/x"'):
+                        "printenv PI_ZSH_SNAPSHOT_SHA256", 'echo x > "${XDG_CACHE_HOME}/pi/x"',
+                        # pi-jev leaves the snapshot 0400 in a 0500 directory: giving write back is a mention too
+                        "chmod u+w ~/.cache/pi", "chmod 600 $HOME/.cache/pi/zsh-snapshot.zsh",
+                        # a nested pi-jev that rebuilt and re-hashed the snapshot would trust a changed one
+                        "env -u PI_JEV_WRAPPED pi -p x", "unset PI_JEV_WRAPPED; pi-jev", "PI_JEV_WRAPPED= pi"):
             with self.subTest(command=command):
                 seen = self.run_gate([command])
                 self.assertTrue(seen["results"][0]["block"])

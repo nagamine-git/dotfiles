@@ -23,8 +23,11 @@
  *   what every alias or function among the command's words stands for, following chains 3 levels deep.
  *   That expansion is appended to the command ("# expanded:") for layers 2 and 3 and logged beside it.
  *   If zsh cannot resolve them (no zsh, timeout, a broken snapshot, deeper chains, or a snapshot whose
- *   sha256 differs from PI_ZSH_SNAPSHOT_SHA256, which pi-jev sets at launch), the call is a confirm.
- *   Every word is resolved, wherever it stands, so a word that only looks like an alias is expanded too.
+ *   sha256 differs from PI_ZSH_SNAPSHOT_SHA256, which pi-jev sets at launch), the bare command still goes to
+ *   the classifier: a deny stands, anything else is a confirm, and JEV_GATE_MODE=allow lets only a clear
+ *   allow through. Every word is resolved, wherever it stands, so a word that only looks like an alias is
+ *   expanded too. Names built at run time ($(...) or a variable as the command, eval) cannot be resolved
+ *   from the text; the classifier is told they are worth a glance.
  *   3. jev classifier (TypeSafe, via Pi's model registry) for bash, write, edit and MCP
  *      tools (mcp__*, including calls from codemode scripts), asking {allow, confirm, deny}
  *      with probabilities. The TypeSafe key is read here with op-agent (reference in
@@ -163,6 +166,8 @@ const DENY_RULES: { re: RegExp; reason: string }[] = [
   { re: new RegExp(`zsh-snapshot|PI_ZSH_SNAPSHOT|(?:\\.cache/pi|XDG_CACHE_HOME\\}?/pi|${SNAPSHOT_DIRS.map((d) =>
       d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![\\w.-])`),
     reason: "touching Pi's zsh snapshot, which every bash command sources (only pi-jev writes it)" },
+  // A nested pi-jev without it would rebuild and re-hash the snapshot, trusting a changed one.
+  { re: /PI_JEV_WRAPPED/, reason: "changing PI_JEV_WRAPPED, which keeps a nested Pi on the session's zsh snapshot" },
 ];
 
 type RuleDeny = { layer: string; reason: string; unavailable?: true };
@@ -297,7 +302,8 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
               confirm:
                 "Plausibly fine but worth a glance: deletes, moves, commands that change remote state " +
                 "(git push, gh issue/pr create/edit/close/comment, gh api POST/PATCH/DELETE), uploading non-secret files, " +
-                "writes outside the repo and /tmp, infra/config changes",
+                "writes outside the repo and /tmp, infra/config changes, " +
+                "and commands whose name is built at run time ($(...) or a variable where the command name goes, eval of an assembled string)",
               deny:
                 "Clearly dangerous or irreversible: destroying data, sending secrets, keys, tokens or credential files anywhere, " +
                 "reading or printing the contents of credential files or tokens (ssh keys, ~/.config/op, auth.json, .env files), " +
@@ -319,16 +325,21 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
   }
 }
 
-// A confirm: asked in the UI, otherwise denied unless JEV_GATE_MODE=allow. entry is what the log records.
+// The start and the end of a long text, so that the end of a long command is seen at the prompt too.
+function excerpt(text: string, keep = 150): string {
+  return text.length <= 2 * keep ? text : `${text.slice(0, keep)}\n…(${text.length - 2 * keep} 字省略)…\n${text.slice(-keep)}`;
+}
+
+// A confirm: asked in the UI, otherwise denied unless JEV_GATE_MODE=allow (and autoAllow). entry is what the log records.
 async function confirm(pi: ExtensionAPI, ctx: any, kind: string, text: string, entry: Record<string, unknown>,
-  why?: string): Promise<{ block: true; reason: string } | undefined> {
+  why?: string, autoAllow = true): Promise<{ block: true; reason: string } | undefined> {
   const mode = gateMode(ctx);
   if (mode === "ask" && ctx.hasUI && ctx.ui?.confirm) {
     // herdr-agent-state.ts shows the pane as blocked meanwhile; notify.ts tells the owner.
     pi.events.emit("herdr:blocked", { active: true, label: "jev-gate: 承認待ち" });
     let ok: boolean;
     try {
-      ok = await ctx.ui.confirm("jev-gate", `Allow this ${kind}?${why ? ` (${why})` : ""}\n${text.slice(0, 300)}`);
+      ok = await ctx.ui.confirm("jev-gate", `Allow this ${kind}?${why ? ` (${why})` : ""}\n${excerpt(text)}`);
     } finally {
       pi.events.emit("herdr:blocked", { active: false });
     }
@@ -336,12 +347,14 @@ async function confirm(pi: ExtensionAPI, ctx: any, kind: string, text: string, e
     if (!ok) return { block: true, reason: "jev-gate: denied at confirm prompt" };
     return;
   }
-  if (mode === "allow") {
+  if (mode === "allow" && autoAllow) {
     log({ ...entry, decision: "allow", via: "confirm->auto" });
     return;
   }
-  // No UI (the default), JEV_GATE_MODE=deny or an unknown mode, or "ask" with no UI to ask in.
-  const blocked = process.env.JEV_GATE_MODE && mode !== "ask" ? `JEV_GATE_MODE=${mode}` : "no UI to ask";
+  // No UI (the default), JEV_GATE_MODE=deny or an unknown mode, "ask" with no UI to ask in, or a doubt
+  // that JEV_GATE_MODE=allow does not cover.
+  const blocked = mode === "allow" ? "JEV_GATE_MODE=allow needs a clear allow here"
+    : process.env.JEV_GATE_MODE && mode !== "ask" ? `JEV_GATE_MODE=${mode}` : "no UI to ask";
   log({ ...entry, decision: "deny", via: "confirm->deny", why: blocked });
   return { block: true, reason: `jev-gate: ${why ? `${why}; ` : ""}confirm verdict blocked (${blocked})` };
 }
@@ -388,8 +401,18 @@ export default function (pi: ExtensionAPI) {
       log({ layer: hit.layer, ...about, decision: "deny", reason: hit.reason });
       return { block: true, reason: `jev-gate (rule): ${hit.reason}`, terminate: true };
     }
-    // Not knowing what an alias or function runs is never let through on the bare text.
-    if (shell.failed) return confirm(pi, ctx, kind, text, { layer: "zsh-expand", ...about, note: shell.failed }, shell.failed);
+    // Not knowing what an alias or function runs: the classifier still judges the bare command, a deny stands,
+    // and anything else is asked (JEV_GATE_MODE=allow lets only a clear allow through).
+    if (shell.failed) {
+      const j = await askJev(ctx, kind, text);
+      const entry = { layer: "zsh-expand", ...about, note: shell.failed, verdict: j?.decision ?? "unavailable",
+        confidence: j?.confidence };
+      if (j?.decision === "deny") {
+        log({ ...entry, decision: "deny", probabilities: j.probabilities });
+        return { block: true, reason: `jev-gate: ${shell.failed}; classified as deny` };
+      }
+      return confirm(pi, ctx, kind, text, entry, shell.failed, j?.decision === "allow");
+    }
 
     // 3) jev classifier
     const j = await askJev(ctx, kind, text);
