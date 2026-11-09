@@ -175,6 +175,13 @@ class Delegate(unittest.TestCase):
                 self.refused(self.delegate("codex", cwd=cwd), "outside")
         self.assertEqual(self.calls(), [])
 
+    def test_at_and_file_paths_are_refused(self):
+        # jev-gate checks the directory as ~ expanded and realpath'd; delegate.ts resolves only that way.
+        for cwd in ("@sub", "file://%s" % (self.cwd / "sub"), "file:sub"):
+            with self.subTest(cwd=cwd):
+                self.refused(self.delegate("codex", cwd=cwd), "@ or file:")
+        self.assertEqual(self.calls(), [])
+
     def test_home_and_the_dot_directories_under_it_are_refused(self):
         home = Path(self.env["HOME"])
         (home / ".ssh").mkdir()

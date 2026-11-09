@@ -8,7 +8,9 @@
  * CLAUDE_NOTIFY_PHONE=never (notify.ts already reports Pi's run). Escape stops them; answers are cut at about 50 KB.
  * The child may write anywhere below its directory, so that is Pi's working directory or below it (symlinks
  * resolved), never the home directory itself and never inside a dot directory of home (~/.ssh, ~/.config, ...)
- * unless Pi itself works in there. jev-gate also gates delegate (protected places, the classifier).
+ * unless Pi itself works in there. jev-gate also gates delegate (protected places, the rules, the classifier).
+ * Both resolve the directory one way (~ expanded, realpath), so @ and file: paths are not taken. Checking and
+ * running are not atomic; inside Pi's project and checked by jev-gate, that window is small enough to leave.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
@@ -48,6 +50,7 @@ function run(cmd: string, args: string[], cwd: string, signal?: AbortSignal): Pr
 
 // The child's directory, or why it may not work there.
 function workdir(given: string, piCwd: string): { dir?: string; refused?: string } {
+  if (/^(@|file:)/.test(given)) return { refused: `${given} is an @ or file: path (give a plain path)` };
   const home = os.homedir();
   const expanded = given === "~" || given.startsWith("~/") ? home + given.slice(1) : given;
   let dir: string, base: string, realHome: string;

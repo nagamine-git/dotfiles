@@ -30,8 +30,10 @@
  *   from the text; the classifier is told they are worth a glance.
  *
  *   delegate (delegate.ts: Claude Code or Codex do a task with their own write access) is gated like bash:
- *   its directory may neither be in nor hold a protected place (credentials, the zsh snapshot), and
- *   "delegate harness=<h> cwd=<dir>\n<task>" goes to the classifier.
+ *   its directory may neither be in nor hold a protected place (credentials, the zsh snapshot), its directory
+ *   and task are held to DELEGATE_RULES (DENY_RULES plus credential locations and PI_JEV_*; not the shell
+ *   injection-guard), and "delegate harness=<h> cwd=<dir>\n<task>" goes to the classifier. Codex's
+ *   workspace-write only limits writes, so a task that reads a credential must not rest on the classifier.
  *   3. jev classifier (TypeSafe, via Pi's model registry) for bash, write, edit and MCP
  *      tools (mcp__*, including calls from codemode scripts), asking {allow, confirm, deny}
  *      with probabilities. The TypeSafe key is read here with op-agent (reference in
@@ -188,6 +190,15 @@ const DENY_RULES: { re: RegExp; reason: string }[] = [
   { re: /PI_JEV_WRAPPED/, reason: "changing PI_JEV_WRAPPED, which keeps a nested Pi on the session's zsh snapshot" },
 ];
 
+// A delegated task is prose, so these also stop one that only names a credential location (a false deny
+// is possible); bash leaves such commands to injection-guard and the classifier (ssh -i ~/.ssh/... is fine).
+const DELEGATE_RULES: { re: RegExp; reason: string }[] = [
+  { re: /(?:^|[^\w.-])\.(?:ssh|gnupg|netrc)(?![\w-])|\.config\/(?:op|gh\/hosts\.yml)(?![\w.-])|auth\.json|credentials/i,
+    reason: "handing over a credential location (~/.ssh, ~/.gnupg, ~/.config/op, gh hosts.yml, .netrc, auth.json, *credentials*)" },
+  { re: /PI_JEV_/, reason: "handing over pi-jev's settings (PI_JEV_*)" },
+  ...DENY_RULES,
+];
+
 type RuleDeny = { layer: string; reason: string; unavailable?: true };
 
 // Claude Code's PreToolUse hook, given the command the way Claude Code gives it. It prints a decision only to
@@ -272,7 +283,7 @@ function expandShellWords(command: string): Promise<Expansion> {
 }
 
 async function ruleDeny(kind: string, text: string): Promise<RuleDeny | undefined> {
-  const hit = DENY_RULES.find((r) => r.re.test(text));
+  const hit = (kind === "delegate" ? DELEGATE_RULES : DENY_RULES).find((r) => r.re.test(text));
   if (hit) return { layer: "deterministic", reason: hit.reason };
   return kind === "bash" ? injectionGuard(text) : undefined;
 }
@@ -426,8 +437,8 @@ export default function (pi: ExtensionAPI) {
     const text = shell.expansion ? `${command}\n# expanded:\n${shell.expansion}` : command;
     const about = { tool: kind, text: command, ...(shell.expansion ? { expanded: shell.expansion } : {}) };
 
-    // 2) Deterministic deny (written for commands and paths, so not for MCP inputs or a delegated task)
-    const hit = mcp || kind === "delegate" ? undefined : await ruleDeny(kind, text);
+    // 2) Deterministic deny (written for commands and paths, so not for MCP inputs; a delegated task gets DELEGATE_RULES)
+    const hit = mcp ? undefined : await ruleDeny(kind, text);
     if (hit) {
       log({ layer: hit.layer, ...about, decision: "deny", reason: hit.reason });
       return { block: true, reason: `jev-gate (rule): ${hit.reason}`, terminate: true };

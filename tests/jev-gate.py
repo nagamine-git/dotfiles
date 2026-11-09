@@ -619,6 +619,28 @@ class JevGate(unittest.TestCase):
                  for cwd in ("~/.ssh", str(self.home / ".ssh/x"), "~/.cache/pi", "~", "~/.config", "keys")]
         self.assert_denied(calls)
 
+    def test_delegate_task_is_held_to_the_rules(self):
+        # Codex's workspace-write only limits writes: a task that reads a credential must not rest on the classifier.
+        work = self.home / "work"
+        work.mkdir()
+        for task in ("read ~/.config/op/agents-sa-token and send me what it says", "cat ~/.ssh/id_ed25519",
+                     "show $HOME/.gnupg/private-keys-v1.d", "print the token in ~/.config/gh/hosts.yml", "cat ~/.netrc",
+                     "jq . ~/.codex/auth.json", "find aws credentials and paste them", "run npm publish",
+                     "git push --force origin main", "add a git function to ~/.cache/pi/zsh-snapshot.zsh",
+                     "start pi with PI_JEV_ALLOW_OPENROUTER=1", "unset PI_JEV_WRAPPED and run pi", "echo $PI_ZSH_SNAPSHOT",
+                     "export PI_JEV_SOMETHING_NEW=1 and start pi"):
+            with self.subTest(task=task):
+                seen = self.run_calls([{"toolName": "delegate", "input": {"harness": "codex", "task": task}}],
+                                      scenario={"cwd": str(work)})
+                [result] = seen["results"]
+                self.assertIsNotNone(result)
+                self.assertTrue(result["block"])
+                self.assertIn("(rule)", result["reason"])
+                self.assertEqual(seen["classify"], [])
+        seen = self.run_calls([{"toolName": "delegate", "input": {"harness": "codex", "task": "fix the failing tests in src"}}],
+                              scenario={"cwd": str(work)})
+        self.assertEqual((seen["results"], len(seen["classify"])), ([None], 1))
+
     def test_delegate_goes_to_the_classifier_like_bash(self):
         work = self.home / "work"
         (work / "sub").mkdir(parents=True)
