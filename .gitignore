@@ -39,3 +39,6 @@ wolow-companion
 
 # ntfy のトピック名は購読すれば誰でも通知本文を読めるので公開リポジトリに入れない (各ホストにローカル配置)
 private_dot_config/claude-notify/config
+
+# Espanso のローカル平文。chezmoi add による private_ 接頭辞付きの取り込みやバックアップも除外する。
+private_dot_config/espanso/match/*local.yml*

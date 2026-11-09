@@ -103,6 +103,9 @@ ttf-ibm-plex
 way-thumbsense-git
 yazi
 ethtool
+# espanso: クロスOS テキスト展開。Hyprland(Wayland) は wayland 版が必要。
+# AUR のソースビルドで cargo を使う (rustup 環境でビルド)。失敗時は run_onchange_after_espanso が再試行する。
+espanso-wayland
 
 # security / firewall / update-audit
 arch-audit

@@ -1,0 +1,13 @@
+# キーコードによる文字列注入を避け、配列に依存しない貼り付けで展開する。
+backend: Clipboard
+preserve_clipboard: true
+{{ if eq .chezmoi.os "linux" }}
+# Wayland は配列を自動判定できないため、Hyprland と同じ Colemak を明示する。
+keyboard_layout:
+  layout: us
+  variant: colemak
+# foot / Ghostty の貼り付け。ブラウザでは通常プレーンテキスト貼り付けになる。
+paste_shortcut: CTRL+SHIFT+V
+{{ else if eq .chezmoi.os "darwin" }}
+paste_shortcut: CMD+V
+{{ end -}}

@@ -1,3 +1,6 @@
+# Espanso の個人値は端末内の平文で管理し、chezmoi には取り込まない。
+.config/espanso/match/*.local.yml*
+
 README.md
 AGENTS.md
 REVIEW.md
