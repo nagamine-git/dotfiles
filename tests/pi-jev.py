@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import pty
+import select
 import shutil
 import subprocess
 import tempfile
@@ -23,12 +25,18 @@ KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY",
 
 FAKE_PI = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
+try:  # whether Pi owns the terminal it was started from (None without one)
+    tty = os.open("/dev/tty", os.O_RDWR)
+    foreground = os.tcgetpgrp(tty) == os.getpgrp()
+    os.close(tty)
+except OSError:
+    foreground = None
 keys = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
         "PI_JEV_WRAPPED")
 with (pathlib.Path(os.environ["HOME"])/"pi-runs.jsonl").open("a") as f:
     f.write(json.dumps({"args": sys.argv[1:], "env": {k: os.environ[k] for k in keys if k in os.environ},
                         "snapshot": os.environ.get("PI_ZSH_SNAPSHOT"),
-                        "sha256": os.environ.get("PI_ZSH_SNAPSHOT_SHA256")})+"\\n")
+                        "sha256": os.environ.get("PI_ZSH_SNAPSHOT_SHA256"), "foreground": foreground})+"\\n")
 '''
 
 # What the owner's ~/.zshrc might hold: plain aliases and functions to keep, and ones the snapshot must leave out.
@@ -183,6 +191,37 @@ class PiJev(unittest.TestCase):
         out = subprocess.run([ZSH, "-fc", 'source "$1"; myfn x; eval hello; eval both; eval "\\\\both"', "zsh", str(snap)],
                              capture_output=True, text=True, timeout=10)
         self.assertEqual((out.stdout, out.stderr), ("fn:x\nhello-alias\nalias-both\nfn-both\n", ""))
+
+    @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
+    def test_the_snapshot_leaves_the_terminal_to_pi(self):
+        # An interactive zsh takes the terminal's foreground process group and does not give it back to
+        # pi-jev; Pi then stops on its first terminal write ("zsh: suspended (tty output) pi-jev").
+        (self.home / ".zshrc").write_text(FIXTURE_ZSHRC)
+        pid, fd = pty.fork()  # the child leads a new session whose controlling terminal is the pty
+        if pid == 0:
+            try:
+                os.chdir(self.home)
+                os.execve(str(self.wrapper), [str(self.wrapper)], self.env)
+            finally:
+                os._exit(127)
+        deadline, status = time.monotonic() + 10, None
+        while status is None and time.monotonic() < deadline:
+            if select.select([fd], [], [], 0.1)[0]:
+                try:
+                    os.read(fd, 4096)
+                except OSError:
+                    pass
+            done, code = os.waitpid(pid, os.WNOHANG)
+            if done:
+                status = code
+        if status is None:
+            os.kill(pid, 9)
+            os.waitpid(pid, 0)
+        os.close(fd)
+        self.assertEqual(status, 0)
+        [run] = self.calls("pi-runs.jsonl")
+        self.assertIsNotNone(run["sha256"])
+        self.assertIs(run["foreground"], True)
 
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_the_next_launch_rebuilds_the_read_only_snapshot(self):
