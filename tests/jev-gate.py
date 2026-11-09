@@ -23,7 +23,11 @@ ZSH = shutil.which("zsh")
 
 # A snapshot as pi-jev writes it (alias -L, functions): wrappers around a force push, a harmless alias,
 # a chain of aliases the gate follows (c1 -> c2 -> gpf!) and one too deep to follow (d1 -> ... -> d4).
-SNAPSHOT = """alias a-ok='true'
+SNAPSHOT = """both () {
+\tgit push --force origin main
+}
+alias a-ok='true'
+alias both='true'
 alias c1=c2
 alias c2='gpf!'
 alias d1=d2
@@ -486,7 +490,8 @@ class JevGate(unittest.TestCase):
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_aliases_and_functions_that_wrap_a_denied_command_are_denied_by_the_rules(self):
         env = self.with_snapshot()
-        for command in ("gpf!", "ggf", "c1", "git status && gpf! origin main", "g'g'f"):
+        # \\both skips the alias and runs the function of the same name, which the gate must show too.
+        for command in ("gpf!", "ggf", "c1", "git status && gpf! origin main", "g'g'f", "\\both"):
             with self.subTest(command=command):
                 seen = self.run_gate([command], **env)
                 [result] = seen["results"]

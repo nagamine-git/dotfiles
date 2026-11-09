@@ -226,6 +226,7 @@ function injectionGuard(command: string): Promise<RuleDeny | undefined> {
 // Node's stdin is a socket, which /dev/stdin cannot open). Prints what each
 // alias or function among the command's words (zsh's own split, quotes removed, plus a split on every other
 // character, for words inside $(...) or after =) stands for, then the same for the words of those, 3 levels.
+// A name with both shows both (\name skips the alias and runs the function).
 // Exit 5: the snapshot changed; 3: it does not load; 4: still an alias or function after 3 levels.
 const RESOLVE_ZSH = [
   '[[ $(command -p sha256sum < $1) == "$2 "* ]] || exit 5',
@@ -243,7 +244,8 @@ const RESOLVE_ZSH = [
   '    if (( $+aliases[$__jg_w] )); then',
   '      builtin print -r -- "$__jg_w: aliased to $aliases[$__jg_w]"',
   '      __jg_next+=( ${(f)"$(__jg_words $aliases[$__jg_w])"} )',
-  '    elif (( $+functions[$__jg_w] )); then',
+  '    fi',
+  '    if (( $+functions[$__jg_w] )); then',
   '      builtin print -r -- "$__jg_w () { $functions[$__jg_w] }"',
   '      __jg_next+=( ${(f)"$(__jg_words $functions[$__jg_w])"} )',
   '    fi',

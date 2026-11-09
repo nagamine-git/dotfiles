@@ -43,6 +43,10 @@ alias lsi='eza --icons'
 alias lc='ls -l --color=always'
 alias cat='bat --paging=never'
 myfn () { print -r -- "fn:$1" }
+# A function and an alias of one name (Ubuntu's /etc/zsh/zshrc does this for run-help): sourcing the alias
+# before the function would expand the name in the definition, a parse error.
+both () { print -r -- fn-both }
+alias both='print -r -- alias-both'
 sort () { print -r -- shadowed }
 command_not_found_handler () { print -r -- handler }
 TRAPEXIT () { : }
@@ -173,9 +177,9 @@ class PiJev(unittest.TestCase):
         self.assertEqual(snap.stat().st_mode & 0o777, 0o400)  # read-only until pi-jev rebuilds it
         self.assertEqual(snap.parent.stat().st_mode & 0o777, 0o500)
         self.assertEqual(sorted(p.name for p in snap.parent.iterdir()), ["zsh-snapshot.zsh"])
-        out = subprocess.run([ZSH, "-fc", 'source "$1"; myfn x; eval hello', "zsh", str(snap)],
+        out = subprocess.run([ZSH, "-fc", 'source "$1"; myfn x; eval hello; eval both; eval "\\\\both"', "zsh", str(snap)],
                              capture_output=True, text=True, timeout=10)
-        self.assertEqual((out.stdout, out.stderr), ("fn:x\nhello-alias\n", ""))
+        self.assertEqual((out.stdout, out.stderr), ("fn:x\nhello-alias\nalias-both\nfn-both\n", ""))
 
     @unittest.skipUnless(ZSH or os.environ.get("CI"), "zsh が必要")
     def test_the_next_launch_rebuilds_the_read_only_snapshot(self):
