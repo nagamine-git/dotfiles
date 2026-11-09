@@ -28,6 +28,10 @@
  *   allow through. Every word is resolved, wherever it stands, so a word that only looks like an alias is
  *   expanded too. Names built at run time ($(...) or a variable as the command, eval) cannot be resolved
  *   from the text; the classifier is told they are worth a glance.
+ *
+ *   delegate (delegate.ts: Claude Code or Codex do a task with their own write access) is gated like bash:
+ *   its directory may neither be in nor hold a protected place (credentials, the zsh snapshot), and
+ *   "delegate harness=<h> cwd=<dir>\n<task>" goes to the classifier.
  *   3. jev classifier (TypeSafe, via Pi's model registry) for bash, write, edit and MCP
  *      tools (mcp__*, including calls from codemode scripts), asking {allow, confirm, deny}
  *      with probabilities. The TypeSafe key is read here with op-agent (reference in
@@ -55,7 +59,7 @@ import { fileURLToPath } from "node:url";
 
 const HOME = os.homedir();
 const LOG = path.join(HOME, ".pi/agent/jev-gate.log.jsonl");
-const GATED = new Set(["bash", "write", "edit"]);
+const GATED = new Set(["bash", "write", "edit", "delegate"]);
 const TYPESAFE_REF_FILE = path.join(HOME, ".config/agents/model-typesafe.env");
 const OP_AGENT = path.join(HOME, ".local/bin/op-agent");
 const INJECTION_GUARD = process.env.JEV_GATE_INJECTION_GUARD || path.join(HOME, ".claude/hooks/injection-guard.sh");
@@ -151,6 +155,20 @@ function protectedPath(tool: string, input: any, cwd: string): string | undefine
       return `${p} is where pi-jev keeps the zsh snapshot that every bash command sources`;
     }
   }
+}
+
+// Where delegate's child would work, resolved like delegate.ts does (~ expanded, symlinks followed).
+function delegateDir(input: any, cwd: string): string {
+  return real(toolPath(String(input?.cwd ?? "."), cwd));
+}
+
+// Claude Code and Codex may write anywhere below the directory they are given, so it may neither be in
+// a protected place nor hold one.
+function protectedWorkdir(dir: string): string | undefined {
+  const inside = protectedPath("write", { path: dir }, dir);
+  if (inside) return inside;
+  const held = [...SECRET_PATHS, ...SNAPSHOT_DIRS].find((s) => within(dir, s) || within(dir, real(s)));
+  if (held) return `${dir} holds ${held}`;
 }
 
 // --- Deterministic rules (fast, no model call) ---------------------------------
@@ -259,7 +277,11 @@ async function ruleDeny(kind: string, text: string): Promise<RuleDeny | undefine
   return kind === "bash" ? injectionGuard(text) : undefined;
 }
 
-function subject(event: any): { kind: string; text: string } {
+function subject(event: any, cwd: string): { kind: string; text: string } {
+  if (event.toolName === "delegate") {
+    const input = event.input ?? {};
+    return { kind: "delegate", text: `delegate harness=${input.harness} cwd=${delegateDir(input, cwd)}\n${input.task ?? ""}` };
+  }
   if (isToolCallEventType("bash", event)) return { kind: "bash", text: String(event.input.command ?? "") };
   if (isToolCallEventType("write", event)) return { kind: "write", text: String(event.input.path ?? "") };
   if (isToolCallEventType("edit", event)) return { kind: "edit", text: String(event.input.path ?? "") };
@@ -292,7 +314,8 @@ async function askJev(ctx: any, kind: string, text: string): Promise<
             instructions:
               "A personal dev agent (single-owner machine, trusted hosts) wants to run this. " +
               "Classify the risk of letting it run without asking the owner. " +
-              "Judge what the command changes or sends, not whether it uses the network: reading from a trusted service is ordinary.",
+              "Judge what the command changes or sends, not whether it uses the network: reading from a trusted service is ordinary. " +
+              "Delegating work to another agent (tool delegate) is judged by the task it hands over, as if it ran here.",
             criteria: {
               allow:
                 "Ordinary, reversible dev work: builds, tests, local edits, git add/commit, scoped scripts, scratch files under /tmp, " +
@@ -387,16 +410,24 @@ export default function (pi: ExtensionAPI) {
         return { block: true, reason: `jev-gate (protected path): ${why}` };
       }
     }
+    if (event.toolName === "delegate") {
+      const dir = delegateDir(event.input, ctx.cwd);
+      const why = protectedWorkdir(dir);
+      if (why) {
+        log({ layer: "protected-path", tool: "delegate", text: dir, decision: "deny", reason: why });
+        return { block: true, reason: `jev-gate (protected path): ${why}` };
+      }
+    }
     const mcp = event.toolName.startsWith("mcp__");
     if (!GATED.has(event.toolName) && !mcp) return;
-    const { kind, text: command } = subject(event);
+    const { kind, text: command } = subject(event, ctx.cwd);
     // What the command's zsh aliases and functions stand for, for layers 2 and 3 and the log.
     const shell = kind === "bash" ? await expandShellWords(command) : {};
     const text = shell.expansion ? `${command}\n# expanded:\n${shell.expansion}` : command;
     const about = { tool: kind, text: command, ...(shell.expansion ? { expanded: shell.expansion } : {}) };
 
-    // 2) Deterministic deny (written for commands and paths, so not for MCP inputs)
-    const hit = mcp ? undefined : await ruleDeny(kind, text);
+    // 2) Deterministic deny (written for commands and paths, so not for MCP inputs or a delegated task)
+    const hit = mcp || kind === "delegate" ? undefined : await ruleDeny(kind, text);
     if (hit) {
       log({ layer: hit.layer, ...about, decision: "deny", reason: hit.reason });
       return { block: true, reason: `jev-gate (rule): ${hit.reason}`, terminate: true };

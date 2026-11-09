@@ -76,7 +76,8 @@ const ctx = {
     findOfType: () => (scenario.noClassifier ? undefined : { id: "jev-latest" }),
     classify: async (_model, context, options) => {
       seen.classify.push({ apiKey: options?.apiKey ?? null, envKey: process.env.TYPESAFE_API_KEY ?? null,
-                           state: context.state, confirmCriteria: context.questions.verdict.criteria.confirm });
+                           state: context.state, confirmCriteria: context.questions.verdict.criteria.confirm,
+                           instructions: context.questions.verdict.instructions });
       if (scenario.classifyThrows) throw new Error("synthetic classifier failure");
       return { stopReason: scenario.stopReason ?? "stop",
                answers: { verdict: { type: "choice", choice: scenario.verdict, probabilities: {}, confidence: 0.9 } } };
@@ -605,6 +606,37 @@ class JevGate(unittest.TestCase):
                 self.assertIn("(rule)", seen["results"][0]["reason"])
                 self.assertEqual(seen["classify"], [])
         self.assertIsNone(self.run_gate(["ls ~/.cache/pip"])["results"][0])
+
+    # --- delegate: Claude Code or Codex do the task with their own write access ---------------------
+
+    def test_delegate_into_or_above_a_protected_place_is_denied(self):
+        self.secret_files()
+        (self.home / "work").mkdir()
+        (self.home / ".cache/pi").mkdir(parents=True)
+        (self.home / "work/keys").symlink_to(self.home / ".ssh")
+        calls = [{"toolName": "delegate", "input": {"harness": harness, "task": "tidy up", "cwd": cwd}}
+                 for harness in ("codex", "claude")
+                 for cwd in ("~/.ssh", str(self.home / ".ssh/x"), "~/.cache/pi", "~", "~/.config", "keys")]
+        self.assert_denied(calls)
+
+    def test_delegate_goes_to_the_classifier_like_bash(self):
+        work = self.home / "work"
+        (work / "sub").mkdir(parents=True)
+        where = {"cwd": str(work)}
+        call = {"toolName": "delegate", "input": {"harness": "codex", "task": "fix the tests", "cwd": "sub"}}
+        seen = self.run_calls([call], scenario=where)
+        self.assertEqual(seen["results"], [None])
+        [classified] = seen["classify"]
+        self.assertEqual(classified["state"], {"tool": "delegate",
+                                               "command_or_path": "delegate harness=codex cwd=%s\nfix the tests" % (work / "sub")})
+        self.assertIn("delegat", classified["instructions"])
+        seen = self.run_calls([{"toolName": "delegate", "input": {"harness": "claude", "task": "review"}}], scenario=where)
+        self.assertEqual(seen["classify"][0]["state"]["command_or_path"], "delegate harness=claude cwd=%s\nreview" % work)
+        self.assertTrue(self.run_calls([call], verdict="deny", scenario=where)["results"][0]["block"])
+        self.assertTrue(self.run_calls([call], verdict="confirm", has_ui=False, scenario=where)["results"][0]["block"])
+        seen = self.run_calls([call], verdict="confirm", scenario=where)
+        self.assertEqual((seen["results"], seen["confirms"]), ([None], 1))
+        self.assertTrue(self.run_calls([call], has_ui=False, scenario=dict(where, noClassifier=True))["results"][0]["block"])
 
     # --- MCP tools --------------------------------------------------------------------------------
 

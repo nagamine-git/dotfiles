@@ -6,6 +6,9 @@
  * The task goes as "Task: <task>", as in Pi's subagent example, so it is never read as an option or a subcommand.
  * The children get no herdr pane variables (their hooks would retitle and re-state Pi's pane) and
  * CLAUDE_NOTIFY_PHONE=never (notify.ts already reports Pi's run). Escape stops them; answers are cut at about 50 KB.
+ * The child may write anywhere below its directory, so that is Pi's working directory or below it (symlinks
+ * resolved), never the home directory itself and never inside a dot directory of home (~/.ssh, ~/.config, ...)
+ * unless Pi itself works in there. jev-gate also gates delegate (protected places, the classifier).
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
@@ -43,6 +46,26 @@ function run(cmd: string, args: string[], cwd: string, signal?: AbortSignal): Pr
   });
 }
 
+// The child's directory, or why it may not work there.
+function workdir(given: string, piCwd: string): { dir?: string; refused?: string } {
+  const home = os.homedir();
+  const expanded = given === "~" || given.startsWith("~/") ? home + given.slice(1) : given;
+  let dir: string, base: string, realHome: string;
+  try {
+    [dir, base, realHome] = [path.resolve(piCwd, expanded), piCwd, home].map((p) => fs.realpathSync(p));
+    if (!fs.statSync(dir).isDirectory()) throw new Error();
+  } catch {
+    return { refused: `${given} is not a directory` };
+  }
+  const under = (top: string, p: string) => p === top || p.startsWith(top + path.sep);
+  if (!under(base, dir)) return { refused: `${dir} is outside Pi's working directory ${base}` };
+  if (dir === realHome) return { refused: `${dir} is the home directory` };
+  const top = path.relative(realHome, dir).split(path.sep)[0];
+  const dot = path.join(realHome, top);
+  if (top.startsWith(".") && top !== ".." && !under(dot, base)) return { refused: `${dir} is inside ~/${top}` };
+  return { dir };
+}
+
 function cut(text: string): string {
   const bytes = Buffer.from(text);
   if (bytes.length <= MAX_OUTPUT) return text;
@@ -71,9 +94,10 @@ export default function (pi: ExtensionAPI) {
     }),
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const cwd = path.resolve(ctx.cwd, params.cwd ?? ".");
+      const where = workdir(params.cwd ?? ".", ctx.cwd);
+      const cwd = where.dir ?? path.resolve(ctx.cwd, params.cwd ?? ".");
       const fail = (text: string) => ({ content: [{ type: "text" as const, text }], details: { harness: params.harness, cwd }, isError: true });
-      if (!fs.statSync(cwd, { throwIfNoEntry: false })?.isDirectory()) return fail(`delegate: ${cwd} is not a directory`);
+      if (where.refused) return fail(`delegate: ${where.refused}, so ${params.harness} does not run there`);
       const prompt = `Task: ${params.task}`;
       const tmp = params.harness === "codex" ? fs.mkdtempSync(path.join(os.tmpdir(), "pi-delegate-")) : undefined;
       try {

@@ -101,11 +101,11 @@ class Delegate(unittest.TestCase):
         self.env = dict(HERDR, PATH="%s:%s:/usr/bin:/bin" % (self.bin, Path(NODE).parent), HOME=str(base),
                         FAKE_LOG=str(self.log), KEEP_ME="1", TMPDIR=str(self.tmpdir), LANG="C.UTF-8")
 
-    def delegate(self, harness, task="fix it", timeout=60, abort_after_ms=None, **extra):
+    def delegate(self, harness, task="fix it", timeout=60, abort_after_ms=None, ctx_cwd=None, **extra):
         params = {"harness": harness, "task": task}
         if "cwd" in extra:
             params["cwd"] = extra.pop("cwd")
-        scenario = {"params": params, "cwd": str(self.cwd), "abortAfterMs": abort_after_ms}
+        scenario = {"params": params, "cwd": str(ctx_cwd or self.cwd), "abortAfterMs": abort_after_ms}
         result = subprocess.run([NODE, "--disable-warning=ExperimentalWarning", "run.mjs", json.dumps(scenario)],
                                 cwd=self.work, env=dict(self.env, **extra), capture_output=True, text=True, timeout=timeout)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -161,6 +161,36 @@ class Delegate(unittest.TestCase):
         out = self.delegate("codex", cwd="missing")
         self.assertIn("is not a directory", self.text(out))
         self.assertEqual(self.calls(), [])
+
+    def refused(self, out, why):
+        self.assertTrue(out["result"]["isError"])
+        self.assertIn(why, self.text(out))
+
+    def test_cwd_must_stay_inside_pis_working_directory(self):
+        home = Path(self.env["HOME"])
+        (home / "elsewhere").mkdir()
+        (self.cwd / "out").symlink_to(home / "elsewhere")
+        for cwd in ("..", str(home / "elsewhere"), "/tmp", "out", "sub/../.."):
+            with self.subTest(cwd=cwd):
+                self.refused(self.delegate("codex", cwd=cwd), "outside")
+        self.assertEqual(self.calls(), [])
+
+    def test_home_and_the_dot_directories_under_it_are_refused(self):
+        home = Path(self.env["HOME"])
+        (home / ".ssh").mkdir()
+        self.refused(self.delegate("codex", ctx_cwd=home), "home directory")
+        self.refused(self.delegate("codex", ctx_cwd=home, cwd=".ssh"), ".ssh")
+        self.assertEqual(self.calls(), [])
+        self.assertFalse(self.delegate("codex", ctx_cwd=home, cwd="project")["result"]["isError"])
+
+    def test_inside_a_dot_directory_pis_own_tree_is_allowed(self):
+        home = Path(self.env["HOME"])
+        repo = home / ".local/share/chezmoi"
+        (repo / "sub").mkdir(parents=True)
+        for cwd in (".", "sub"):
+            with self.subTest(cwd=cwd):
+                self.assertFalse(self.delegate("codex", ctx_cwd=repo, cwd=cwd)["result"]["isError"])
+        self.refused(self.delegate("codex", ctx_cwd=repo, cwd=".."), "outside")
 
     def test_long_answers_are_cut_at_about_50_kb_on_a_character_boundary(self):
         out = self.delegate("claude", FAKE_MODE="big")
