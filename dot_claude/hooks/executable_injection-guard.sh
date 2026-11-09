@@ -13,6 +13,9 @@ set -uo pipefail
 input="$(cat)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
 [ -z "$cmd" ] && exit 0
+# grep matches one line at a time, so a command split over lines (curl ... | <newline> bash) would slip past
+# every rule. Join the lines first. This can also match across lines that are unrelated (more false denies).
+cmd="$(printf '%s' "$cmd" | tr '\n\r' '  ')"
 
 deny() {
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$1"

@@ -11,6 +11,7 @@
  * unless Pi itself works in there. jev-gate also gates delegate (protected places, the rules, the classifier).
  * Both resolve the directory one way (~ expanded, realpath), so @ and file: paths are not taken. Checking and
  * running are not atomic; inside Pi's project and checked by jev-gate, that window is small enough to leave.
+ * Keys and tokens of the common shapes in the answer are masked before it reaches Pi.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
@@ -67,6 +68,22 @@ function workdir(given: string, piCwd: string): { dir?: string; refused?: string
   const dot = path.join(realHome, top);
   if (top.startsWith(".") && top !== ".." && !under(dot, base)) return { refused: `${dir} is inside ~/${top}` };
   return { dir };
+}
+
+// Private key blocks and common token shapes (GitHub, OpenAI / Anthropic, 1Password service accounts, Slack, AWS).
+const SECRET_SHAPES = [
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g,
+  /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g,
+  /\bsk-(?:ant-)?[A-Za-z0-9_-]{20,}/g,
+  /\bops_[A-Za-z0-9._-]{20,}/g,
+  /\bxox[bpa]-[A-Za-z0-9-]{10,}/g,
+  /\bAKIA[0-9A-Z]{16}\b/g,
+];
+
+function mask(text: string): { text: string; count: number } {
+  let count = 0;
+  for (const shape of SECRET_SHAPES) text = text.replace(shape, () => (count++, "[REDACTED]"));
+  return { text, count };
 }
 
 function cut(text: string): string {
@@ -129,8 +146,11 @@ export default function (pi: ExtensionAPI) {
           try { text = fs.readFileSync(last!, "utf8").trim(); } catch { /* Codex wrote no last message */ }
         }
         if (isError) text = `${params.harness} exited with ${r.code}${text ? `:\n${text}` : ""}${stderr ? `\n--- stderr ---\n${stderr}` : ""}`;
+        const masked = mask(text);
+        text = masked.text;
+        if (masked.count) text += `\n\n(delegate: 鍵やトークンらしい文字列を ${masked.count} か所伏せた)`;
         if (costUsd !== undefined) text += `\n\n(Claude Code の費用の見積もり: $${costUsd.toFixed(4)}。サブスクリプションでは API 料金に換算した目安で、請求額ではない)`;
-        return { content: [{ type: "text", text: cut(text || "(no answer)") }], details: { harness: params.harness, cwd, exitCode: r.code, costUsd }, isError };
+        return { content: [{ type: "text", text: cut(text || "(no answer)") }], details: { harness: params.harness, cwd, exitCode: r.code, costUsd, redacted: masked.count }, isError };
       } finally {
         if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
       }

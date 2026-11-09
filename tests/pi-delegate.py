@@ -52,6 +52,8 @@ if name == "claude":
         print("rate limited", file=sys.stderr)
         print(json.dumps({"type": "result", "is_error": True, "result": "API Error"})); sys.exit(1)
     result = "完了しました。" * 20000 if mode == "big" else "done"
+    if mode == "secrets":
+        result = open(os.environ["FAKE_SECRETS"]).read()
     print(json.dumps({"type": "result", "is_error": False, "result": result, "total_cost_usd": 0.0123}))
 else:
     if mode == "fail":
@@ -198,6 +200,25 @@ class Delegate(unittest.TestCase):
             with self.subTest(cwd=cwd):
                 self.assertFalse(self.delegate("codex", ctx_cwd=repo, cwd=cwd)["result"]["isError"])
         self.refused(self.delegate("codex", ctx_cwd=repo, cwd=".."), "outside")
+
+    def test_keys_and_tokens_in_the_answer_are_masked(self):
+        # Synthetic look-alikes, assembled here so no real-looking secret sits in the repository.
+        block_body = "synthetic-not-a-real-block-" + "x" * 20
+        secrets = ["-----BEGIN OPENSSH " + "PRIVATE KEY-----\n" + block_body + "\n-----END OPENSSH " + "PRIVATE KEY-----",
+                   "gh" + "p_" + "A" * 36, "gh" + "o_" + "B" * 36, "github" + "_pat_" + "C" * 40,
+                   "sk" + "-ant-" + "D" * 40, "sk" + "-" + "E" * 40, "op" + "s_" + "eyJ" + "F" * 60,
+                   "xo" + "xb-" + "1234-5678-" + "G" * 20, "AK" + "IA" + "H" * 16]
+        path = Path(self.env["HOME"]) / "answer.txt"
+        path.write_text("見つけた値:\n" + "\n".join(secrets) + "\nふつうの文 sk-learn と task-runner は残る\n")
+        out = self.delegate("claude", FAKE_MODE="secrets", FAKE_SECRETS=str(path))
+        shown = self.text(out)
+        for secret in secrets[1:]:
+            self.assertNotIn(secret, shown)
+        self.assertNotIn(block_body, shown)
+        self.assertIn("ふつうの文 sk-learn と task-runner は残る", shown)
+        self.assertIn("9 か所", shown)
+        self.assertEqual(out["result"]["details"]["redacted"], 9)
+        self.assertNotIn("伏せ", self.text(self.delegate("claude")))
 
     def test_long_answers_are_cut_at_about_50_kb_on_a_character_boundary(self):
         out = self.delegate("claude", FAKE_MODE="big")
