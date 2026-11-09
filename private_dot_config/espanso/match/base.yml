@@ -1,0 +1,6 @@
+# 公開許可済みの氏名のみ管理する。他の値は管理外の private.local.yml に置く。
+# zcma は参照未指定のため未登録。
+matches:
+  - trigger: "znam"
+    word: true
+    replace: "永峰 剛志"

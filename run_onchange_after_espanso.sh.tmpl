@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Espanso (クロスOS テキスト展開) のサービス登録と再読み込み。
+# 下の設定ファイルが変わったときだけ chezmoi が再実行する。
+# default: {{ include "private_dot_config/espanso/config/default.yml.tmpl" | sha256sum }}
+# base:    {{ include "private_dot_config/espanso/match/base.yml" | sha256sum }}
+# secrets: {{ include "private_dot_config/espanso/match/secrets.yml" | sha256sum }}
+# refs:    {{ include "private_dot_config/espanso/onepassword-references.json" | sha256sum }}
+# sync:    {{ include "private_dot_config/espanso/scripts/onepassword-sync.py" | sha256sum }}
+set -eu
+
+# espanso が無ければ導入を試みる。
+if ! command -v espanso >/dev/null 2>&1; then
+{{- if eq .chezmoi.os "darwin" }}
+  # macOS: Homebrew で導入 (無ければスキップ)。
+  if command -v brew >/dev/null 2>&1; then
+    brew install espanso || echo "WARN: brew install espanso が失敗。手動で導入してください" >&2
+  fi
+{{- else }}
+  # Linux(Arch): pkglist.txt 経由で espanso-wayland が入る想定。
+  # まだなら paru で試す (失敗しても apply 全体は止めない)。
+  if command -v paru >/dev/null 2>&1; then
+    paru -S --needed --noconfirm espanso-wayland || echo "WARN: espanso-wayland の導入に失敗。手動で導入してください" >&2
+  fi
+{{- end }}
+fi
+
+command -v espanso >/dev/null 2>&1 || { echo "WARN: espanso が未導入のため設定反映をスキップ" >&2; exit 0; }
+
+# 初回だけローカル平文を作る。既存ファイルは認証も上書きもせず再利用する。
+if command -v python3 >/dev/null 2>&1 && [ -f "$HOME/.config/espanso/scripts/onepassword-sync.py" ]; then
+  python3 "$HOME/.config/espanso/scripts/onepassword-sync.py" --no-restart || \
+    echo "WARN: Espanso の未取得項目があります。private.local.yml を編集するか同期を再実行してください" >&2
+else
+  echo "WARN: 初回の値取り込みには python3 と onepassword-sync.py が必要です" >&2
+fi
+
+# サービス未登録なら登録 (systemd user / launchd をクロスOSで面倒見てくれる)。
+espanso service register >/dev/null 2>&1 || true
+
+# 設定変更を反映。起動していなければ start にフォールバック。
+espanso restart >/dev/null 2>&1 || espanso start >/dev/null 2>&1 || \
+  echo 'WARN: espanso の起動に失敗。espanso start を手動実行してください' >&2

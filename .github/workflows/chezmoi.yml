@@ -96,6 +96,9 @@ jobs:
           shellcheck dot_local/share/vicinae/scripts/executable_meet-join.sh
           python3 tests/vicinae.py
 
+      - name: Verify Espanso local imports without vault access
+        run: python3 tests/espanso.py
+
       - name: Verify chezmoi source state
         run: |
           # doctor は診断ログ目的のみ (CI 環境では常に一部失敗するため非ブロッキング)
