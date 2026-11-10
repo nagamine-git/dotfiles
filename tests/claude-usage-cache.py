@@ -88,6 +88,34 @@ class UsageCache(unittest.TestCase):
         self.fixture(reset_5h=int(time.time()) - 100)
         self.assertEqual(self.reader("--reset-5h"), "0")
 
+    def test_json_exports_only_validated_cache_fields(self):
+        self.fixture(unrelated="do-not-export")
+        out = json.loads(self.reader("--json"))
+        self.assertEqual(out["state"], "cached")
+        self.assertEqual(out["windows"]["5h"]["used_percent"], 72)
+        self.assertEqual(out["windows"]["7d"]["remaining_percent"], 82)
+        self.assertGreater(out["expires_at"], time.time())
+        self.assertNotIn("do-not-export", json.dumps(out))
+        self.assertNotIn("unrelated", out)
+
+    def test_json_never_invents_missing_or_stale_capacity(self):
+        out = json.loads(self.reader("--json"))
+        self.assertEqual(out, {"state": "unknown", "fetched_at": None, "expires_at": None, "windows": {}})
+        self.fixture(age=600)
+        self.assertEqual(json.loads(self.reader("--json"))["state"], "stale")
+        self.fixture(reset_5h=int(time.time()) - 1)
+        self.assertEqual(json.loads(self.reader("--json"))["state"], "stale")
+        self.fixture()
+        data = json.loads(self.cache.read_text())
+        data.pop("util_7d")
+        self.cache.write_text(json.dumps(data))
+        out = json.loads(self.reader("--json"))
+        self.assertNotIn("7d", out["windows"])
+
+    def test_json_rejects_utilization_above_one(self):
+        self.fixture(util_5h=1.1)
+        self.assertEqual(json.loads(self.reader("--json"))["state"], "unknown")
+
     def test_linux_display_uses_only_cache_reader(self):
         if not shutil.which("chezmoi"):
             self.skipTest("chezmoi is needed to render the Linux template")

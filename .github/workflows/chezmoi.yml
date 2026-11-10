@@ -77,7 +77,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends zsh
 
-      - name: Verify Pi wrapper, jev gate, notify, delegate, subagent loader and settings with stubbed tools (no keys, no model calls)
+      - name: Verify Pi wrapper, extensions and settings with stubbed tools (no keys, no model calls)
         run: |
           bash -n dot_local/bin/executable_pi-jev
           shellcheck dot_local/bin/executable_pi-jev
@@ -87,6 +87,8 @@ jobs:
           python3 tests/jev-gate.py
           python3 tests/pi-notify.py
           python3 tests/pi-delegate.py
+          python3 tests/claude-usage-cache.py
+          python3 tests/pi-usage.py
           # Their checks against the installed Pi skip here: Pi is only on am5-itx. pi-settings uses chezmoi from above.
           python3 tests/pi-subagent.py
           python3 tests/pi-settings.py

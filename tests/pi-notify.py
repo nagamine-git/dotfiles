@@ -41,7 +41,7 @@ const ctx = {
   hasUI: scenario.mode === "tui" || scenario.mode === "rpc",
   cwd: process.cwd(),
   isIdle: () => scenario.idle,
-  ui: { notify() {}, confirm: async () => true },
+  ui: { notify() {}, setStatus() {}, confirm: async () => true },
   sessionManager: { getBranch: () => scenario.branch },
   modelRegistry: {
     findOfType: () => ({ id: "jev-latest" }),
@@ -111,7 +111,7 @@ class PiNotify(unittest.TestCase):
         self.notify.chmod(0o700)
         self.calls_file = self.home / "notify-calls.jsonl"
         search = ":".join(dict.fromkeys([str(Path(JQ).parent) if JQ else "/usr/bin", "/usr/bin", "/bin"]))
-        self.env = {"HOME": str(self.home), "PATH": search, "LANG": "C.UTF-8"}
+        self.env = {"HOME": str(self.home), "PATH": search, "LANG": "C.UTF-8", "JEV_GATE_MODE": "ask"}
 
     def run_pi(self, steps, mode="tui", idle=True, branch=(), extensions=("notify.ts",), **extra):
         scenario = {"steps": steps, "mode": mode, "idle": idle, "branch": list(branch), "extensions": list(extensions)}
