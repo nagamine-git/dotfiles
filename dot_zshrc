@@ -97,7 +97,7 @@ cgh() {
     [ -n "$dir" ] && cd "$(ghq root)/$dir" || return
 }
 
-# herdr の space を開く hgh / hm / ha / hs (tmux 版の tgh / tm / ta / s の後継)。
+# herdr の space を開く hgh / hd / hm / ha / hs (tmux 版の tgh / tm / ta / s の後継)。
 # herdr の自動命名はペインの cwd に追従するので、呼び出し元のスペース名が変わらないよう、どの関数もこのシェルの cwd を変えない。
 _herdr_err() {
     print -ru2 -- "${funcstack[-1]}: $*"
@@ -204,6 +204,20 @@ hgh() {
     # cgh の cd と chpwd フック (mise, zoxide) の環境変更をサブシェルに閉じ込める。
     # フックが標準出力へ書いてもパスに混ざらない。
     dir=$(cgh "$@" >/dev/null && print -r -- "$PWD") || return
+    _herdr_open_dir "$dir"
+}
+
+# ghq を使わない hgh。引数が既存のディレクトリならそこ、それ以外は zoxide の履歴から選び、そのスペースへ移動する (無ければ作る)
+hd() {
+    _herdr_require herdr jq || return
+    local dir
+    if (( $# == 1 )) && [[ -d $1 ]]; then
+        dir=$1
+    else
+        _herdr_require zoxide fzf || return
+        dir=$(zoxide query -l | fzf --no-multi --exit-0 --query="$*" --preview='ls -FA1 {}') || return
+        [[ -n $dir ]] || return 1
+    fi
     _herdr_open_dir "$dir"
 }
 

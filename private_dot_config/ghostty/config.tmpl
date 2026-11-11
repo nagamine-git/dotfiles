@@ -33,6 +33,10 @@ theme = Hybrid
 keybind = alt+{{ $i }}=unbind
 keybind = alt+digit_{{ $i }}=unbind
 {{- end }}
+# Ctrl+Alt+矢印は既定で Ghostty 自身の分割の移動 (goto_split)。分割は herdr に任せているので外し、herdr のペイン入れ替えに渡す
+{{- range $d := list "up" "down" "left" "right" }}
+keybind = ctrl+alt+arrow_{{ $d }}=unbind
+{{- end }}
 {{- end }}
 
 # Hyprland Optimization (Minimal & Clean)

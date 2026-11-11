@@ -96,7 +96,7 @@ ChatGPTとdotsの設定はchezmoiから自動同期されません。
 - **シェル**: zsh + sheldon + starship (2行プロンプト、`starship.toml.tmpl` で3台配色分岐)
 - **ターミナル**: Ghostty (UDEV Gothic 35NFLG / リガチャ無効 / カーソル点滅無効)
 - **herdr**: 3台とも Ghostty の上で使う多重化ツール。prefix は tmux と同じ **`C-t`**。
-  zsh の `hgh` / `hm` / `ha` / `hs` で space を開く。Claude Code の完了と承認待ちは herdr がデスクトップに通知する
+  zsh の `hgh` / `hd` / `hm` / `ha` / `hs` で space を開く (`hd` は ghq を使わず、ディレクトリの指定か zoxide の履歴から選ぶ)。Claude Code の完了と承認待ちは herdr がデスクトップに通知する
 - **tmux**: ssh 先など herdr の無い場面用に残している。prefix は **`C-t`**。TPM (tmux-power / resurrect / continuum / fzf / tilit)。
   pane 数で main-vertical (≤3) ⇔ tiled (≥4) を自動切替 (`M-Enter` でトグル、`M-m` で zoom)
 - **Neovim**: leader は **Space**。VSCode 相当の操作系 + 認知科学ベースの UI 設定

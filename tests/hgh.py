@@ -1,4 +1,4 @@
-"""dot_zshrc の hgh / hm / ha / hs。偽の herdr・ghq・fzf・zoxide だけを使い、実物は起動しない。"""
+"""dot_zshrc の hgh / hd / hm / ha / hs。偽の herdr・ghq・fzf・zoxide だけを使い、実物は起動しない。"""
 import json
 import os
 from pathlib import Path
@@ -68,7 +68,7 @@ with (pathlib.Path(os.environ['FAKE_DIR'])/'forbidden.log').open('a') as f: f.wr
 def function_definitions():
     """cgh と herdr 系の関数定義だけを dot_zshrc から取り出す。"""
     text = ZSHRC.read_text()
-    names = ["cgh", "hgh", "hm", "ha", "hs"] + re.findall(r"^(_herdr_\w+)\(\) \{$", text, re.M)
+    names = ["cgh", "hgh", "hd", "hm", "ha", "hs"] + re.findall(r"^(_herdr_\w+)\(\) \{$", text, re.M)
     blocks = []
     for name in names:
         match = re.search(rf"^{name}\(\) \{{\n.*?^\}}\n", text, re.M | re.S)
@@ -297,6 +297,59 @@ class Hgh(Base):
         self.assertIn("jq", r.stderr)
         self.assertIsNone(r.fzf)
         self.assertEqual(r.calls, [])
+
+
+class Hd(Base):
+    def setUp(self):
+        super().setUp()
+        self.notes = self.home / "notes"
+        self.notes.mkdir()
+
+    def test_directory_argument_opens_it_without_picking(self):
+        r = self.run_zsh(f"hd {self.notes}", without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.mutations, [self.create_call(self.notes)])
+        self.assertIsNone(r.fzf)
+        self.assertEqual(r.stdout, "")
+        self.assert_caller_untouched(r)
+
+    def test_relative_directory_argument(self):
+        r = self.run_zsh("hd ../notes", without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.mutations, [self.create_call(self.notes)])
+
+    def test_picks_from_zoxide_without_ghq(self):
+        r = self.run_zsh("hd", without=["ghq"], zoxide=[self.start, self.notes], pick="notes")
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.fzf["lines"], [str(self.start), str(self.notes)])
+        self.assertEqual(r.mutations, [self.create_call(self.notes)])
+        self.assertEqual(r.stdout, "")
+        self.assert_caller_untouched(r)
+
+    def test_non_directory_arguments_become_the_query(self):
+        r = self.run_zsh("hd my query", zoxide=[self.notes], pick="cancel")
+        self.assertIn("--query=my query", r.fzf["argv"])
+
+    def test_focuses_existing_workspace(self):
+        r = self.run_zsh("hd", zoxide=[self.notes], pick="notes", panes=[self.pane("w3", self.notes)])
+        self.assertEqual(r.mutations, [["workspace", "focus", "w3"]])
+
+    def test_cancel_changes_nothing(self):
+        r = self.run_zsh("hd", zoxide=[self.notes], pick="cancel")
+        self.assertNotEqual(r.rc, 0)
+        self.assertEqual(r.mutations, [])
+        self.assert_caller_untouched(r)
+
+    def test_missing_zoxide(self):
+        r = self.run_zsh("hd", without=["zoxide"])
+        self.assertNotEqual(r.rc, 0)
+        self.assertIn("zoxide", r.stderr)
+        self.assertIn("hd:", r.stderr)
+        self.assertEqual(r.calls, [])
+
+    def test_missing_herdr(self):
+        r = self.run_zsh(f"hd {self.notes}", without=["herdr"])
+        self.assertNotEqual(r.rc, 0)
+        self.assertIn("herdr", r.stderr)
 
 
 class OpenDir(Base):
