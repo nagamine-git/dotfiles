@@ -134,7 +134,9 @@ const AUTO_INSTRUCTIONS =
   "Auto mode is active. Carry out the user's already approved work through implementation, verification, and completion. " +
   "Do not ask for approval again for ordinary steps within that scope. Follow all organization and repository rules. " +
   "For approved local configuration changes, inspect the targeted diff, run a dry-run, apply the reviewed targets yourself, " +
-  "and verify the result. Do not leave ordinary implementation, testing or local application as the owner's TODO. " +
+  "and verify the result. Run `chezmoi diff <targets>` and then `chezmoi apply <targets>` each as a bare command with literal " +
+  "~/ or absolute file targets and no other bash, write or edit call in between: that inspected form is applied without a risk judgment. " +
+  "Do not leave ordinary implementation, testing or local application as the owner's TODO. " +
   "Executable gate, hook and permission-policy changes and their application are an exception: obey control-review's owner boundary, " +
   "finish independent safe work, and report those exact unapplied targets rather than finding another execution route. " +
   "Before editing another repository, verify it is the requested target, read its local instructions, and inspect its Git changes. " +
@@ -262,6 +264,37 @@ function applyReview(command: string, cwd: string): string | undefined {
     }
     if (targets.some((p) => controlPath(p, cwd, true))) return "applying executable gate, hook or policy configuration requires owner review";
   }
+}
+
+// --- Inspected, targeted chezmoi application (deterministic, no model call) -------------------
+// The owner's rule is diff -> dry-run -> apply of named targets. The classifier's criteria call that ordinary,
+// yet it refused a bare `chezmoi apply ~/.config/herdr/config.toml` (p≈0.76), so ordinary application ended up
+// as the owner's TODO. A command that is nothing but `chezmoi diff|apply [--dry-run] [-v] <literal targets>` is
+// decided here instead: diff and dry-run are read-only and record their targets; apply passes only when every
+// target was recorded and no other gated tool call (which could have changed the source) came in between.
+// Anything else falls through to the classifier unchanged. Never covered: gate/hook/policy files (applyReview),
+// credentials, executables and service units, directories, paths outside HOME, and runs without a UI.
+const inspectedTargets = new Set<string>();
+const APPLY_JUDGED = [".local/bin", ".config/systemd", ".config/autostart"].map((p) => path.join(HOME, p));
+
+function plainChezmoi(command: string, cwd: string): { apply: boolean; targets: string[] } | undefined {
+  const m = /^chezmoi (diff|apply)((?: (?:--dry-run|-n|-v|--verbose))*)((?: (?:\/|~\/)[A-Za-z0-9._@+\/-]+)+)$/.exec(command);
+  if (!m || (m[1] === "diff" && m[2])) return;
+  const targets: string[] = [];
+  for (const word of m[3].trim().split(" ")) {
+    if (word.split("/").includes("..") || controlPath(word, cwd, true)) return;
+    const lexical = toolPath(word, cwd);
+    if (lexical === HOME || !within(HOME, lexical)) return;
+    for (const p of new Set([lexical, real(lexical)])) {
+      if (SECRET_PATHS.some((s) => [s, real(s)].some((x) => within(x, p) || within(p, x)))) return;
+      if (APPLY_JUDGED.some((d) => within(d, p) || within(real(d), p))) return;
+      const base = path.basename(p);
+      if (/credentials/i.test(base) || DOTENV.test(base)) return;
+    }
+    try { if (fs.statSync(lexical).isDirectory()) return; } catch { /* a file the apply will create */ }
+    targets.push(lexical);
+  }
+  return { apply: m[1] === "apply" && !/ (?:--dry-run|-n)(?= |$)/.test(m[2]), targets };
 }
 
 function delegateReview(task: string, cwd: string): string | undefined {
@@ -832,6 +865,10 @@ export default function (pi: ExtensionAPI) {
     const text = shell.expansion ? `${command}\n# expanded:\n${shell.expansion}` : command;
     const mode = gateMode(ctx);
     const about = { tool: kind, text: command, mode, ...(shell.expansion ? { expanded: shell.expansion } : {}) };
+    // An alias or function named chezmoi would make the text mean something else, so only an unexpanded command counts.
+    const plain = kind === "bash" && ctx.hasUI && !shell.expansion && !shell.failed ? plainChezmoi(command.trim(), ctx.cwd) : undefined;
+    // Any other gated call may have changed the source since the inspection.
+    if (!plain) inspectedTargets.clear();
 
     // 2) Deterministic deny (written for commands and paths, so not for MCP inputs; a delegated task gets DELEGATE_RULES)
     const hit = mcp ? undefined : await ruleDeny(kind, text);
@@ -848,6 +885,19 @@ export default function (pi: ExtensionAPI) {
       : kind === "bash" ? applyReview(text, ctx.cwd)
       : kind === "delegate" ? delegateReview(String((event.input as any)?.task ?? ""), ctx.cwd) : undefined;
     if (review) return confirm(pi, ctx, kind, text, { layer: "control-review", ...about }, review, false);
+    if (plain && !plain.apply) {
+      plain.targets.forEach((t) => inspectedTargets.add(t));
+      log({ layer: "chezmoi-targeted", ...about, decision: "allow", note: "inspection" });
+      return;
+    }
+    if (plain) {
+      const inspected = plain.targets.every((t) => inspectedTargets.has(t));
+      inspectedTargets.clear(); // One inspection, one application.
+      if (inspected) {
+        log({ layer: "chezmoi-targeted", ...about, decision: "allow", note: "inspected targets" });
+        return;
+      }
+    }
     if (mode === "auto" && AUTO_READ_ONLY.has(kind)) {
       const full = JSON.stringify(event.input ?? {});
       // Inspect raw string values, not serialized JSON: an escaped newline's 'n' would hide a word boundary.

@@ -880,6 +880,63 @@ class JevGate(unittest.TestCase):
         self.assertEqual(seen["results"], [None, None, None])
         self.assertEqual(len(seen["classify"]), 3)
 
+    def test_inspected_plain_targeted_apply_skips_the_classifier(self):
+        # diff -> dry-run -> apply of the same literal targets, nothing in between: no model call, even if it would deny.
+        targets = "~/.config/ordinary/app.json ~/.zshrc"
+        commands = [f"chezmoi diff {targets}", f"chezmoi apply --dry-run -v {targets}", f"chezmoi apply {targets}"]
+        for mode in ("auto", "ask"):
+            with self.subTest(mode=mode):
+                self.log.unlink(missing_ok=True)
+                seen = self.run_gate(commands, verdict="deny", JEV_GATE_MODE=mode)
+                self.assertEqual(seen["results"], [None, None, None])
+                self.assertEqual(seen["classify"], [])
+                self.assertEqual(seen["confirms"], 0)
+                self.assertEqual([(e["layer"], e["decision"]) for e in self.log_entries()], [("chezmoi-targeted", "allow")] * 3)
+        # A subset of what was inspected may be applied; the absolute spelling names the same target.
+        seen = self.run_gate([f"chezmoi diff {targets}", f"chezmoi apply {self.home}/.zshrc"], verdict="deny", JEV_GATE_MODE="auto")
+        self.assertEqual((seen["results"], seen["classify"]), ([None, None], []))
+
+    def test_apply_that_is_not_freshly_inspected_plain_and_ordinary_still_needs_the_classifier(self):
+        (self.home / ".config/ordinary").mkdir(parents=True, exist_ok=True)
+        app = "~/.config/ordinary/app.json"
+        sequences = [
+            [f"chezmoi apply {app}"],                                            # never inspected
+            [f"chezmoi diff {app}", f"chezmoi apply {app} ~/.zshrc"],           # one target not inspected
+            [f"chezmoi diff {app}", "true", f"chezmoi apply {app}"],            # the source may have changed in between
+            [f"chezmoi diff {app}", f"chezmoi apply {app}", f"chezmoi apply {app}"],  # one inspection, one apply
+            [f"chezmoi diff {app}", f"cd /tmp && chezmoi apply {app}"],         # not a plain command
+            [f"chezmoi diff {app}", f"chezmoi apply {app} | cat"],
+            [f"chezmoi diff {app}", f"chezmoi apply --force {app}"],
+            [f"chezmoi diff {app}", f"chezmoi apply '{app}'"],
+            [f"chezmoi diff {app}", f"chezmoi apply {app}\nchezmoi apply ~/.zshrc"],
+            ["chezmoi diff ~/.local/bin/tool", "chezmoi apply ~/.local/bin/tool"],  # executables and units stay judged
+            ["chezmoi diff ~/.config/systemd/user/x.service", "chezmoi apply ~/.config/systemd/user/x.service"],
+            ["chezmoi diff ~/.config/ordinary", "chezmoi apply ~/.config/ordinary"],  # a directory is a broad target
+            ["chezmoi diff ~/.config/ordinary/../x", "chezmoi apply ~/.config/ordinary/../x"],
+            ["chezmoi diff ~/.config/app/credentials.json", "chezmoi apply ~/.config/app/credentials.json"],
+            ["chezmoi diff /etc/hosts", "chezmoi apply /etc/hosts"],
+        ]
+        for commands in sequences:
+            with self.subTest(commands=commands):
+                seen = self.run_gate(commands, verdict="deny", JEV_GATE_MODE="auto")
+                self.assertTrue(seen["results"][-1] and seen["results"][-1]["block"], seen["results"])
+                self.assertNotEqual(seen["results"][-1].get("terminate"), True)
+        # Without a UI (a subagent's own task) nothing is waved through.
+        seen = self.run_gate([f"chezmoi diff {app}", f"chezmoi apply {app}"], verdict="deny", has_ui=False, JEV_GATE_MODE="auto")
+        self.assertTrue(all(r and r["block"] for r in seen["results"]))
+        # An edit between inspection and application also ends the inspection.
+        calls = [{"toolName": "bash", "input": {"command": f"chezmoi diff {app}"}},
+                 {"toolName": "write", "input": {"path": "notes.txt"}},
+                 {"toolName": "bash", "input": {"command": f"chezmoi apply {app}"}}]
+        seen = self.run_calls(calls, verdict="deny", JEV_GATE_MODE="auto")
+        self.assertIsNone(seen["results"][0])
+        self.assertTrue(seen["results"][2]["block"])
+        # Gate, hook and policy targets keep the owner-review boundary, inspected or not.
+        control = "~/.pi/agent/extensions/jev-gate.ts"
+        seen = self.run_gate([f"chezmoi diff {control}", f"chezmoi apply {control}"], JEV_GATE_MODE="auto")
+        self.assertIn("approval boundary", seen["results"][1]["reason"])
+        self.assertEqual(len(seen["classify"]), 1, "the control diff itself is still judged by the classifier")
+
     def test_home_is_not_a_whole_workspace_but_a_known_chezmoi_project_is_local_context(self):
         source = self.home / ".local/share/chezmoi"
         (source / ".git").mkdir(parents=True)
