@@ -1,66 +1,6 @@
 {
-  "last_run": "2026-11-10",
+  "last_run": "2026-11-11",
   "seen": [
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-25",
-      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出の消込Public APIから変化なし"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI/Cursor/Antigravity CLI",
-      "decided_at": "2026-10-25",
-      "decision": "⌀ [推定] 期間内固有の新着を確認できず、通常アップデートの範囲"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-10-25",
-      "decision": "⌀ [推定] 話題性のある新規実用サーバーは確認できず"
-    },
-    {
-      "tool": "nvimプラグイン動向(blink.cmp/telescope等)",
-      "decided_at": "2026-10-25",
-      "decision": "⌀ [推定] blink.cmp v2開発進行中(既出情報の延長)以外、期間内固有の新着は確認できず"
-    },
-    {
-      "tool": "Claude Code v2.1.311 (MCP接続完了前にサブエージェントが起動していた場合にツール利用不能だった不具合修正・CLAUDE.md長大リスト項目起動フリーズ修正・isolation:worktree未削除修正・auto mode背面エージェントの新規ターン過多修正)",
-      "decided_at": "2026-10-26",
-      "decision": "★★★ [確認済] 本radar自身の運用パターン(スケジュール実行クラウドセッション+dot_claude/agents配下のサブエージェント+defaultMode:auto)に直撃する信頼性修正シリーズの最新版"
-    },
-    {
-      "tool": "freee-mcp v0.37.6/v0.37.7",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] CHANGELOG.md直接確認、Claudeプラグインディレクトリ警告解消目的のメタデータ変更(ロゴ・homepage・privacyPolicyUrl)のみ、機能変更なし"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] git ls-remote直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "Ghostty 1.4.0",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] git ls-remote直接確認、依然v1.3.1のまま未リリース"
-    },
-    {
-      "tool": "niri/helix/jj/zellij",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] git ls-remote直接確認、いずれも前回判定から変化なし(niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1)"
-    },
-    {
-      "tool": "blink.cmp v2",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] git ls-remote直接確認、最新安定はv1.10.2のまま、v2正式リリースなし"
-    },
-    {
-      "tool": "Tailscale v1.104.2",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] git ls-remote直接確認、v1.105.0-preはプレリリースのまま変化なし"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] WebSearchでも8月リリース情報が最新、10月版の発表確認できず"
-    },
     {
       "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
       "decided_at": "2026-10-26",
@@ -1000,6 +940,66 @@
       "tool": "Hyprland/niri/sway/river WM動向",
       "decided_at": "2026-11-10",
       "decision": "⌀ [確認済] 11月固有の発表は見つからず、既知情報(niri 25.11のalt-tab・Hyprland 0.54のワークスペース別レイアウト等)から変化なし"
+    },
+    {
+      "tool": "zellij v0.46.0 (デスクトップ端末エミュレータ機能 zellij terminal追加)",
+      "decided_at": "2026-11-11",
+      "decision": "★ [確認済] 多重化ツールが端末エミュレータ機能まで取り込むパラダイム変化だが、本機はherdr+ghostty/foot運用でzellij自体未導入のため移行動機なし"
+    },
+    {
+      "tool": "freee-mcp v0.37.12 最新版確認",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] GitHub Release直接確認、差分記載なし。無効化済みのため優先度低い"
+    },
+    {
+      "tool": "Claude Code v2.1.322 最新版確認",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] 公式CHANGELOG.md(raw)直接確認、11/10判定から新規リリースなし"
+    },
+    {
+      "tool": "Hyprland v0.57.2/niri v26.04/lazygit v0.66.3/jj v0.47.1/blink.cmp v1.10.2/Ghostty v1.4.0/chezmoi v2.74.1/Tailscale v1.104.6 最新版確認",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし"
+    },
+    {
+      "tool": "helix 25.07.1 (表記再訂正)",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済、再訂正] GitHub Releases UIで25.07.1が Latest ラベル付きと直接確認。11/10radarの「25.07が正しい」はgit ls-remote --tagsのソート誤判定による誤り"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] WebSearchでも11月版ISOの発表未確認、直近は依然8月版"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [不明] packages.cachyos.org/dashboard.cachyos.org直接確認、7.1〜7.2系混在、11月固有の反映情報は特定できず"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "一人社長/一人法人向けバックオフィスAI SaaS",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] 11月固有の新サービス発表は確認できず、既出(プエンテ「A子さん」等)の範囲内"
+    },
+    {
+      "tool": "Codex CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [確認済] Antigravity CLIは11/10判定のv1.5.1から進行なし。Codex CLIは出典不一致で確度低いが通常アップデートの範囲。本環境は未使用のため導入動機なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [推定] 話題性のある新規実用サーバーは確認できず"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-11",
+      "decision": "⌀ [不明] duplistatus/Zerobyte/Pluton等の言及はあるが日付確認できず、既出の範囲内"
     }
   ]
 }
