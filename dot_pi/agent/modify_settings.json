@@ -1,10 +1,10 @@
 {{- /* chezmoi:modify-template */ -}}
 {{- /*
   ~/.pi/agent/settings.json は Pi も書く (lastChangelogVersion・deviceId・/model の Ctrl+S など) ので、
-  丸ごとは管理せず .chezmoidata/pi.yaml のモデルの 3 段から作るキーだけを上書きし、ほかのキーは残す。
+  丸ごとは管理せず .chezmoidata/pi.yaml のモデルの 4 段から作るキーだけを上書きし、ほかのキーは残す。
     defaultProvider / defaultModel / defaultThinkingLevel  default 段
-    modelThinkingLevels                                     3 段の "provider/id": thinking (ほかのキーは残す)
-    enabledModels                                           Ctrl+P の切り替え。"provider/id:thinking" を default・peak・light の順
+    modelThinkingLevels                                     4 段の "provider/id": thinking (ほかのキーは残す)
+    enabledModels                                           Ctrl+P の切り替え。"provider/id:thinking" を default・strong・peak・light の順
     shellPath / shellCommandPrefix                          zsh があるときだけ。bash ツールと ! コマンドを zsh で動かす
   空 (新ホスト) なら {} から作る。何度通しても同じ結果になる。
 
@@ -31,7 +31,7 @@
 {{-   $levels = $s.modelThinkingLevels -}}
 {{- end -}}
 {{- $cycle := list -}}
-{{- range $tier := list "default" "peak" "light" -}}
+{{- range $tier := list "default" "strong" "peak" "light" -}}
 {{-   $t := index $m $tier -}}
 {{-   $key := printf "%s/%s" $t.provider $t.id -}}
 {{-   $levels = set $levels $key $t.thinking -}}

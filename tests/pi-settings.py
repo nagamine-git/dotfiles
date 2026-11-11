@@ -35,7 +35,7 @@ SNAPSHOT = "alias gss='git status --short'\nalias hello='print -r -- hello-alias
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pi_real  # noqa: E402
 
-TIERS = ("default", "peak", "light")
+TIERS = ("default", "strong", "peak", "light")
 PI_SETTINGS = {  # Pi が自分で書くキーや本人の設定
     "lastChangelogVersion": "1.5.0",
     "deviceId": "d51cf81e-0000-0000-0000-000000000000",
@@ -85,7 +85,7 @@ class PiSettings(unittest.TestCase):
             **({"shellPath": ZSH, "shellCommandPrefix": PREFIX} if ZSH else {}),
         }
 
-    def test_data_has_three_complete_tiers(self):
+    def test_data_has_four_complete_tiers(self):
         tiers = self.tiers()
         self.assertEqual(sorted(tiers), sorted(TIERS))
         for t in TIERS:
@@ -116,12 +116,13 @@ class PiSettings(unittest.TestCase):
         (self.source / DATA).write_text(
             "pi:\n  models:\n"
             "    default: {provider: anthropic, id: claude-sonnet-5-5, thinking: low}\n"
+            "    strong: {provider: openai, id: gpt-6.1-sol, thinking: high}\n"
             "    peak: {provider: openai, id: gpt-6.1-terra, thinking: xhigh}\n"
             "    light: {provider: anthropic, id: claude-haiku-5-5, thinking: medium}\n")
         out = json.loads(self.render(json.dumps(PI_SETTINGS)))
         self.assertEqual((out["defaultProvider"], out["defaultModel"], out["defaultThinkingLevel"]),
                          ("anthropic", "claude-sonnet-5-5", "low"))
-        self.assertEqual(out["enabledModels"], ["anthropic/claude-sonnet-5-5:low", "openai/gpt-6.1-terra:xhigh",
+        self.assertEqual(out["enabledModels"], ["anthropic/claude-sonnet-5-5:low", "openai/gpt-6.1-sol:high", "openai/gpt-6.1-terra:xhigh",
                                                 "anthropic/claude-haiku-5-5:medium"])
         self.assertEqual(out["modelThinkingLevels"]["openai/gpt-6.1-terra"], "xhigh")
         self.assertEqual(out["modelThinkingLevels"]["anthropic/claude-opus-5-5"], "xhigh")  # 段から外れたものも残す
@@ -211,9 +212,9 @@ class PiSettings(unittest.TestCase):
     def test_real_pi_starts_on_the_default_tier_and_ctrl_p_cycles_the_tiers(self):
         tiers = self.tiers()
         settings = self.render(json.dumps({"lastChangelogVersion": "1.5.0"}))
-        commands = [{"type": "get_state"}] + [{"type": "cycle_model"}] * 3
+        commands = [{"type": "get_state"}] + [{"type": "cycle_model"}] * len(TIERS)
         responses, stderr, _ = pi_real.rpc({"settings.json": settings}, commands)
-        seen = [pi_real.model_of(responses.get("c%d" % i, {})) for i in range(4)]
+        seen = [pi_real.model_of(responses.get("c%d" % i, {})) for i in range(len(TIERS) + 1)]
         want = [("%s/%s" % (tiers[t]["provider"], tiers[t]["id"]), tiers[t]["thinking"]) for t in TIERS + ("default",)]
         self.assertEqual(seen, want, stderr)
 

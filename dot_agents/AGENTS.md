@@ -24,7 +24,7 @@
 
 - Claude Code: 実装・修正・テスト・リファクタは設定済みの `coder`、調査・計画は対応する subagent に任せる。利用枠は推測せず `/usage` で確認する。
 - Codex: `~/.codex/config.toml` の既定を使う。独立した調査・実装の分担が有用なら subagent を使い、担当範囲を明確にする。
-- Pi: 主入口。既定は `~/.pi/agent/settings.json`。既定・ここぞ・軽量の 3 段は `.chezmoidata/pi.yaml` (model-radar が調整) で、Ctrl+P で切り替える。subagent は `subagent` ツール (定義は agents-sync が `~/.claude/agents` から作る)。Claude Code にしか無い接続や独立レビューは `delegate` で claude、OS の隔離が要る作業は codex に任せる。
+- Pi: 主入口。既定は `~/.pi/agent/settings.json`。既定・強め・ここぞ・軽量の 4 段は `.chezmoidata/pi.yaml` (model-radar が調整) で、Ctrl+P で切り替える。subagent は `subagent` ツール (定義は agents-sync が `~/.claude/agents` から作る)。Claude Code にしか無い接続や独立レビューは `delegate` で claude、OS の隔離が要る作業は codex に任せる。
 
 ## メモリと共有設定
 
