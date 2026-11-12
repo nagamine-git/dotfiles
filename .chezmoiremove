@@ -17,4 +17,7 @@
 .config/electron27-flags.conf
 .local/bin/hypr_auto_perfmonitor.sh
 bin/server.sh
+# 2026-11 の UI 見直しで waybar を不透明の暗い島にし、壁紙に合わせた明暗の切替をやめた
+.local/bin/waybar-auto-theme.sh
+.config/waybar/colors.css
 {{- end }}

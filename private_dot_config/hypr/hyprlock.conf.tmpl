@@ -33,12 +33,16 @@ background {
     # 08-06 21:20 は同じ経路で ring reset に失敗し Hyprland ごと道連れになった。
     # 再発が止まらなければ 0 (blur 無効) か path=screenshot の廃止まで下げる。
     blur_passes = 1
+    # 背景のスクリーンショットを暗くする (2026-11)。白いページを開いたままロックすると、
+    # 時計の文字と背景の差が 1.1–1.8:1 しかなかった。0.25 で背景が白でも本文 5:1 前後になる。
+    # brightness はぼかしのシェーダーの中で掛かるので、blur_passes を増やさずに済む
+    brightness = 0.25
 }
 
 input-field {
     monitor =
     size = 300, 50
-    outline_thickness = 1
+    outline_thickness = 2
     dots_size = 0.33
     dots_spacing = 0.15
     outer_color = rgba({{ $c.text.rgb }}, 0.45)
@@ -48,7 +52,7 @@ input-field {
     fade_on_empty = false
     fade_timeout = 0
     hide_input = false
-    rounding = 4
+    rounding = {{ .theme.shape.radius_md }}
     check_color = rgba({{ $c.accent.rgb }}, 1.0)
     fail_color = rgba({{ $c.error.rgb }}, 1.0)
     capslock_color = rgba({{ $c.warning.rgb }}, 1.0)
@@ -64,10 +68,11 @@ input-field {
 label {
     monitor =
     text = cmd[update:1000] echo "<span>$(date "+%H:%M:%S")</span>"
-    color = rgba({{ $c.text.rgb }}, 0.85)
-    font_size = 28
+    color = rgba({{ $c.text.rgb }}, 1.0)
+    # 離れた位置からも読めるよう 28 から倍にした
+    font_size = 56
     font_family = {{ $f.ui }}
-    position = 0, 80
+    position = 0, 120
     halign = center
     valign = center
 }
@@ -75,10 +80,10 @@ label {
 label {
     monitor =
     text = cmd[update:30000] echo "<span>$(date "+%Y年%m月%d日 (%a)")</span>"
-    color = rgba({{ $c.text.rgb }}, 0.65)
+    color = rgba({{ $c.text_dim.rgb }}, 1.0)
     font_size = 16
     font_family = {{ $f.ui }}
-    position = 0, 40
+    position = 0, 50
     halign = center
     valign = center
 }

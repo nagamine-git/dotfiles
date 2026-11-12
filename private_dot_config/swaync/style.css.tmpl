@@ -1,6 +1,9 @@
 {{- $c := .theme.colors -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
+{{- $sh := .theme.shape -}}
+/* 2026-11 の UI 見直し: 不透明・角丸 6・左端の色の帯で緊急度を示す・文字を 12pt に上げる
+   (通知は日本語を周辺視野でちらっと読むので、10pt では漢字が小さすぎた) */
 /* 基本スタイル */
 * {
   font-family: '{{ $f.ui }}', '{{ $f.mono }}', sans-serif;
@@ -17,12 +20,12 @@
 }
 
 .notification {
-  background: rgba({{ $c.bg_dark.rgb }}, 0.97);
-  padding: 12px;
-  margin: 6px;
-  border-radius: 12px;
-  border: 1px solid rgba({{ $c.surface.rgb }}, 0.7);
-  font-size: 10pt;
+  background: #{{ $c.bg_dark.hex }};
+  padding: 12px 14px;
+  margin: {{ $sh.gap }}px;
+  border-radius: {{ $sh.radius_md }}px;
+  border: 1px solid #{{ $c.bg_light.hex }};
+  font-size: 12pt;
 }
 
 .notification-content {
@@ -36,7 +39,7 @@
   color: rgba({{ $c.text.rgb }}, 1);
   text-shadow: none;
   padding: 0;
-  border-radius: 8px;
+  border-radius: {{ $sh.radius_sm }}px;
   margin-top: 8px;
   margin-right: 8px;
 }
@@ -50,7 +53,7 @@
   background: rgba({{ $c.bg_medium.rgb }}, 0.92);
   color: rgba({{ $c.text.rgb }}, 1);
   margin: 4px;
-  border-radius: 6px;
+  border-radius: {{ $sh.radius_sm }}px;
   padding: 4px 8px;
 }
 
@@ -68,7 +71,7 @@
 }
 
 .summary {
-  font-size: 10pt;
+  font-size: 12pt;
   font-weight: bold;
   background: transparent;
   color: rgba({{ $c.text.rgb }}, 1);
@@ -76,27 +79,27 @@
 }
 
 .time {
-  font-size: 9pt;
+  font-size: 10pt;
   font-weight: normal;
   background: transparent;
-  color: rgba({{ $c.text.rgb }}, 0.7);
+  color: #{{ $c.text_dim.hex }};
   text-shadow: none;
   margin-right: 16px;
 }
 
 .body {
-  font-size: 10pt;
+  font-size: 12pt;
   font-weight: normal;
   background: transparent;
-  color: rgba({{ $c.text.rgb }}, 0.9);
+  color: #{{ $c.text.hex }};
   text-shadow: none;
 }
 
 .control-center {
-  background: rgba({{ $c.bg_dark.rgb }}, 0.97);
-  border: 1px solid rgba({{ $c.surface.rgb }}, 0.7);
-  border-radius: 12px;
-  margin: 6px;
+  background: #{{ $c.bg_dark.hex }};
+  border: 1px solid #{{ $c.bg_light.hex }};
+  border-radius: {{ $sh.radius_lg }}px;
+  margin: {{ $sh.gap }}px;
 }
 
 .control-center-list {
@@ -121,7 +124,7 @@
   background: rgba({{ $c.bg_medium.rgb }}, 0.92);
   padding: 8px 12px;
   margin: 12px;
-  border-radius: 8px;
+  border-radius: {{ $sh.radius_md }}px;
   font-size: 11pt;
   font-weight: bold;
 }
@@ -131,7 +134,7 @@
   color: rgba({{ $c.text.rgb }}, 1);
   background: rgba({{ $c.surface.rgb }}, 0.92);
   border: 1px solid rgba({{ $c.primary.rgb }}, 0.4);
-  border-radius: 6px;
+  border-radius: {{ $sh.radius_sm }}px;
   padding: 4px 8px;
 }
 
@@ -144,7 +147,7 @@
   background: rgba({{ $c.bg_medium.rgb }}, 0.92);
   padding: 8px 12px;
   margin: 12px;
-  border-radius: 8px;
+  border-radius: {{ $sh.radius_md }}px;
   font-size: 10pt;
 }
 
@@ -157,19 +160,21 @@
   background: rgba({{ $c.accent.rgb }}, 0.9);
 }
 
+/* 緊急度は左端 4px の色の帯 (低: 灰 / 通常: 青 / 緊急: 赤 + 明るめの背景) */
 .urgency-low {
-  background: rgba({{ $c.bg_dark.rgb }}, 0.97);
-  border: 1px solid rgba({{ $c.text_dim.rgb }}, 0.5);
+  background: #{{ $c.bg_dark.hex }};
+  border-left: 4px solid #{{ $c.text_dim.hex }};
 }
 
 .urgency-normal {
-  background: rgba({{ $c.bg_dark.rgb }}, 0.97);
-  border: 1px solid rgba({{ $c.primary.rgb }}, 0.45);
+  background: #{{ $c.bg_dark.hex }};
+  border-left: 4px solid #{{ $c.primary.hex }};
 }
 
 .urgency-critical {
-  background: rgba({{ $c.bg_medium.rgb }}, 0.98);
-  border: 1px solid rgba({{ $c.error.rgb }}, 0.98);
+  background: #{{ $c.bg_medium.hex }};
+  border: 1px solid #{{ $c.error.hex }};
+  border-left: 4px solid #{{ $c.error.hex }};
 }
 
 /* 通知タイトル */

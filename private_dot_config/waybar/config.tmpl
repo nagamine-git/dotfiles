@@ -1,0 +1,178 @@
+{{- $c := .theme.colors -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
+// waybar の設定 (JSONC)。見た目は style.css。2026-11 の UI 見直しで、上端の 1 本のバーを
+// 「左 (ワークスペースと窓名) / 中央 (時計) / 右 (メーター・状態)」の不透明な島に分けた。
+// 島の外側の余白は Hyprland のギャップ (theme.shape.gap) とそろえる。
+{
+  "layer": "top",
+  "position": "top",
+  "height": 32,
+  "margin": "{{ .theme.shape.gap }} {{ .theme.shape.gap }} 0 {{ .theme.shape.gap }}",
+  "spacing": {{ .theme.shape.gap }},
+
+  "modules-left": ["hyprland/workspaces", "hyprland/window"],
+  "modules-center": ["clock"],
+  "modules-right": ["group/meters", "group/status"],
+
+  // 右側は 2 つの島に分ける: 負荷のメーターと、接続・音・通知の状態
+  "group/meters": {
+    "orientation": "horizontal",
+    "modules": ["temperature", "cpu", "custom/gpu", "memory", "custom/disk"]
+  },
+  "group/status": {
+    "orientation": "horizontal",
+    "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/notification"]
+  },
+
+  // 番号を出して Super+数字 と対応させる。1–5 は空でも常に出す
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "persistent-workspaces": { "*": 5 },
+    "on-click": "activate"
+  },
+
+  "hyprland/window": {
+    "max-length": 48,
+    "separate-outputs": true
+  },
+
+  // 秒は出さない (毎秒変わる数字は周辺視野で目を引く)。日付と曜日は日本語
+  "clock": {
+    // L を付けないと locale が無視されて英語の曜日になる
+    "format": "{:L%m/%d %a  %H:%M}",
+    "interval": 1,
+    "locale": "ja_JP.UTF-8",
+    "timezone": "Asia/Tokyo",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "month",
+      "weeks-pos": "right",
+      "on-scroll": 1,
+      "format": {
+        "months":   "<span color='#{{ $c.text.hex }}'><b>{}</b></span>",
+        "weekdays": "<span color='#{{ $c.text_dim.hex }}'><b>{}</b></span>",
+        "weeks":    "<span color='#{{ $c.text_dim.hex }}'><b>W{}</b></span>",
+        "days":     "<span color='#{{ $c.text.hex }}'>{}</span>",
+        "today":    "<span color='#{{ $c.accent.hex }}'><b><u>{}</u></b></span>"
+      }
+    },
+    "actions": {
+      "on-click-right": "mode",
+      "on-scroll-up":   "shift_up",
+      "on-scroll-down": "shift_down"
+    }
+  },
+
+  // 点字のメーター (⡀..⣿) はこれまでどおり。数字はツールチップに出す
+  "temperature": {
+    // hwmon の番号は起動ごとに変わり得るので、CPU (k10temp) のデバイスの場所で指す。
+    // 旧設定の hwmon3 は USB コントローラ (prom21_xhci) で、CPU の温度ではなかった
+    "hwmon-path-abs": "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
+    "input-filename": "temp1_input",
+    "interval": 5,
+    "format": "󰔏 {icon}",
+    "format-icons": ["⡀", "⡀", "⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "critical-threshold": 85,
+    "tooltip-format": "CPU 温度: {temperatureC}°C"
+  },
+
+  "cpu": {
+    "interval": 3,
+    "format": " {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "states": { "warning": 80, "critical": 95 },
+    "tooltip": true
+  },
+
+  "custom/gpu": {
+    "exec": "~/.config/waybar/scripts/gpu_status.sh",
+    "interval": 3,
+    "return-type": "json",
+    "tooltip": true
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "󰆻 {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
+    "states": { "warning": 80, "critical": 90 },
+    "tooltip-format": "メモリ: {percentage}% ({used:0.1f} / {total:0.1f} GiB)"
+  },
+
+  "custom/disk": {
+    "exec": "~/.config/waybar/scripts/disk_status.sh",
+    "format": "󰋊 {}",
+    "interval": 30,
+    "return-type": "json",
+    "tooltip": true
+  },
+
+  // マイク・画面共有を使っている間だけ出る
+  "privacy": {
+    "icon-size": 14,
+    "icon-spacing": 6,
+    "transition-duration": 150,
+    "modules": [
+      { "type": "screenshare", "tooltip": true },
+      { "type": "audio-in", "tooltip": true }
+    ]
+  },
+
+  "tray": {
+    "icon-size": 15,
+    "spacing": 8
+  },
+
+  "network": {
+    "format-wifi": "󰤨 {essid}",
+    "format-ethernet": "󰈀",
+    "format-linked": "󰈁 {ifname}",
+    "format-disconnected": "󰤮",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+    "tooltip-format-ethernet": "󰈀 {ifname}: {ipaddr}/{cidr}\n󰕒 {bandwidthUpBits}\n󰇚 {bandwidthDownBits}",
+    "interval": 10,
+    "on-click": "nm-connection-editor"
+  },
+
+  "custom/tailscale": {
+    "exec": "~/.config/waybar/scripts/tailscale_status.sh",
+    "interval": 10,
+    "return-type": "json",
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/tailscale_exit_picker.sh",
+    "on-click-right": "xdg-open https://login.tailscale.com/admin/settings/general"
+  },
+
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "format-icons": {
+      "headphones": "󰋋",
+      "default": ["󰕿  ", "󰖀 ⡀", "󰖀 ⣀", "󰖀 ⣄", "󰖀 ⣤", "󰕾 ⣦", "󰕾 ⣶", "󰕾 ⣷", "󰕾 ⣿"]
+    },
+    "on-click": "pavucontrol",
+    "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
+  },
+
+  // swaync の未読数。クリックで通知センター、右クリックでサイレントモード
+  "custom/notification": {
+    "exec-if": "command -v swaync-client",
+    "exec": "swaync-client -swb",
+    "return-type": "json",
+    "format": "{icon} {text}",
+    "format-icons": {
+      "notification": "󰂚",
+      "none": "󰂜",
+      "dnd-notification": "󰂛",
+      "dnd-none": "󰂛",
+      "inhibited-notification": "󰂚",
+      "inhibited-none": "󰂜",
+      "dnd-inhibited-notification": "󰂛",
+      "dnd-inhibited-none": "󰂛"
+    },
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true,
+    "tooltip": false
+  }
+}

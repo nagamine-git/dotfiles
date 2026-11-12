@@ -6,6 +6,3 @@ W="$HOME/.local/share/wallpaper"
 pkill -x hyprpaper 2>/dev/null || true
 sleep 0.3
 hyprpaper >/dev/null 2>&1 &
-# 昼壁紙は明るいので waybar も自動で明テーマ(黒文字/白バー)へ
-sleep 0.6
-"$HOME/.local/bin/waybar-auto-theme.sh" "$W/wallpaper.jpg" >/dev/null 2>&1 || true

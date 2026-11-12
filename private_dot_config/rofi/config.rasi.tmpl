@@ -8,7 +8,7 @@
  * 設計の根拠:
  *  - 文字サイズは 1.25 の等比スケール: 本文 13 / 入力欄 16 (入力欄を焦点にする)
  *  - 本文 #{{ $c.text.hex }} は入力欄背景に対し 8.66:1 (WCAG AA 4.5 を大きく満たす)
- *  - 補助テキストはパレットの text_dim (#{{ $c.text_dim.hex }}) だと 2.69:1 で AA 不合格。
+ *  - 補助テキストは旧パレットの text_dim (#5a626a) だと 2.69:1 で AA 不合格だった。
  *    色相を保ったまま明度のみ上げた fg-dim を定義し 4.56:1 を確保している
  *  - 選択状態は「背景 + 文字色 + 左アクセントバー」の3チャネルで冗長に示す。
  *    背景差だけでは 1.57:1 しかなく状態変化の手がかりとして弱いため
@@ -78,7 +78,7 @@ configuration {
 
     fg: #{{ $c.text.hex }};
     fg-accent: #{{ $c.accent.hex }};
-    /* パレットの text_dim (#{{ $c.text_dim.hex }}) は 2.69:1 で AA 不合格のため、
+    /* 旧パレットの text_dim (#5a626a) は 2.69:1 で AA 不合格だったため、
        色相 210° を保ち明度のみ上げて 4.56:1 にした値 */
     fg-dim: #7d8791;
     /* 行番号バッジ用。本文でも補助でもない装飾なので AA(4.5) ではなく
@@ -93,7 +93,7 @@ window {
     width: 800px;
     location: center;
     padding: 8px;
-    border-radius: 12px;
+    border-radius: {{ .theme.shape.radius_lg }}px;
     background-color: @bg-window;
     border: 1px;
     border-color: @border-col;
@@ -113,7 +113,7 @@ mainbox {
 inputbar {
     margin: 0px 0px 8px 0px;
     padding: 12px 16px;
-    border-radius: 10px;
+    border-radius: {{ .theme.shape.radius_md }}px;
     background-color: @bg-input;
     children: [ "entry" ];
 }
@@ -146,7 +146,7 @@ element {
     spacing: 12px;
     border: 0px 0px 0px 2px;
     border-color: transparent;
-    border-radius: 8px;
+    border-radius: {{ .theme.shape.radius_md }}px;
     cursor: pointer;
     children: [ "element-icon", "element-text", "element-index" ];
 }
@@ -234,7 +234,7 @@ textbox {
 
 error-message {
     padding: 16px;
-    border-radius: 12px;
+    border-radius: {{ .theme.shape.radius_lg }}px;
     background-color: @bg-window;
     text-color: @fg;
 }

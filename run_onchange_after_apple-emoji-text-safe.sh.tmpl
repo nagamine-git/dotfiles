@@ -1,0 +1,42 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Apple Color Emoji (ttf-apple-emoji) から、数字 0-9・スペース・# * © ® など U+0000-00FF の文字の割り当て (cmap) を
+# 外した複製を ~/.local/share/fonts に作る。元のファイルは fontconfig (~/.config/fontconfig/fonts.conf) で除外する。
+#
+# 理由: Luma など Mac 向けのサイトは font-family を "-apple-system, BlinkMacSystemFont, 'Apple Color Emoji', Inter, ..."
+# の順に書く。Linux の Chrome は CSS の順にフォントを試すので、数字とスペースを Apple Color Emoji の字形
+# (キーキャップ絵文字用の空白の部品) で描き、数字が消えて単語の間が広がる。割り当てを外すと次のフォントへ進む。
+# 絵文字の見た目は Apple のまま。1️⃣ のようなキーキャップも描ける (2026-11 に headless Chrome で確認)。
+#
+# パッケージが更新されたら作り直す: {{ output "sh" "-c" "pacman -Q ttf-apple-emoji 2>/dev/null || echo none" | trim }}
+set -eu
+
+src=/usr/share/fonts/apple-color-emoji/apple-color-emoji.ttf
+dest_dir="$HOME/.local/share/fonts"
+dest="$dest_dir/apple-color-emoji-text-safe.ttf"
+
+if [ ! -f "$src" ]; then
+  echo "apple-emoji-text-safe: $src が無いので作らない" >&2
+  exit 0
+fi
+if ! python3 -c 'import fontTools' 2>/dev/null; then
+  echo "WARN: apple-emoji-text-safe: python3 の fontTools が無いので作れない (pip install fonttools)" >&2
+  exit 0
+fi
+
+mkdir -p "$dest_dir"
+python3 - "$src" "$dest.tmp" <<'PY'
+import sys
+from fontTools.ttLib import TTFont
+
+src, dest = sys.argv[1], sys.argv[2]
+font = TTFont(src, lazy=True)
+for table in font["cmap"].tables:
+    for cp in [c for c in table.cmap if c < 0x100]:
+        del table.cmap[cp]
+font.save(dest)
+PY
+mv -f "$dest.tmp" "$dest"
+fc-cache -f "$dest_dir"
+echo "apple-emoji-text-safe: $dest を作った"
+{{ end -}}

@@ -1,107 +1,173 @@
 {{- $c := .theme.colors -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
-/* wbfg / wbbg / wbsh の 3 色は colors.css (waybar-auto-theme.sh が壁紙上部の輝度で書き換える。
-   既定=dark)。ここに書くと自動切替のたびに chezmoi 管理の style.css がずれるため分離している。 */
-@import "colors.css";
+{{- $s := .theme.shape -}}
+/* waybar の見た目。2026-11 の UI 見直し (デスクトップは案 2「静かな面」、バーは案 3 の島の形だけ取り入れた)。
+   - 島は不透明 (bg_medium)。半透明やぼかしだと読みやすさが壁紙しだいになり、明るい壁紙で状態色が
+     1.6–1.8:1 まで落ちていた。不透明なら本文 9:1 前後、補助テキスト 4.5:1 以上を壁紙に関係なく保てる
+   - 選択の色は青緑 (accent) の 1 色にそろえる (ウィンドウの枠と同じ)。橙は警告の黄と色相が近いので
+     常時の強調には使わず、状態 (Tailscale の出口ノード・マイク使用中) にだけ使う
+   - 状態は色だけでなく太字も付けて示す
+   - 島の影は付けない (暗い壁紙では見えず、明るい壁紙では 1px の枠で足りる) */
 
 * {
   margin: 0;
   padding: 0;
+  min-height: 0;
+  border: none;
   font-size: 14px;
-  /* 全モジュールに Nerd Font 入り等幅を適用。未指定だと GTK 既定フォント →
-     アイコン(PUA)が Noto CJK にフォールバックして漢字化するため必須。 */
+  /* Nerd Font 入りの等幅を全体に当てる。未指定だとアイコン (PUA) が Noto CJK にフォールバックして漢字になる */
   font-family: "{{ $f.mono }}", monospace;
-  color: @wbfg;
+  color: #{{ $c.text.hex }};
   background-color: transparent;
-  /* どの壁紙でも文字が埋もれないよう影で輪郭を確保 (色も自動切替) */
-  text-shadow: 0 1px 2px @wbsh;
 }
 
-#waybar {
-  padding: 4px;
-  margin: 2px 0 0 0;
-  background-color: @wbbg;
-  border-radius: 8px;
+/* バー自体は透明にして、島だけを描く */
+window#waybar {
+  background-color: transparent;
 }
 
-/* Common module styling */
-#cpu, #memory, #disk, #temperature,
-#network, #battery, #pulseaudio,
-#clock, #tray, #custom-power, #custom-disk, #custom-pomodoro, #custom-gpu {
+/* 島: 左・中央・右 2 つ */
+.modules-left,
+.modules-center,
+#meters,
+#status {
+  background-color: #{{ $c.bg_medium.hex }};
+  border: 1px solid #{{ $c.bg_light.hex }};
+  border-radius: {{ $s.radius_lg }}px;
+  padding: 0 6px;
+}
+
+/* 各モジュールの余白 */
+#window, #clock, #temperature, #cpu, #custom-gpu, #memory, #custom-disk,
+#privacy, #tray, #network, #custom-tailscale, #pulseaudio, #custom-notification {
   padding: 0 8px;
-  margin: 0 3px;
-  transition: background-color 0.2s ease;
 }
 
-/* Battery states */
+/* 文字のラベル (窓名・時計) は UI フォント。メーターとアイコンは等幅のまま */
+#window,
+#window label,
+#clock {
+  font-family: "{{ $f.ui }}", "{{ $f.mono }}", sans-serif;
+}
+
+/* hyprland/window はアイコンと label を入れた箱なので、色とフォントは中の label にも当てる */
+#window label {
+  color: #{{ $c.text_dim.hex }};
+}
+
+#clock {
+  font-weight: 600;
+}
+
+/* ワークスペース: 番号付き。今いる場所は青緑の幅広の札 (案 3 の伸びる点の考え方を番号に当てた) */
+#workspaces {
+  padding: 0 2px;
+}
+
+#workspaces button {
+  background: transparent;
+  padding: 0 6px;
+  margin: 5px 1px;
+  min-width: 14px;
+  border-radius: {{ $s.radius_sm }}px;
+  box-shadow: none;
+  text-shadow: none;
+  transition: background-color 120ms ease-out, padding 120ms ease-out;
+}
+
+/* 文字の色はボタンではなく中の label に当てる (先頭の * が label に直接色を付けるので、継承では効かない) */
+#workspaces button label {
+  font-family: "{{ $f.ui }}", sans-serif;
+  font-size: 13px;
+  color: #{{ $c.text.hex }};
+}
+
+#workspaces button.empty label {
+  color: #{{ $c.text_dim.hex }};
+}
+
+#workspaces button:hover {
+  background: #{{ $c.bg_light.hex }};
+}
+
+#workspaces button.active {
+  background: #{{ $c.accent.hex }};
+  padding: 0 12px;
+}
+
+#workspaces button.active label {
+  color: #{{ $c.bg_dark.hex }};
+  font-weight: 700;
+}
+
+#workspaces button.urgent {
+  background: #{{ $c.error_text.hex }};
+}
+
+#workspaces button.urgent label {
+  color: #{{ $c.bg_dark.hex }};
+  font-weight: 700;
+}
+
+/* 状態 (色 + 太字) */
 .warning {
   color: #{{ $c.warning.hex }};
   font-weight: bold;
 }
 
 .critical {
-  color: #{{ $c.error.hex }};
+  color: #{{ $c.error_text.hex }};
   font-weight: bold;
 }
 
-/* Workspaces */
-#workspaces {
-  background-color: transparent;
-  padding: 0 8px;
+#temperature.critical {
+  color: #{{ $c.error_text.hex }};
+  font-weight: bold;
 }
 
-#workspaces button {
+#custom-tailscale.direct { color: #{{ $c.text_dim.hex }}; }
+#custom-tailscale.exit   { color: #{{ $c.warning_alt.hex }}; font-weight: bold; }
+#custom-tailscale.off    { color: #{{ $c.error_text.hex }}; font-weight: bold; }
+
+#privacy-item {
+  color: #{{ $c.warning_alt.hex }};
+}
+
+#custom-notification.notification,
+#custom-notification.dnd-notification {
+  color: #{{ $c.text.hex }};
+  font-weight: bold;
+}
+
+#custom-notification.none,
+#custom-notification.dnd-none {
   color: #{{ $c.text_dim.hex }};
-  background: transparent;
-  margin: 0;
-  font-size: 14px;
-  transition: color 0.2s ease;
-  font-family: "{{ $f.mono }}", monospace;
 }
 
-#workspaces button.active,
-#workspaces button.focused {
-  color: #{{ $c.accent.hex }};
-  font-weight: bold;
-}
-
-/* Context menu styling */
+/* ツールチップとメニュー */
 tooltip {
-  background-color: rgba({{ $c.bg_medium.rgb }}, 0.96);
-  border-radius: 6px;
-  border: 1px solid rgba({{ $c.primary.rgb }}, 0.8);
+  background-color: #{{ $c.bg_medium.hex }};
+  border: 1px solid #{{ $c.bg_light.hex }};
+  border-radius: {{ $s.radius_md }}px;
 }
 
 tooltip label {
   color: #{{ $c.text.hex }};
-  padding: 6px 12px;
+  padding: 6px 10px;
 }
 
 menu {
-  background-color: rgba({{ $c.bg_medium.rgb }}, 0.96);
-  border-radius: 6px;
+  background-color: #{{ $c.bg_medium.hex }};
+  border: 1px solid #{{ $c.bg_light.hex }};
+  border-radius: {{ $s.radius_md }}px;
 }
+
 menuitem {
-  padding: 8px 12px;
-  margin: 2px 0;
+  padding: 6px 12px;
+  border-radius: {{ $s.radius_sm }}px;
 }
+
 menuitem:hover {
-  background-color: rgba({{ $c.surface.rgb }}, 1);
-}
-
-#custom-pomodoro.warning { color: #{{ $c.error.hex }}; }
-#custom-pomodoro.break   { color: #{{ $c.success.hex }}; }
-#custom-pomodoro { font-family: "{{ $f.mono }}", monospace; }
-
-#custom-tailscale.direct { color: #{{ $c.text_dim.hex }}; }
-#custom-tailscale.exit   { color: #{{ $c.warning_alt.hex }}; font-weight: bold; }
-#custom-tailscale.off    { color: #{{ $c.error.hex }}; }
-
-/* Blink animation used by pomodoro script */
-.blink {
-  animation: blink 1s steps(2, start) infinite;
-}
-@keyframes blink {
-  to { color: transparent; }
+  background-color: #{{ $c.bg_light.hex }};
 }

@@ -18,9 +18,11 @@ theme:
     surface:
       hex: "434548"
       rgb: "67, 69, 72"
+    # 補助テキスト。bg_dark 上で 4.9:1 (WCAG AA)。旧値 5a626a は 2.9:1 で基準に届かず、
+    # 色相を保って明度だけ上げた (rofi の fg-dim と同じ値。2026-11 の UI 見直し)
     text_dim:
-      hex: "5a626a"
-      rgb: "90, 98, 106"
+      hex: "7d8791"
+      rgb: "125, 135, 145"
     text:
       hex: "b7bcba"
       rgb: "183, 188, 186"
@@ -30,6 +32,10 @@ theme:
     error:
       hex: "b84d51"
       rgb: "184, 77, 81"
+    # 文字に使う赤。error は bg_medium 上で 3.3:1 しかないので、色相を保って明るくし 5.1:1 にした
+    error_text:
+      hex: "c9797c"
+      rgb: "201, 121, 124"
     success:
       hex: "b3bf5a"
       rgb: "179, 191, 90"
@@ -107,12 +113,23 @@ theme:
     error:
       hex: "f38ba8"
       rgb: "243, 139, 168"
+    error_text:
+      hex: "f38ba8"
+      rgb: "243, 139, 168"
     success:
       hex: "a6e3a1"
       rgb: "166, 227, 161"
     warning_alt:
       hex: "fab387"
       rgb: "250, 179, 135"
+  # 形の体系。角丸は 3 段 (小: ボタン・ワークスペース番号 / 中: ウィンドウ・通知・入力欄 /
+  # 大: バーの島・ランチャー・通知センター)。ウィンドウの角丸は端末の角の文字を欠かない 6 以下にする。
+  # gap は画面端・バーの外側の余白で、ウィンドウどうしの間 (gaps_in の 2 倍) も同じ値にそろえる。
+  shape:
+    radius_sm: 4
+    radius_md: 6
+    radius_lg: 8
+    gap: 8
   fonts:
     ui: "IBM Plex Sans JP"
     terminal: "UDEV Gothic 35NFLG"

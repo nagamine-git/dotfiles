@@ -58,9 +58,8 @@ hl.on("hyprland.start", function()
     {{ end -}}
     hl.exec_cmd("1password --silent &")
     hl.exec_cmd("hyprvoice serve &")
-    -- 壁紙の上部輝度で waybar を明/暗テーマに切替えてから waybar を起動 (; で順序保証、
-    -- テーマ失敗時も waybar は立つ)。壁紙変更時は waybar-auto-theme.sh を手動再実行。
-    hl.exec_cmd("~/.local/bin/waybar-auto-theme.sh; waybar &")
+    -- waybar は不透明の暗い島なので、壁紙 (昼と夜で入れ替わる) に合わせた明暗の切替えはしない
+    hl.exec_cmd("waybar &")
     hl.exec_cmd("~/.local/bin/swaync_launcher.sh &")
     hl.exec_cmd("swayosd-server &")
     hl.exec_cmd("hyprpaper &")
@@ -103,6 +102,13 @@ hl.window_rule({
     name = "notes-float",
     match = { class = "^(notes)$", workspace = "name:special:notes" },
     float = true,
+})
+
+-- 並べたウィンドウには影を付けず、浮いているウィンドウだけに付ける (重なりの前後を示すときだけ影が意味を持つ)
+hl.window_rule({
+    name = "tiled-no-shadow",
+    match = { float = false },
+    no_shadow = true,
 })
 
 hl.window_rule({
@@ -212,13 +218,17 @@ hl.config({
 ---------------------
 
 hl.config({
+    -- 2026-11 の UI 見直し (案 2「静かな面」)。面は不透明にして壁紙に読みやすさを左右させず、
+    -- 選択中のウィンドウは 2px の不透明な青緑の枠 (非選択の枠との差は約 6:1) と、非選択側を暗くすることで示す。
+    -- 旧: 1px の半透明の枠 + 非選択を透明度 0.8。明るい壁紙では枠の差がほぼ 1:1 になっていた
     general = {
-        gaps_in = 5,
-        gaps_out = 5,
-        border_size = 1,
+        -- ウィンドウどうしの間 (gaps_in の 2 倍) と画面端をどちらも theme.shape.gap にそろえる
+        gaps_in = {{ div .theme.shape.gap 2 }},
+        gaps_out = {{ .theme.shape.gap }},
+        border_size = 2,
         col = {
-            inactive_border = "rgba({{ $c.surface.hex }}66)",
-            active_border = "rgba({{ $c.primary.hex }}cc)",
+            inactive_border = "rgb({{ $c.bg_light.hex }})",
+            active_border = "rgb({{ $c.accent.hex }})",
         },
         resize_on_border = true,
         allow_tearing = true,
@@ -226,22 +236,28 @@ hl.config({
     },
 
     decoration = {
-        rounding = 8,
-        rounding_power = 6,
+        rounding = {{ .theme.shape.radius_md }},
+        -- 2 = 円弧。waybar や通知 (CSS の border-radius) と同じ角の形にする
+        rounding_power = 2,
         active_opacity = 1.0,
-        inactive_opacity = 0.8,
+        inactive_opacity = 1.0,
+        -- 非選択のウィンドウを 12% 暗くする。本文のコントラストは 7:1 以上を保つ
+        dim_inactive = true,
+        dim_strength = 0.12,
 
+        -- 影は浮いているウィンドウだけ (並べたウィンドウは window_rule の tiled-no-shadow で消す)
         shadow = {
             enabled = true,
-            range = 8,
-            render_power = 2,
-            color = "rgba(00000040)",
+            range = 16,
+            render_power = 3,
+            color = "rgba(00000066)",
         },
 
+        -- ウィンドウとバーは不透明なので、ぼかしは半透明の rofi と Vicinae にだけ効く
         blur = {
             enabled = true,
             size = 10,
-            passes = 4,
+            passes = 3,
             new_optimizations = true,
             xray = true,
             noise = 0,
@@ -261,21 +277,25 @@ hl.config({
             priority = 4,
             render_titles = true,
             scrolling = true,
-            text_color = "rgba({{ $c.text.hex }}ff)",
+            -- 選択中のタブは青緑に暗い文字。旧配色は選択中と非選択の差が 1.2:1 しかなかった
+            text_color = "rgba({{ $c.bg_dark.hex }}ff)",
+            text_color_inactive = "rgba({{ $c.text.hex }}ff)",
+            text_color_locked_active = "rgba({{ $c.bg_dark.hex }}ff)",
+            text_color_locked_inactive = "rgba({{ $c.text.hex }}ff)",
             indicator_gap = 2,
             indicator_height = 0,
-            rounding = 6,
-            gradient_rounding = 6,
+            rounding = {{ .theme.shape.radius_sm }},
+            gradient_rounding = {{ .theme.shape.radius_sm }},
             round_only_edges = true,
             gradient_round_only_edges = true,
             gaps_in = 2,
             gaps_out = 2,
             keep_upper_gap = false,
             col = {
-                active = "rgba({{ $c.bg_medium.hex }}ff)",
-                inactive = "rgba({{ $c.bg_light.hex }}cc)",
+                active = "rgba({{ $c.accent.hex }}ff)",
+                inactive = "rgba({{ $c.bg_light.hex }}ff)",
                 locked_active = "rgba({{ $c.primary.hex }}ff)",
-                locked_inactive = "rgba({{ $c.surface.hex }}cc)",
+                locked_inactive = "rgba({{ $c.surface.hex }}ff)",
             },
         },
 
@@ -292,7 +312,23 @@ hl.config({
     },
 })
 
-hl.animation({ leaf = "global", enabled = true, speed = 0.175, bezier = "default" })
+-- speed の単位は 100ms。旧設定は global 0.175 (約 17ms = 60Hz で 1 コマ) で実質的に動きが無かった。
+-- 動きは「何がどこから来たか」を示すだけにし、どれも 80–150ms に収める。
+-- ワークスペースの切替えはキーを押すたびに画面全体が動くので、横スライドではなく短いフェードにする。
+hl.curve("easeOutQuint", { type = "bezier", points = { {0.23, 1}, {0.32, 1} } })
+hl.curve("linear", { type = "bezier", points = { {0, 0}, {1, 1} } })
+hl.curve("almostLinear", { type = "bezier", points = { {0.5, 0.5}, {0.75, 1} } })
+
+hl.animation({ leaf = "global", enabled = true, speed = 1.2, bezier = "easeOutQuint" })
+hl.animation({ leaf = "border", enabled = true, speed = 1.0, bezier = "easeOutQuint" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 1.5, bezier = "easeOutQuint", style = "popin 90%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.0, bezier = "linear", style = "popin 90%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 1.2, bezier = "easeOutQuint" })
+hl.animation({ leaf = "fade", enabled = true, speed = 1.0, bezier = "almostLinear" })
+hl.animation({ leaf = "layersIn", enabled = true, speed = 1.2, bezier = "easeOutQuint", style = "fade" })
+hl.animation({ leaf = "layersOut", enabled = true, speed = 0.8, bezier = "linear", style = "fade" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 1.0, bezier = "almostLinear", style = "fade" })
+hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 1.2, bezier = "easeOutQuint", style = "fade" })
 
 --------------------
 --- WINDOW RULES ---
@@ -322,10 +358,6 @@ hl.window_rule({
     pin = true,
     stay_focused = true,
 })
-
--- Layer rules: blur for waybar
-hl.layer_rule({ match = { namespace = "waybar" }, blur = true })
-hl.layer_rule({ match = { namespace = "waybar" }, ignore_alpha = 0.2 })
 
 -- rofi (waybar の Exit Node の選択と Ctrl+Super+V のクリップボード履歴) も blur。
 -- 半透明のまま背後をぼかすことで、後ろに端末など
