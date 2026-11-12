@@ -1,66 +1,6 @@
 {
-  "last_run": "2026-11-11",
+  "last_run": "2026-11-12",
   "seen": [
-    {
-      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] Arch公式リビルドtodoは一部完了、CachyOSリポジトリは依然7.x系のまま"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出の消込Public API・AIエージェントから変化なし"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI",
-      "decided_at": "2026-10-26",
-      "decision": "⌀ [確認済] Codex CLIはrust-v0.165.0-alpha.3まで進行、Gemini CLIはnightlyビルド継続更新、いずれも通常アップデートの範囲"
-    },
-    {
-      "tool": "Claude Code v2.1.312 (フック同時実行数上限 セッション毎最大24本/タイムアウト超過待ち最大12本 + safety_event OTelイベント送信停止)",
-      "decided_at": "2026-10-27",
-      "decision": "★★ [確認済] dot_claude/private_settings.json.tmplのdefaultMode:auto + サブエージェント多重起動 + PreToolUse/Notification/Stop 3種フック構成に直撃する安全弁。safety_eventは10/23推奨から送信停止に変化[再掲:変化あり]"
-    },
-    {
-      "tool": "Ghostty v1.4.0",
-      "decided_at": "2026-10-27",
-      "decision": "★★ [確認済] GitHub Tags直接確認でタグ実在、長らく未リリースだった次期安定版が実リリースに変化[再掲:変化あり]。private_dot_config/ghostty/で実際に使用中"
-    },
-    {
-      "tool": "Tailscale v1.104.3/v1.104.4",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [不明] GitHub Tags直接確認でパッチ2版分進行を確認、tailscale.com/changelog到達不可のため詳細未確認"
-    },
-    {
-      "tool": "freee-mcp v0.37.8/v0.37.9",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] OpenAPIスキーマ同期とプラグインメタデータ追加のみ、機能変更なし"
-    },
-    {
-      "tool": "CachyOS 10月リリース",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] 10/27時点で未発表、8月リリースが依然最新"
-    },
-    {
-      "tool": "ROCm 10.0 CachyOSリポジトリ反映状況",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] Arch stagingではrocm-cmake 10.0完了済みだが、CachyOSは依然7.1.1系のまま"
-    },
-    {
-      "tool": "Hyprland 0.57マイルストーン",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、最新は依然v0.56.2のまま"
-    },
-    {
-      "tool": "niri/helix/jj/zellij",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] GitHub Tags直接確認、前回判定(niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1)から変化なし"
-    },
-    {
-      "tool": "blink.cmp v2",
-      "decided_at": "2026-10-27",
-      "decision": "⌀ [確認済] 依然mainブランチで開発中、安定版リリースなし"
-    },
     {
       "tool": "freee/マネーフォワード/弥生 AI機能動向",
       "decided_at": "2026-10-27",
@@ -1000,6 +940,66 @@
       "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-11-11",
       "decision": "⌀ [不明] duplistatus/Zerobyte/Pluton等の言及はあるが日付確認できず、既出の範囲内"
+    },
+    {
+      "tool": "Claude Code v2.1.323 (Code Mode: Claudeがツール呼び出しをJSで書く実験的opt-in追加・plugin.jsonのengines[\"claude-code\"]バージョン範囲対応等)",
+      "decided_at": "2026-11-12",
+      "decision": "★★ [確認済] 公式CHANGELOG.md直接確認。本環境のdefaultMode: auto + enabledPlugins(security-guidance/frontend-design/slack/figma/cloudflare)+多重サブエージェント構成に関わる新パラダイムだがデフォルト無効のopt-inのため今すぐの対応は不要、継続監視"
+    },
+    {
+      "tool": "freee-mcp v0.38.0 (債権管理Public API対応・freee_api_bulk_get/write追加)",
+      "decided_at": "2026-11-12",
+      "decision": "★★ [確認済] CHANGELOG.md直接確認。dot_agents/mcp.jsonのnpx freee-mcp@latest運用で自動反映済み。dot_claude側enabledPluginsのfreee-mcpは2026-10-22付けで無効化継続中、再有効化要否は未決"
+    },
+    {
+      "tool": "Tailscale v1.104.7 最新版確認",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [不明] git ls-remote --tags直接確認、11/10のv1.104.6から新パッチタグ。リリースノート未公開"
+    },
+    {
+      "tool": "Hyprland v0.57.2/Ghostty v1.4.0/niri v26.04/helix 25.07.1/jj v0.47.1/zellij v0.46.0/lazygit v0.66.3/chezmoi v2.74.1/blink.cmp v1.10.2 最新版確認",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも11/11判定から変化なし"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] WebSearchでも11月版ISOの発表未確認、直近は依然8月版"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] Arch extra-stagingはrocm-language-runtime 10.0-1だがCachyOS側は依然7.x系のまま、変化なし"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向から変化なし"
+    },
+    {
+      "tool": "一人社長/一人法人向けバックオフィスAI SaaS",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] 11月固有の新サービス発表は確認できず、既出(プエンテ「A子さん」等)の範囲内"
+    },
+    {
+      "tool": "Codex CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [不明] 直近の公式日付を特定できず。本環境は未使用のため導入動機なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [推定] 話題性のある新規実用サーバーは確認できず"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [確認済] Beszel/Uptime Kuma/Restic/BorgBackup等既出の範囲内、新着なし"
+    },
+    {
+      "tool": "lazygit代替 gitui/jjui/lazyjj",
+      "decided_at": "2026-11-12",
+      "decision": "⌀ [不明] 11月固有の新着確認できず、既出範囲内"
     }
   ]
 }
