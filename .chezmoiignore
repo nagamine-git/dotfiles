@@ -4,7 +4,6 @@
 README.md
 AGENTS.md
 REVIEW.md
-PLAN.md
 pkglist.txt
 .editorconfig
 .gitattributes
@@ -43,8 +42,6 @@ wolow-companion
 .config/hypr/**
 .config/waybar
 .config/waybar/**
-.config/rofi
-.config/rofi/**
 .config/vicinae
 .config/vicinae/**
 .config/satty

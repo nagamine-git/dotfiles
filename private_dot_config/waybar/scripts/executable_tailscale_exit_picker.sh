@@ -18,7 +18,7 @@ header="🚫 None (direct)"
 [[ -n "$current" ]] && header="🚫 None (direct) [current: exit enabled]"
 
 choice=$(printf '%s\n%s\n' "$header" "$nodes" | \
-  rofi -dmenu -p "Exit Node" -i -theme-str 'window {width: 600px;}')
+  vicinae dmenu -n "Tailscale の Exit Node" -p "使うノードを選ぶ" --no-quick-look --no-metadata)
 
 [[ -z "$choice" ]] && exit 0
 

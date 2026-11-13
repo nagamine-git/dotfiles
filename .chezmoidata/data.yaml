@@ -19,7 +19,7 @@ theme:
       hex: "434548"
       rgb: "67, 69, 72"
     # 補助テキスト。bg_dark 上で 4.9:1 (WCAG AA)。旧値 5a626a は 2.9:1 で基準に届かず、
-    # 色相を保って明度だけ上げた (rofi の fg-dim と同じ値。2026-11 の UI 見直し)
+    # 色相を保って明度だけ上げた (2026-11 の UI 見直し)
     text_dim:
       hex: "7d8791"
       rgb: "125, 135, 145"
@@ -42,7 +42,7 @@ theme:
     warning_alt:
       hex: "e58a50"
       rgb: "229, 138, 80"
-  # 案 B「エレベーション」(2026-11、am5-itx のデスクトップの UI: Hyprland・waybar・通知・rofi・ロック画面)。
+  # 案 B「エレベーション」(2026-11、am5-itx のデスクトップの UI: Hyprland・waybar・通知・ロック画面)。
   # Material のダークテーマの考え方: 純黒を避けた背景に白を 5/8/11% 重ねた明るさで面の高さを示し、枠線に頼らない。
   # 文字は白の 87/60/38%、色は彩度を落とす。端末まわり (foot・nvim・starship・tmux) と GTK は colors のまま。
   # 名前を colors と分けているのは、ソース内に残った古い worktree の .chezmoidata が colors を上書きするため

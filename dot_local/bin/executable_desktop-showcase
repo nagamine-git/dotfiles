@@ -41,7 +41,8 @@ demo_windows() {
 }
 
 restore() {
-  pkill -x rofi 2>/dev/null || true
+  vicinae close >/dev/null 2>&1 || true
+  pkill -f '^vicinae dmenu' 2>/dev/null || true   # close では dmenu の命令が終わらないことがある
   demo_windows | while read -r addr; do
     hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })" >/dev/null
     hyprctl dispatch 'hl.dsp.window.close()' >/dev/null
@@ -82,7 +83,7 @@ hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })' >/dev/null; sleep 0.8
 
 (~/.local/bin/hypr-keybinds &) ; sleep 1.2
 grim "$out/keybinds.png"
-pkill -x rofi 2>/dev/null || true; sleep 0.5
+vicinae close >/dev/null 2>&1 || true; pkill -f '^vicinae dmenu' 2>/dev/null || true; sleep 0.5
 
 vicinae 'vicinae://launch/applications?toggle=true' >/dev/null 2>&1 || true; sleep 1.2
 grim "$out/launcher.png"

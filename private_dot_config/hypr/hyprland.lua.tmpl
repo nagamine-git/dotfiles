@@ -64,10 +64,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("~/.local/bin/swaync_launcher.sh &")
     hl.exec_cmd("swayosd-server &")
     hl.exec_cmd("hyprpaper &")
-    hl.exec_cmd("mkdir -p /tmp/hypr/$USER")
     -- ランチャー (Super+Space) の常駐サーバー。toggle などのコマンドはこれに頼む
     hl.exec_cmd("vicinae server")
-    hl.exec_cmd("cliphist &")
     hl.exec_cmd("wl-paste --type text --watch cliphist store &")
     hl.exec_cmd("wl-paste --type image --watch cliphist store &")
     -- hypridle は dpms off を撃った直後に落ちると on-resume が二度と発火せず
@@ -259,7 +257,7 @@ hl.config({
             color = "rgba(00000066)",
         },
 
-        -- ウィンドウ・バー・rofi は不透明なので、ぼかしは Vicinae にだけ効く
+        -- ウィンドウとバーは不透明なので、ぼかしは Vicinae にだけ効く
         blur = {
             enabled = true,
             size = 10,
@@ -603,7 +601,7 @@ hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd([[hyprctl eval 'hl.monitor({ ou
 {{- end }}
 
 -- === CLIPBOARD MANAGEMENT ===
-hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -dmenu -p "📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v]]), { description = "クリップボード｜履歴から選んで貼り付け" })
+hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | vicinae dmenu -n "クリップボードの履歴" -p "選ぶと貼り付けます" --no-metadata | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v]]), { description = "クリップボード｜履歴から選んで貼り付け" })
 
 -- === HELP ===
 -- description を付けたキー割り当ての一覧 (hyprctl binds から作る)。waybar のキーボードのアイコンからも開ける

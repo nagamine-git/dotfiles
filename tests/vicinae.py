@@ -78,12 +78,13 @@ class HyprlandBinds(unittest.TestCase):
             with self.subTest(hostname=hostname):
                 hypr = render(HYPR.read_text(), hostname)
                 self.assertIn('hl.exec_cmd("vicinae server")', hypr)
-                self.assertIn('hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"))', hypr)
+                # 割り当ての後ろに { description = ... } が付くので、行の頭だけを見る
+                self.assertIn('hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle")', hypr)
                 self.assertIn("vicinae 'vicinae://launch/applications?toggle=true'", hypr)
                 self.assertIn("vicinae 'vicinae://launch/wm/switch-windows?toggle=true'", hypr)
                 self.assertIn('namespace = "vicinae"', hypr)
                 self.assertNotIn("unified_launcher", hypr)
-                self.assertNotIn("rofi -show", hypr)
+                self.assertNotIn("rofi", hypr)   # rofi の用途はすべて vicinae dmenu に移した
 
 
 class VicinaeConfig(unittest.TestCase):
