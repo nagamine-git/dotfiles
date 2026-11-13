@@ -58,24 +58,14 @@ hl.on("hyprland.start", function()
     {{ end -}}
     hl.exec_cmd("1password --silent &")
     hl.exec_cmd("hyprvoice serve &")
-    -- waybar の島の色を今の壁紙に合わせてから起動する (; で順序を保証。失敗しても waybar は立つ)。
-    -- 壁紙が替わるときは darkman のフックが同じスクリプトを呼ぶ
-    hl.exec_cmd("~/.local/bin/waybar-wallpaper-tint; waybar &")
-    hl.exec_cmd("~/.local/bin/swaync_launcher.sh &")
+    -- waybar・swaync・hyprpaper・cliphist・hypridle は systemd のユーザーサービス (パッケージ同梱) で起動する。
+    -- graphical-session.target.wants に置いたシンボリックリンクで有効にしてあり、Hyprland の準備が整ってから立ち上がり、
+    -- 落ちたら systemd が立ち上げ直す (Restart=on-failure)。waybar は起動前に島の色を壁紙に合わせる (waybar.service.d/tint.conf)
     hl.exec_cmd("swayosd-server &")
-    hl.exec_cmd("hyprpaper &")
     -- ランチャー (Super+Space) の常駐サーバー。toggle などのコマンドはこれに頼む
     hl.exec_cmd("vicinae server")
-    hl.exec_cmd("wl-paste --type text --watch cliphist store &")
-    hl.exec_cmd("wl-paste --type image --watch cliphist store &")
-    -- hypridle は dpms off を撃った直後に落ちると on-resume が二度と発火せず
-    -- 画面が黒いまま戻らなくなる (2026-05-29 調査)。hyprland.start は自動復活しないため
-    -- self-healing ループで起動し、落ちても 3 秒後に復活させる。
-    -- fp7-e14 は常時ホスト (lid 閉じ・headless) なので hypridle を起動しない =
-    -- 画面ロック/dpms を無効化 (suspend は systemd target mask で別途封印)。
-    {{- if ne .chezmoi.hostname "fp7-e14" }}
-    hl.exec_cmd([[bash -c 'while true; do hypridle; logger -t hypridle "respawned (exit=$?)"; sleep 3; done' &]])
-    {{- end }}
+    -- hypridle は dpms off の直後に落ちると画面が黒いまま戻らなくなる (2026-05-29 調査)。以前はここで bash の無限ループで
+    -- 立ち上げ直していたが、今は hypridle.service の Restart=on-failure に任せる。fp7-e14 (常時ホスト) では有効にしない
     -- polkit 認証エージェント: 1Password の system-auth アンロック / SSH署名承認ダイアログに必須。
     -- 不在だと 1Password agent が署名を即拒否し、SSH鍵認証が "agent refused operation" で全滅する。
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &")

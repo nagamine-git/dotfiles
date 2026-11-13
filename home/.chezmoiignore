@@ -68,12 +68,16 @@
 .local/bin/droidcam.sh
 .local/bin/mic-snr.sh
 .local/bin/sleep-now.sh
-.local/bin/swaync_launcher.sh
 .local/bin/security-update-check.sh
 # Vicinae の電源の Lock / Logout から呼ぶ (Hyprland 用)
 .local/bin/lock-screen
 .local/bin/hypr-logout
 {{- end }}
+
+# fp7-e14 は常時ホスト (蓋を閉じてヘッドレス) なので画面のロックと dpms を使わない
+{{ if eq .chezmoi.hostname "fp7-e14" -}}
+.config/systemd/user/graphical-session.target.wants/hypridle.service
+{{ end -}}
 
 # macOS 専用 (launchd など)
 {{ if ne .chezmoi.os "darwin" }}
