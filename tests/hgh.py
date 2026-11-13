@@ -317,33 +317,76 @@ class Hd(Base):
         r = self.run_zsh("hd ../notes", without=["ghq", "zoxide", "fzf"])
         self.assertEqual(r.mutations, [self.create_call(self.notes)])
 
-    def test_picks_from_zoxide_without_ghq(self):
-        r = self.run_zsh("hd", without=["ghq"], zoxide=[self.start, self.notes], pick="notes")
+    def test_no_argument_opens_current_directory_without_picking(self):
+        r = self.run_zsh("hd", panes=[self.pane("w1", self.start, "w1:p1")],
+                         zoxide=[self.notes], pick="notes")
         self.assertEqual(r.rc, 0, r.stderr)
-        self.assertEqual(r.fzf["lines"], [str(self.start), str(self.notes)])
-        self.assertEqual(r.mutations, [self.create_call(self.notes)])
+        self.assertIsNone(r.fzf)
+        self.assertEqual(r.mutations, [self.create_call(self.start)])
         self.assertEqual(r.stdout, "")
         self.assert_caller_untouched(r)
 
-    def test_non_directory_arguments_become_the_query(self):
-        r = self.run_zsh("hd my query", zoxide=[self.notes], pick="cancel")
-        self.assertIn("--query=my query", r.fzf["argv"])
-
-    def test_focuses_existing_workspace(self):
-        r = self.run_zsh("hd", zoxide=[self.notes], pick="notes", panes=[self.pane("w3", self.notes)])
-        self.assertEqual(r.mutations, [["workspace", "focus", "w3"]])
-
-    def test_cancel_changes_nothing(self):
-        r = self.run_zsh("hd", zoxide=[self.notes], pick="cancel")
-        self.assertNotEqual(r.rc, 0)
-        self.assertEqual(r.mutations, [])
+    def test_no_argument_does_not_need_directory_selection_tools(self):
+        r = self.run_zsh("hd", without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.mutations, [self.create_call(self.start)])
         self.assert_caller_untouched(r)
 
-    def test_missing_zoxide(self):
-        r = self.run_zsh("hd", without=["zoxide"])
+    def test_focuses_other_workspace_with_current_directory(self):
+        panes = [self.pane("w1", self.start, "w1:p1"), self.pane("w3", self.start)]
+        r = self.run_zsh("hd", panes=panes)
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertIsNone(r.fzf)
+        self.assertEqual(r.mutations, [["workspace", "focus", "w3"]])
+        self.assert_caller_untouched(r)
+
+    def test_explicit_current_directory_also_excludes_caller(self):
+        r = self.run_zsh("hd .", panes=[self.pane("w1", self.start, "w1:p1")])
+        self.assertEqual(r.mutations, [self.create_call(self.start)])
+        self.assertIsNone(r.fzf)
+
+    def test_directory_argument_with_spaces(self):
+        notes = self.home / "my notes"
+        notes.mkdir()
+        r = self.run_zsh(f'hd "{notes}"', without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.mutations, [self.create_call(notes)])
+        self.assert_caller_untouched(r)
+
+    def test_missing_directory_is_not_a_search_query(self):
+        r = self.run_zsh(f"hd {self.d}/gone", zoxide=[self.notes], pick="notes")
         self.assertNotEqual(r.rc, 0)
-        self.assertIn("zoxide", r.stderr)
+        self.assertIn("gone", r.stderr)
+        self.assertIsNone(r.fzf)
+        self.assertEqual(r.calls, [])
+        self.assert_caller_untouched(r)
+
+    def test_rejects_multiple_arguments_without_picking(self):
+        r = self.run_zsh("hd my query")
+        self.assertNotEqual(r.rc, 0)
         self.assertIn("hd:", r.stderr)
+        self.assertIn("使い方", r.stderr)
+        self.assertIsNone(r.fzf)
+        self.assertEqual(r.calls, [])
+
+    def test_outside_running_opens_current_directory_and_attaches(self):
+        r = self.run_zsh("hd", inside=False, without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.calls[-2:], [self.create_call(self.start), []])
+        self.assert_caller_untouched(r)
+
+    def test_outside_stopped_starts_in_current_directory(self):
+        r = self.run_zsh("hd", inside=False, running=False, without=["ghq", "zoxide", "fzf"])
+        self.assertEqual(r.rc, 0, r.stderr)
+        self.assertEqual(r.calls[-1], [])
+        self.assertEqual(r.records[-1]["cwd"], str(self.start))
+        self.assert_caller_untouched(r)
+
+    def test_missing_jq(self):
+        r = self.run_zsh("hd", without=["jq"])
+        self.assertNotEqual(r.rc, 0)
+        self.assertIn("hd: jq", r.stderr)
+        self.assertIsNone(r.fzf)
         self.assertEqual(r.calls, [])
 
     def test_missing_herdr(self):

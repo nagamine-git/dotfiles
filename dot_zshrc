@@ -148,7 +148,7 @@ _herdr_focus_space() {
 }
 
 # 指定ディレクトリのスペースへ移動する。無ければ作り、herdr の外なら接続する。
-# $2 に渡したペインは探す対象から外す (hm は自分のペインを数えない)。
+# $2 に渡したペインは探す対象から外す (hd / hm は自分のペインを数えない)。
 _herdr_open_dir() {
     local dir=${1:A} skip=${2:-} panes ws rc
     # workspace create は存在しない cwd を黙ってホームに置き換えるので先に止める
@@ -207,18 +207,14 @@ hgh() {
     _herdr_open_dir "$dir"
 }
 
-# ghq を使わない hgh。引数が既存のディレクトリならそこ、それ以外は zoxide の履歴から選び、そのスペースへ移動する (無ければ作る)
+# 選択画面を挟まず、カレントディレクトリ (引数があれば指定先) のスペースを開く (無ければ作る)
 hd() {
     _herdr_require herdr jq || return
-    local dir
-    if (( $# == 1 )) && [[ -d $1 ]]; then
-        dir=$1
-    else
-        _herdr_require zoxide fzf || return
-        dir=$(zoxide query -l | fzf --no-multi --exit-0 --query="$*" --preview='ls -FA1 {}') || return
-        [[ -n $dir ]] || return 1
+    if (( $# > 1 )); then
+        _herdr_err "使い方: hd [ディレクトリ]"
+        return 1
     fi
-    _herdr_open_dir "$dir"
+    _herdr_open_dir "${1:-$PWD}" "${HERDR_PANE_ID:-}"
 }
 
 # カレントディレクトリのスペースへ移動する (無ければ作る)
