@@ -7,14 +7,18 @@
 pi:
   models:
     # default: 普段の作業。Pi を起動したときのモデル
+    # 選び方 (本人が 2026-11-12 に決めた基準): Artificial Analysis の Intelligence Index (同じ版) で
+    # Opus 5.5 / high の点数 (v5 で 52) を最低水準とし、それ以上の候補で 1 タスクあたりのコストが最も安いもの。
+    # model-radar がこの基準で見直す。2026-11-12 の実測 (難しい 4 課題、各 1 回) では Opus 5.5 high と
+    # GPT-6.1 Sol max はどちらも全合格で、Sol は費用が約 2/3、時間が約 5 倍だった。
     default:
-      provider: openai
-      id: gpt-6.1-sol
-      thinking: max
-    # strong: 一段上げたい時 (default で詰まった・独立した視点が欲しい)。peak より軽い
-    strong:
       provider: anthropic
       id: claude-opus-5-5
+      thinking: high
+    # strong: 一段上げたい時 (default で詰まった・独立した視点が欲しい)。peak より軽い
+    strong:
+      provider: openai
+      id: gpt-6.1-sol
       thinking: max
     # peak: ここぞという時 (難しい設計・重要な変更・strong でも詰まったとき)
     peak:
