@@ -36,66 +36,9 @@ elif [ -z "${PI_JEV_WRAPPED:-}" ] && [ -r "$TOKEN" ] && [ -r "$OPENROUTER_ENV" ]
   fi
 fi
 
-# zsh のエイリアスと関数を、Pi の bash ツールと ! コマンドでも使えるように書き出す。Pi は settings.json の
-# shellPath (zsh) で `zsh -c "<shellCommandPrefix>\n<command>"` を起動し、その prefix がこのファイルを読む
-# (dot_pi/agent/modify_settings.json)。非対話の zsh -c は ~/.zshrc を読まないので、起動のたびに 1 回だけ
-# 対話の zsh から取る。PATH などの環境変数は書かない (Pi が起動時の環境を引き継ぐ)。次は書き出さない:
-#   - --color=always や --icons を含むエイリアス (ls = eza --icons --color=always など)。出力に ANSI の色コードと
-#     アイコンの文字が混ざり、モデルには雑音になる。ls・ll・la は素の ls になる
-#   - PATH のコマンドや組み込みと同じ名前のエイリアスと関数 (cc = Claude を起動する関数、ld = lazydocker など)。
-#     モデルが書く標準のコマンドが別物にすり替わる
-#   - 名前で呼ばずに動く関数 (command_not_found_handler・TRAP*・chpwd など)
-# 読む側のエイリアスを消してから、関数、エイリアスの順に書く。同じ名前のエイリアスと関数があると、関数の
-# 定義名がエイリアスとして展開されて読めない。zsh は -f でも alias run-help=man を持っていて、Ubuntu の
-# /etc/zsh/zshrc は run-help 関数も autoload するので、読む側に先にあるエイリアスも消す必要がある。
-# functions の本体は定義した時点でエイリアスが展開済みなので、この順でも意味は変わらない。
-# zshrc が標準出力に書くものは捨てる (スナップショットに混ざるとコマンドとして実行される)。
-# 対話の zsh は端末を見つけると前面のプロセスグループを自分に移し、終わっても pi-jev に返さない。
-# そのままだと Pi が端末に書いた時点で止まる (suspended (tty output)) ので、setsid で端末から切り離す。
-# 毎回のコマンドの前に source するので、書いたらファイルを 0400、ディレクトリを 0500 にし (作り直すときだけ
-# ここで書き込み権を戻す)、書いた中身の sha256 を PI_ZSH_SNAPSHOT_SHA256 で渡す。prefix と jev-gate は中身が
-# 一致するときだけ使う。zsh が無い・失敗した・5 秒で終わらないときは、前のファイルがあっても使わず
-# スナップショット無しで Pi を起動する。入れ子の起動 (Pi の中の pi) は親の 2 つの値をそのまま引き継ぐ:
-# セッションの途中で書き換えられたファイルを信じ直さないため。sha256sum は PATH ではなく既定の場所から呼ぶ。
-# zsh に渡すコードなので、$ は bash ではなく zsh が展開する
-# shellcheck disable=SC2016
-ZSH_DUMP='zmodload zsh/parameter
-{
-  builtin print -r -- "builtin unalias -m \*"
-  for n in ${(ko)functions}; do
-    (( $+commands[$n] || $+builtins[$n] )) ||
-      [[ $n == (command_not_found_handler|TRAP*|precmd|preexec|chpwd|periodic|zshexit|zshaddhistory) ]] ||
-      builtin functions -- $n
-  done
-  for n in ${(ko)aliases}; do
-    (( $+commands[$n] || $+builtins[$n] )) || [[ $aliases[$n] == *(--color=always|--icons)* ]] || builtin alias -L -- $n
-  done
-} >| $1 && exit 0'
-# Writes the snapshot and prints its sha256; prints nothing when it could not.
-snapshot_zsh() {
-  local dir="${1%/*}" tmp sum=""
-  umask 077
-  mkdir -p "$dir" && chmod 700 "$dir" && tmp="$(mktemp "$1.XXXXXX")" || return 0
-  if timeout 5 setsid -w zsh -ic "$ZSH_DUMP" zsh "$tmp" </dev/null >/dev/null 2>&1 && [ -s "$tmp" ] &&
-    sum="$(command -p sha256sum <"$tmp")" && chmod 400 "$tmp" && mv -f "$tmp" "$1"; then
-    printf '%s\n' "${sum%% *}"
-  else
-    rm -f "$tmp"
-  fi
-  chmod 500 "$dir"
-}
-if [ -z "${PI_JEV_WRAPPED:-}" ]; then
-  PI_ZSH_SNAPSHOT="${XDG_CACHE_HOME:-$HOME/.cache}/pi/zsh-snapshot.zsh"
-  PI_ZSH_SNAPSHOT_SHA256=""
-  if command -v zsh >/dev/null 2>&1 && command -v setsid >/dev/null 2>&1; then
-    PI_ZSH_SNAPSHOT_SHA256="$(snapshot_zsh "$PI_ZSH_SNAPSHOT" 2>/dev/null)" || PI_ZSH_SNAPSHOT_SHA256=""
-  fi
-  if [ -n "$PI_ZSH_SNAPSHOT_SHA256" ]; then
-    export PI_ZSH_SNAPSHOT PI_ZSH_SNAPSHOT_SHA256
-  else
-    unset PI_ZSH_SNAPSHOT PI_ZSH_SNAPSHOT_SHA256
-  fi
-fi
+# Pi's bash tool and ! commands run plain bash: the owner's zsh aliases and functions are not loaded.
+# Values left over from the zsh snapshot this script used to write must not reach the new session.
+unset PI_ZSH_SNAPSHOT PI_ZSH_SNAPSHOT_SHA256
 
 export PI_JEV_WRAPPED=1
 exec "$REAL_PI" "$@"

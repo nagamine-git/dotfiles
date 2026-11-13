@@ -37,6 +37,7 @@ jobs:
           python3 tests/agents-sync.py
           python3 tests/agent-memory-dir.py
           python3 tests/codex-config.py
+          python3 -B tests/agent-autonomy.py
 
       - name: Verify model routing without credentials, network, or model calls
         run: |
@@ -108,6 +109,7 @@ jobs:
           chezmoi --source="$GITHUB_WORKSPACE" execute-template '{{ "ok" }}'
 
       - name: Dry-run apply (template rendering)
+        shell: bash
         run: |
           mkdir -p /tmp/chezmoi-dest
           chezmoi --source="$GITHUB_WORKSPACE" \
