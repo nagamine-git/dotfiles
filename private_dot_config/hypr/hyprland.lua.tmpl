@@ -58,8 +58,9 @@ hl.on("hyprland.start", function()
     {{ end -}}
     hl.exec_cmd("1password --silent &")
     hl.exec_cmd("hyprvoice serve &")
-    -- waybar は不透明の暗い島なので、壁紙 (昼と夜で入れ替わる) に合わせた明暗の切替えはしない
-    hl.exec_cmd("waybar &")
+    -- waybar の島の色を今の壁紙に合わせてから起動する (; で順序を保証。失敗しても waybar は立つ)。
+    -- 壁紙が替わるときは darkman のフックが同じスクリプトを呼ぶ
+    hl.exec_cmd("~/.local/bin/waybar-wallpaper-tint; waybar &")
     hl.exec_cmd("~/.local/bin/swaync_launcher.sh &")
     hl.exec_cmd("swayosd-server &")
     hl.exec_cmd("hyprpaper &")

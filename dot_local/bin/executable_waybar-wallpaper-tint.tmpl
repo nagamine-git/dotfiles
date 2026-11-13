@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+{{- $c := .theme.colors_elevation -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end }}
+"""waybar の島の色を、今の壁紙に合わせて決めて ~/.config/waybar/tint.css に書く (style.css が @import する)。
+
+  waybar-wallpaper-tint [壁紙のパス]   既定は ~/.local/share/wallpaper/wallpaper.jpg。書いたら waybar を再読み込み
+  waybar-wallpaper-tint --print [パス] 書かずに CSS を標準出力へ
+
+考え方 (2026-11、macOS Tahoe の Liquid Glass と同じ):
+- バーの島は「小さな部品」なので、下の明るさに合わせて明暗を反転する。明るい壁紙では明るい島に暗い文字、
+  暗い壁紙では暗い島に明るい文字。メニュー・ツールチップ・通知などの大きな面は反転しない (style.css で暗いまま)
+- 島ごとに真下の壁紙の色相を帯びる。彩度は壁紙の 6 割・上限 0.04 (OKLCH) に抑える
+- 島の明るさは読みやすさを先に満たす: 本文 7:1・補助 4.5:1・状態の色 4.5:1 以上 (WCAG)。
+  明るい島は条件を満たす範囲でいちばん暗くし (光る量を抑える)、暗い島は壁紙より一段明るくして輪郭を保つ
+- 壁紙が替わるとき (darkman のフック) と Hyprland の起動時にだけ動く。作業中に色が動くことはない
+測るのは ImageMagick、計算は Python の標準ライブラリだけ (システムの Python で動く)。失敗したら前の tint.css を残す。
+"""
+import math
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+# 暗い島のときの色 (chezmoi の colors_elevation から埋め込む)
+PAL = {
+    "text": "{{ $c.text.hex }}", "text_dim": "{{ $c.text_dim.hex }}", "bg_dark": "{{ $c.bg_dark.hex }}",
+    "bg_medium": "{{ $c.bg_medium.hex }}", "bg_light": "{{ $c.bg_light.hex }}", "accent": "{{ $c.accent.hex }}",
+    "primary": "{{ $c.primary.hex }}", "warning": "{{ $c.warning.hex }}", "warning_alt": "{{ $c.warning_alt.hex }}",
+    "error": "{{ $c.error_text.hex }}",
+}
+LIGHT_FG, LIGHT_DIM = "1b1c1d", "505255"
+W, H, BAND = 2560, 1440, 48           # Hyprland の論理解像度と、バーの帯 (余白 8 + 高さ 32 + 余白 8)
+REGIONS = {"left": (0.0, 0.30), "center": (0.42, 0.58), "meters": (0.62, 0.80), "status": (0.80, 1.0)}
+OUT = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "waybar", "tint.css")
+
+
+# ---- 色の計算 (sRGB・WCAG のコントラスト・OKLab) ----
+def rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+def hx(c):
+    return "#%02x%02x%02x" % c
+
+def lin(v):
+    v /= 255
+    return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+
+def lum(c):
+    r, g, b = (lin(x) for x in c)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+def contrast(a, b):
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+def oklab(c):
+    r, g, b = (lin(x) for x in c)
+    l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+def oklch_to_rgb(L, C, h):
+    a, b = C * math.cos(h), C * math.sin(h)
+    l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3
+    out = []
+    for v in (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+              -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+              -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s):
+        v = min(max(v, 0.0), 1.0)
+        v = v * 12.92 if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055
+        out.append(int(round(v * 255)))
+    return tuple(out)
+
+def lch(c):
+    L, a, b = oklab(c)
+    return L, math.hypot(a, b), math.atan2(b, a)
+
+def frange(a, b, step=0.005):
+    n = int(round((b - a) / step))
+    return [a + i * step for i in range(n + 1)]
+
+def fit(color, bgs, target, darker):
+    """color の明るさだけを動かして、すべての bgs に対して target 以上のコントラストにする。"""
+    L, C, h = lch(color)
+    for L2 in (frange(0.0, L)[::-1] if darker else frange(L, 1.0)):
+        c = oklch_to_rgb(L2, C, h)
+        if all(contrast(c, bg) >= target for bg in bgs):
+            return c
+    return (0, 0, 0) if darker else (255, 255, 255)
+
+
+# ---- 壁紙を測る ----
+def sample(path):
+    cmd = ["magick", path, "-resize", f"{W}x{H}^", "-gravity", "center", "-extent", f"{W}x{H}", "+gravity",
+           "-crop", f"{W}x{BAND}+0+0", "+repage", "-resize", "256x4!", "-depth", "8", "txt:-"]
+    txt = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30).stdout
+    px = {}
+    for line in txt.splitlines():
+        m = re.match(r"^(\d+),(\d+):\s*\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)", line)
+        if m:
+            px[(int(m[1]), int(m[2]))] = tuple(int(float(m[i])) for i in (3, 4, 5))
+    if not px:
+        raise RuntimeError("壁紙の画素を読めなかった")
+    regions = {}
+    for name, (x0, x1) in REGIONS.items():
+        pts = [c for (x, _), c in px.items() if x0 * 256 <= x < x1 * 256]
+        labs = [oklab(c) for c in pts]
+        L = sum(v[0] for v in labs) / len(labs)
+        a = sum(v[1] for v in labs) / len(labs)
+        b = sum(v[2] for v in labs) / len(labs)
+        regions[name] = (L, math.hypot(a, b), math.atan2(b, a))
+    band_L = sum(oklab(c)[0] for c in px.values()) / len(px)
+    return regions, band_L
+
+
+# ---- 色を決める ----
+def decide(regions, band_L):
+    light = band_L >= 0.6
+    fg = rgb(LIGHT_FG) if light else rgb(PAL["text"])
+    dim = rgb(LIGHT_DIM) if light else rgb(PAL["text_dim"])
+
+    def ok(c):
+        return contrast(fg, c) >= 7.0 and contrast(dim, c) >= 4.5
+
+    islands, hovers = {}, {}
+    for name, (Lw, C, h) in regions.items():
+        Cb = min(C * 0.6, 0.04)
+        if light:
+            # 条件を満たす範囲でいちばん暗い明るい島 (光る量を抑える)
+            L = next((x for x in frange(0.55, 0.97) if ok(oklch_to_rgb(x, Cb, h))), 0.97)
+            hover = oklch_to_rgb(L - 0.08, Cb, h)
+        else:
+            Lmax = max((x for x in frange(0.15, 0.50) if ok(oklch_to_rgb(x, Cb, h))), default=0.25)
+            # 暗い壁紙では壁紙より 0.10 明るくして輪郭を保つ。明るすぎる場合は読みやすさの上限で止める
+            L = min(max(Lw + 0.10, 0.22), Lmax)
+            hover = oklch_to_rgb(L + 0.06, Cb, h)
+        islands[name] = oklch_to_rgb(L, Cb, h)
+        hovers[name] = hover
+
+    bgs = list(islands.values())
+    if light:
+        pill_bg = fit(rgb(PAL["accent"]), [(255, 255, 255)], 4.5, darker=True)
+        special_bg = fit(rgb(PAL["primary"]), [(255, 255, 255)], 4.5, darker=True)
+        urgent_bg = fit(rgb(PAL["error"]), [(255, 255, 255)], 4.5, darker=True)
+        on_pill = (255, 255, 255)
+        states = {k: fit(rgb(PAL[k]), bgs, 4.5, darker=True) for k in ("warning", "warning_alt", "error")}
+    else:
+        pill_bg, special_bg, urgent_bg = rgb(PAL["accent"]), rgb(PAL["primary"]), rgb(PAL["error"])
+        on_pill = rgb(PAL["bg_dark"])
+        states = {k: fit(rgb(PAL[k]), bgs, 4.5, darker=False) for k in ("warning", "warning_alt", "error")}
+    hover = hovers["left"]
+    return dict(light=light, fg=fg, dim=dim, islands=islands, hover=hover, pill_bg=pill_bg, special_bg=special_bg,
+                urgent_bg=urgent_bg, on_pill=on_pill, **states)
+
+
+def css(d, path, band_L):
+    worst_fg = min(contrast(d["fg"], c) for c in d["islands"].values())
+    worst_dim = min(contrast(d["dim"], c) for c in d["islands"].values())
+    lines = [
+        f"/* waybar-wallpaper-tint が {os.path.basename(path)} から作った色 (手で直さない。壁紙が替わると上書きされる)。",
+        f"   バーの帯の明るさ L={band_L:.2f} → {'明るい島・暗い文字' if d['light'] else '暗い島・明るい文字'}。"
+        f" 本文の最小コントラスト {worst_fg:.1f}:1、補助 {worst_dim:.1f}:1 */",
+    ]
+    for name, c in d["islands"].items():
+        lines.append(f"@define-color isl_{name} {hx(c)};")
+    for key in ("fg", "dim", "hover", "pill_bg", "special_bg", "urgent_bg", "on_pill", "warning", "warning_alt", "error"):
+        lines.append(f"@define-color bar_{key} {hx(d[key])};")
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    args = [a for a in sys.argv[1:] if a != "--print"]
+    path = args[0] if args else os.path.expanduser("~/.local/share/wallpaper/wallpaper.jpg")
+    try:
+        regions, band_L = sample(path)
+        text = css(decide(regions, band_L), path, band_L)
+    except Exception as e:  # 失敗しても前の tint.css を残す
+        print(f"waybar-wallpaper-tint: {e}", file=sys.stderr)
+        return 0
+    if "--print" in sys.argv:
+        sys.stdout.write(text)
+        return 0
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(OUT), prefix=".tint.")
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+    os.replace(tmp, OUT)
+    subprocess.run(["pkill", "-USR2", "-x", "waybar"], check=False)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

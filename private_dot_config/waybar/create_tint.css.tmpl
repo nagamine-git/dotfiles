@@ -1,0 +1,18 @@
+{{- $c := .theme.colors_elevation -}}
+{{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
+/* waybar の島の色の初期値 (暗い島・明るい文字)。chezmoi は無いときだけ作り (create_)、以後は
+   waybar-wallpaper-tint が壁紙に合わせて書き換える。style.css が @import する */
+@define-color isl_left #{{ $c.bg_medium.hex }};
+@define-color isl_center #{{ $c.bg_medium.hex }};
+@define-color isl_meters #{{ $c.bg_medium.hex }};
+@define-color isl_status #{{ $c.bg_medium.hex }};
+@define-color bar_fg #{{ $c.text.hex }};
+@define-color bar_dim #{{ $c.text_dim.hex }};
+@define-color bar_hover #{{ $c.bg_light.hex }};
+@define-color bar_pill_bg #{{ $c.accent.hex }};
+@define-color bar_special_bg #{{ $c.primary.hex }};
+@define-color bar_urgent_bg #{{ $c.error_text.hex }};
+@define-color bar_on_pill #{{ $c.bg_dark.hex }};
+@define-color bar_warning #{{ $c.warning.hex }};
+@define-color bar_warning_alt #{{ $c.warning_alt.hex }};
+@define-color bar_error #{{ $c.error_text.hex }};

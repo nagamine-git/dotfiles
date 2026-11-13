@@ -3,10 +3,15 @@
 {{- $f := .theme.fonts -}}
 {{- $s := .theme.shape -}}
 /* waybar の見た目。2026-11 の UI 見直し: 左・中央・右の不透明な島、配色は案 B「エレベーション」(colors_elevation)。
-   - 島は高さ 1 の面 (背景に白 5%)。枠線も影も付けず、面の明るさで浮かせる
+   - 島の色は壁紙に合わせる (tint.css、waybar-wallpaper-tint が壁紙の切り替えのたびに作る)。macOS Tahoe の Liquid Glass と
+     同じく、小さな部品の島は明暗を反転する (明るい壁紙では明るい島に暗い文字)。島ごとに真下の壁紙の色相を少し帯びる。
+     読みやすさは計算で保証する (本文 7:1・補助と状態の色 4.5:1 以上)
+   - ツールチップとメニューは大きな面なので反転せず、いつも暗い (下の方の規則)
+   - 枠線も影も付けず、面の明るさで浮かせる
    - 半透明やぼかしは使わない (読みやすさが壁紙しだいになる)。どの面でも本文 10:1 以上、補助 5:1 以上
    - 選択の色は青緑 (accent) の 1 色 (ウィンドウの枠と同じ)。橙は常時の強調に使わず、状態だけに使う
    - 状態は色だけでなく太字も付けて示す */
+@import "tint.css";
 
 * {
   margin: 0;
@@ -16,7 +21,7 @@
   font-size: 14px;
   /* Nerd Font 入りの等幅を全体に当てる。未指定だとアイコン (PUA) が Noto CJK にフォールバックして漢字になる */
   font-family: "{{ $f.mono }}", monospace;
-  color: #{{ $c.text.hex }};
+  color: @bar_fg;
   background-color: transparent;
 }
 
@@ -25,15 +30,18 @@ window#waybar {
   background-color: transparent;
 }
 
-/* 島: 左・中央・右 2 つ */
+/* 島: 左・中央・右 2 つ。色は島ごとに tint.css から */
 .modules-left,
 .modules-center,
 #meters,
 #status {
-  background-color: #{{ $c.bg_medium.hex }};
   border-radius: {{ $s.radius_lg }}px;
   padding: 0 6px;
 }
+.modules-left { background-color: @isl_left; }
+.modules-center { background-color: @isl_center; }
+#meters { background-color: @isl_meters; }
+#status { background-color: @isl_status; }
 
 /* 各モジュールの余白 */
 #window, #clock, #temperature, #cpu, #custom-gpu, #memory, #custom-disk,
@@ -50,7 +58,7 @@ window#waybar {
 
 /* hyprland/window はアイコンと label を入れた箱なので、色とフォントは中の label にも当てる */
 #window label {
-  color: #{{ $c.text_dim.hex }};
+  color: @bar_dim;
 }
 
 #clock {
@@ -77,89 +85,90 @@ window#waybar {
 #workspaces button label {
   font-family: "{{ $f.ui }}", sans-serif;
   font-size: 13px;
-  color: #{{ $c.text.hex }};
+  color: @bar_fg;
 }
 
 #workspaces button.empty label {
-  color: #{{ $c.text_dim.hex }};
+  color: @bar_dim;
 }
 
 #workspaces button:hover {
-  background: #{{ $c.bg_light.hex }};
+  background: @bar_hover;
 }
 
 #workspaces button.active {
-  background: #{{ $c.accent.hex }};
+  background: @bar_pill_bg;
   padding: 0 12px;
 }
 
 #workspaces button.active label {
-  color: #{{ $c.bg_dark.hex }};
+  color: @bar_on_pill;
   font-weight: 700;
 }
 
 /* スペシャルワークスペース (Super+` のオーバーレイ) は開いている間だけ出る。選択の青緑とは別の青 (primary) の札にして、
    通常のワークスペースにいるのか、上に重ねた層を見ているのかを区別する */
 #workspaces button.special {
-  background: #{{ $c.primary.hex }};
+  background: @bar_special_bg;
   padding: 0 10px;
   margin-left: 6px;
 }
 
 #workspaces button.special label {
-  color: #{{ $c.bg_dark.hex }};
+  color: @bar_on_pill;
   font-weight: 700;
 }
 
 #workspaces button.urgent {
-  background: #{{ $c.error_text.hex }};
+  background: @bar_urgent_bg;
 }
 
 #workspaces button.urgent label {
-  color: #{{ $c.bg_dark.hex }};
+  color: @bar_on_pill;
   font-weight: 700;
 }
 
 /* 状態 (色 + 太字) */
 .warning {
-  color: #{{ $c.warning.hex }};
+  color: @bar_warning;
   font-weight: bold;
 }
 
 .critical {
-  color: #{{ $c.error_text.hex }};
+  color: @bar_error;
   font-weight: bold;
 }
 
 #temperature.critical {
-  color: #{{ $c.error_text.hex }};
+  color: @bar_error;
   font-weight: bold;
 }
 
-#custom-ringlight.off { color: #{{ $c.text_dim.hex }}; }
-#custom-ringlight.on  { color: #{{ $c.warning.hex }}; font-weight: bold; }
+#custom-ringlight.off { color: @bar_dim; }
+#custom-ringlight.on  { color: @bar_warning; font-weight: bold; }
 
-#custom-tailscale.direct { color: #{{ $c.text_dim.hex }}; }
-#custom-tailscale.exit   { color: #{{ $c.warning_alt.hex }}; font-weight: bold; }
-#custom-tailscale.off    { color: #{{ $c.error_text.hex }}; font-weight: bold; }
+#custom-tailscale.direct { color: @bar_dim; }
+#custom-tailscale.exit   { color: @bar_warning_alt; font-weight: bold; }
+#custom-tailscale.off    { color: @bar_error; font-weight: bold; }
 
 #privacy-item {
-  color: #{{ $c.warning_alt.hex }};
+  color: @bar_warning_alt;
 }
 
 #custom-notification.notification,
 #custom-notification.dnd-notification {
-  color: #{{ $c.text.hex }};
+  color: @bar_fg;
   font-weight: bold;
 }
 
 #custom-notification.none,
 #custom-notification.dnd-none,
 #custom-keys {
-  color: #{{ $c.text_dim.hex }};
+  color: @bar_dim;
 }
 
-/* ツールチップとメニュー: バーより一段高い面 (高さ 3) にして、枠線なしで浮いて見せる */
+/* ツールチップとメニュー: バーより一段高い面 (高さ 3) にして、枠線なしで浮いて見せる。
+   大きな面なので壁紙に合わせて反転しない。島の文字色 (@bar_fg) が明るい島で暗くなっても、ここは明るい文字に固定する */
 tooltip {
   background-color: #{{ $c.surface.hex }};
   border-radius: {{ $s.radius_md }}px;
@@ -173,6 +182,11 @@ tooltip label {
 menu {
   background-color: #{{ $c.surface.hex }};
   border-radius: {{ $s.radius_md }}px;
+}
+
+menu label,
+menuitem label {
+  color: #{{ $c.text.hex }};
 }
 
 menuitem {

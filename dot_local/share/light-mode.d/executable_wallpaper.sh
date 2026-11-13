@@ -8,3 +8,5 @@ W="$HOME/.local/share/wallpaper"
 pkill -x hyprpaper 2>/dev/null || true
 sleep 0.3
 hyprpaper >/dev/null 2>&1 &
+# waybar の島の色を新しい壁紙に合わせる (明るい壁紙では明るい島に反転、島ごとに壁紙の色相を帯びる)
+"$HOME/.local/bin/waybar-wallpaper-tint" "$W/wallpaper.jpg" >/dev/null 2>&1 || true
