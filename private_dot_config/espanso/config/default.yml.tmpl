@@ -1,6 +1,9 @@
 # キーコードによる文字列注入を避け、配列に依存しない貼り付けで展開する。
 backend: Clipboard
 preserve_clipboard: true
+# 検索画面のショートカット (既定 ALT+SPACE) を使わない。他のアプリの Alt+Space と競合するため
+# (展開そのものはトリガーの文字列で動くので影響しない)
+search_shortcut: off
 {{ if eq .chezmoi.os "linux" }}
 # Wayland は配列を自動判定できないため、Hyprland と同じ Colemak を明示する。
 keyboard_layout:
