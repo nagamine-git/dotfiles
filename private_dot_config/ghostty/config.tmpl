@@ -1,6 +1,8 @@
 # Font Settings
 font-family = "{{ .theme.fonts.terminal }}"
-font-size = 12
+{{- /* 文字の大きさは見る距離で決める。漢字 1 文字の高さが視角 20 分 (ISO 9241-303 の目安、原典は未確認) を超えるようにする。
+     am5-itx は 27" 4K を scale 1.5、目から約 70cm (2026-11 に測定): 12pt は約 18 分、14pt で約 21 分 */}}
+font-size = {{ if eq .chezmoi.hostname "am5-itx" }}14{{ else }}12{{ end }}
 font-feature = -liga
 font-feature = -calt
 {{- if eq .chezmoi.os "darwin" }}

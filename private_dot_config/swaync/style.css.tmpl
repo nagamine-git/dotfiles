@@ -2,8 +2,8 @@
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 {{- $sh := .theme.shape -}}
-/* 2026-11 の UI 見直し: 不透明・角丸 6・左端の色の帯で緊急度を示す・文字を 12pt に上げる
-   (通知は日本語を周辺視野でちらっと読むので、10pt では漢字が小さすぎた) */
+/* 2026-11 の UI 見直し: 不透明・角丸 6・左端の色の帯で緊急度を示す・文字を 13pt に上げる
+   (通知は日本語を周辺視野でちらっと読むので、10pt では漢字が小さすぎた。70cm で 13pt は漢字 1 文字が視角約 20 分) */
 /* 基本スタイル */
 * {
   font-family: '{{ $f.ui }}', '{{ $f.mono }}', sans-serif;
@@ -25,7 +25,7 @@
   margin: {{ $sh.gap }}px;
   border-radius: {{ $sh.radius_md }}px;
   border: 1px solid #{{ $c.bg_light.hex }};
-  font-size: 12pt;
+  font-size: 13pt;
 }
 
 .notification-content {
@@ -71,7 +71,7 @@
 }
 
 .summary {
-  font-size: 12pt;
+  font-size: 13pt;
   font-weight: bold;
   background: transparent;
   color: rgba({{ $c.text.rgb }}, 1);
@@ -88,7 +88,7 @@
 }
 
 .body {
-  font-size: 12pt;
+  font-size: 13pt;
   font-weight: normal;
   background: transparent;
   color: #{{ $c.text.hex }};
