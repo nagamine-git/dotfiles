@@ -118,9 +118,4 @@ Library/**
 # tower (新規事業ループの司令塔)
 .config/systemd/user/tower.service
 .config/agents/tower.env
-# Musepass (Machitsuku-inc) の Dependabot 週次まとめ
-.local/bin/musepass-dependabot-weekly
-.config/systemd/user/musepass-dependabot-weekly.service
-.config/systemd/user/musepass-dependabot-weekly.timer
-.config/agents/musepass-dependabot.env
 {{ end -}}

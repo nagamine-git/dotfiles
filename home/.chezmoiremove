@@ -26,6 +26,11 @@ bin/server.sh
 install.sh
 uninstall.sh
 50-wolow-companion.rules
+# Musepass の Dependabot 週次まとめは使わないことにした (タイマーは一度も有効にしていない)
+.local/bin/musepass-dependabot-weekly
+.config/systemd/user/musepass-dependabot-weekly.service
+.config/systemd/user/musepass-dependabot-weekly.timer
+.config/agents/musepass-dependabot.env
 # swaync は swaync.service で起動するようにした
 .local/bin/swaync_launcher.sh
 # 使われていなかったスクリプト (Blender のメモリ上限。goldlab-producer の InaccessiblePaths に名前だけ残る)
