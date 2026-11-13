@@ -42,7 +42,8 @@ yq
 ripgrep
 fd
 eza
-obs-studio-git
+# 公式の obs-studio (2026-11 に AUR の obs-studio-git から移行。-git は VST3 SDK が無くてビルドに失敗し、版も公式より古かった)
+obs-studio
 hyprpaper
 btop
 wl-clipboard

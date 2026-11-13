@@ -10,7 +10,7 @@ curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --import
 
 # pkglist で入れ替えたパッケージ (旧:新)。衝突は --noconfirm だと「N」になり一括インストール全体が失敗するので、
 # 公式リポジトリの新パッケージに替えるものは先に旧を外す。
-replaced_pkgs=(waybar-git:waybar)
+replaced_pkgs=(waybar-git:waybar obs-studio-git:obs-studio)
 for pair in "${replaced_pkgs[@]}"; do
   old="${pair%%:*}"; new="${pair##*:}"
   # 旧パッケージが新の名前を provides していると `pacman -Q 新` も成功するので、実体の名前で比べる
