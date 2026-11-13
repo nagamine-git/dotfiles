@@ -24,10 +24,10 @@
     "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/notification"]
   },
 
-  // 番号を出して Super+数字 と対応させる。1–5 は空でも常に出す
+  // 番号を出して Super+数字 と対応させる。窓のあるワークスペースと今いるワークスペースだけを出す
+  // (persistent-workspaces で 1–5 を常に出していたが、窓の無い番号まで並んで邪魔だった)
   "hyprland/workspaces": {
     "format": "{name}",
-    "persistent-workspaces": { "*": 5 },
     // スペシャルワークスペース (Super+` など) は開いている間だけ、名前の札を出す (色は style.css の .special)
     "show-special": true,
     "special-visible-only": true,

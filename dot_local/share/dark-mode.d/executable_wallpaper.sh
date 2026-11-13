@@ -4,6 +4,8 @@
 # hyprpaper を再起動する。darkman フックはセッション内で走るので env を継承できる。
 W="$HOME/.local/share/wallpaper"
 [ -f "$W/wallpaper-night.jpg" ] && cp -f "$W/wallpaper-night.jpg" "$W/wallpaper.jpg"
+# ロック画面の背景 (ぼかした壁紙) も作り直す
+"$HOME/.local/bin/wallpaper-lock-image" >/dev/null 2>&1 || true
 pkill -x hyprpaper 2>/dev/null || true
 sleep 0.3
 hyprpaper >/dev/null 2>&1 &

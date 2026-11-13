@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# ロック画面 (hyprlock) の背景を作る。今の壁紙を縮小してぼかし、少し暗くした画像を
+# ~/.local/share/wallpaper/wallpaper-lock.jpg に書く。darkman の壁紙の切替 (dark-mode.d / light-mode.d) から呼ぶ。
+# ぼかしは GPU ではなくここで先に済ませる。hyprlock で 4K の画像を何度もぼかすと、amdgpu が落ちたことがあるため
+# (hyprlock.conf の background のコメント)。1 枚 0.4 秒ほど。
+set -eu
+
+W="$HOME/.local/share/wallpaper"
+src="${1:-$W/wallpaper.jpg}"
+out="$W/wallpaper-lock.jpg"
+
+command -v magick >/dev/null 2>&1 || { echo "wallpaper-lock-image: magick が無い" >&2; exit 0; }
+[ -f "$src" ] || { echo "wallpaper-lock-image: $src が無い" >&2; exit 0; }
+
+# 縮小してからぼかす (ぼかした後は解像度が要らない)。明るさは 85% に落とすだけにし、
+# 文字の読みやすさは hyprlock の時計と入力欄の後ろに敷く暗い板で確保する
+magick "$src" -resize '1920x1920>' -blur 0x18 -modulate 85 -quality 90 "$out.tmp.jpg"
+mv -f "$out.tmp.jpg" "$out"

@@ -25,18 +25,28 @@ animations {
 
 background {
     monitor =
-    path = screenshot
-    blur_size = 8
-    # blur_passes は 3 から 1 に下げた (2026-08-08)。4K スクリーンショットへの
-    # 3 パスブラーで hyprlock が GPU に不正なコマンドを吐き、amdgpu が
-    # "Illegal opcode in command stream" + CPF page fault を報告して落ちていた。
-    # 08-06 21:20 は同じ経路で ring reset に失敗し Hyprland ごと道連れになった。
-    # 再発が止まらなければ 0 (blur 無効) か path=screenshot の廃止まで下げる。
-    blur_passes = 1
-    # 背景のスクリーンショットを暗くする (2026-11)。白いページを開いたままロックすると、
-    # 時計の文字と背景の差が 1.1–1.8:1 しかなかった。0.25 で背景が白でも本文 5:1 前後になる。
-    # brightness はぼかしのシェーダーの中で掛かるので、blur_passes を増やさずに済む
-    brightness = 0.25
+    # 今の壁紙をぼかした画像 (wallpaper-lock-image が darkman の壁紙の切替のたびに作る)。
+    # 2026-11 までは path = screenshot を hyprlock でぼかしていたが、真っ暗に近くするしか読みやすさを保てなかった。
+    # GPU でのぼかしは使わない (blur_passes = 0)。4K のスクリーンショットへの 3 パスのぼかしで
+    # hyprlock が GPU に不正なコマンドを出し、amdgpu が "Illegal opcode in command stream" で落ちたことがある (2026-08)
+    path = {{ .chezmoi.homeDir }}/.local/share/wallpaper/wallpaper-lock.jpg
+    # 画像が無いときの色
+    color = rgba({{ $c.bg_dark.rgb }}, 1.0)
+    blur_passes = 0
+}
+
+# 時計・日付・入力欄の後ろに敷く暗い板。背景は明るい壁紙のこともあるので、文字の読みやすさはこの板で保つ
+# (板の不透明度 0.75 なら、背後が昼の明るい壁紙でも本文と板の差は 5:1 以上)
+shape {
+    monitor =
+    size = 440, 280
+    color = rgba({{ $c.bg_dark.rgb }}, 0.75)
+    rounding = {{ .theme.shape.radius_lg }}
+    border_size = 1
+    border_color = rgba({{ $c.bg_light.rgb }}, 1.0)
+    position = 0, 55
+    halign = center
+    valign = center
 }
 
 input-field {
