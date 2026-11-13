@@ -22,6 +22,9 @@ bin/server.sh
 .config/waybar/colors.css
 # リングライトの見張り役は ringlight watch に統合した
 .local/bin/ringa-camera-watch
+# 使われていなかったスクリプト (月次の AA リーダーボードの投稿、Blender のメモリ上限)
+.local/bin/aa-coding-snapshot
+.local/bin/blender-guard
 # rofi の 3 つの用途 (Exit Node・クリップボード履歴・ショートカット一覧) は vicinae dmenu に移した
 .config/rofi
 {{- end }}
