@@ -1,6 +1,8 @@
 /**
  * delegate — hand one task from Pi to Claude Code or Codex and return its final answer.
  *   claude  `claude -p <task> --output-format json`: model, effort and permission mode are Claude Code's own settings.
+ *           chrome: true adds `--chrome` (Claude in Chrome, the owner's logged-in Chrome; the child works in its own tab
+ *           group and window). Off by default, so a task that does not need the browser never opens it.
  *   codex   `codex exec -s workspace-write -C <cwd> -o <file> <task>`: Codex's OS sandbox, no approval prompt
  *           (config.toml approval_policy = "never"), so what the sandbox blocks fails back to Codex.
  * The task goes as "Task: <task>", as in Pi's subagent example, so it is never read as an option or a subcommand.
@@ -104,6 +106,8 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use delegate with harness \"claude\" for work that needs what only Claude Code has: the claude.ai connectors " +
         "(Slack, Google, Claude Docs) or Chrome, and for an independent review by another harness.",
+      "For Chrome, set chrome: true (claude only). Without it Claude in Chrome is not loaded. The claude.ai connectors " +
+        "(Slack and others) need no flag.",
       "Use delegate with harness \"codex\" for work that should run inside an OS sandbox (Codex workspace-write).",
       "Write the delegate task self-contained: goal, files, constraints and what to report back.",
     ],
@@ -111,6 +115,7 @@ export default function (pi: ExtensionAPI) {
       harness: StringEnum(["claude", "codex"] as const),
       task: Type.String({ description: "Self-contained instructions for the child" }),
       cwd: Type.Optional(Type.String({ description: "Working directory (default: Pi's)" })),
+      chrome: Type.Optional(Type.Boolean({ description: "claude only: load Claude in Chrome (--chrome), the owner's logged-in Chrome. Default false" })),
     }),
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -118,12 +123,13 @@ export default function (pi: ExtensionAPI) {
       const cwd = where.dir ?? path.resolve(ctx.cwd, params.cwd ?? ".");
       const fail = (text: string) => ({ content: [{ type: "text" as const, text }], details: { harness: params.harness, cwd }, isError: true });
       if (where.refused) return fail(`delegate: ${where.refused}, so ${params.harness} does not run there`);
+      if (params.chrome && params.harness !== "claude") return fail("delegate: chrome is for claude only (Claude in Chrome)");
       const prompt = `Task: ${params.task}`;
       const tmp = params.harness === "codex" ? fs.mkdtempSync(path.join(os.tmpdir(), "pi-delegate-")) : undefined;
       try {
         const last = tmp && path.join(tmp, "last-message.md");
         const r = params.harness === "claude"
-          ? await run("claude", ["-p", prompt, "--output-format", "json"], cwd, signal ?? ctx.signal)
+          ? await run("claude", ["-p", prompt, "--output-format", "json", ...(params.chrome ? ["--chrome"] : [])], cwd, signal ?? ctx.signal)
           : await run("codex", ["exec", "-s", "workspace-write", "-C", cwd, "-o", last!, prompt], cwd, signal ?? ctx.signal);
         if (r.error?.code === "ENOENT") return fail(`delegate: ${params.harness} is not on PATH, so it cannot run here`);
         if (r.error) return fail(`delegate: could not start ${params.harness} (${r.error.message})`);
@@ -150,7 +156,7 @@ export default function (pi: ExtensionAPI) {
         text = masked.text;
         if (masked.count) text += `\n\n(delegate: 鍵やトークンらしい文字列を ${masked.count} か所伏せた)`;
         if (costUsd !== undefined) text += `\n\n(Claude Code の費用の見積もり: $${costUsd.toFixed(4)}。サブスクリプションでは API 料金に換算した目安で、請求額ではない)`;
-        return { content: [{ type: "text", text: cut(text || "(no answer)") }], details: { harness: params.harness, cwd, exitCode: r.code, costUsd, redacted: masked.count }, isError };
+        return { content: [{ type: "text", text: cut(text || "(no answer)") }], details: { harness: params.harness, cwd, chrome: Boolean(params.chrome), exitCode: r.code, costUsd, redacted: masked.count }, isError };
       } finally {
         if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
       }

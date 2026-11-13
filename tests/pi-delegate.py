@@ -20,7 +20,8 @@ HERDR = {"HERDR_ENV": "1", "HERDR_PANE_ID": "p1", "HERDR_TAB_ID": "t1", "HERDR_W
 STUBS = {
     "@earendil-works/pi-ai": "export const StringEnum = (values) => ({ type: 'string', enum: values });\n",
     "typebox": "export const Type = { Object: (p) => ({ type: 'object', properties: p }),\n"
-               "  String: (o) => ({ type: 'string', ...o }), Optional: (s) => ({ ...s, optional: true }) };\n",
+               "  String: (o) => ({ type: 'string', ...o }), Boolean: (o) => ({ type: 'boolean', ...o }),\n"
+               "  Optional: (s) => ({ ...s, optional: true }) };\n",
 }
 
 # Registers the extension, runs the delegate tool once (aborting it when asked) and prints the result.
@@ -105,8 +106,9 @@ class Delegate(unittest.TestCase):
 
     def delegate(self, harness, task="fix it", timeout=60, abort_after_ms=None, ctx_cwd=None, **extra):
         params = {"harness": harness, "task": task}
-        if "cwd" in extra:
-            params["cwd"] = extra.pop("cwd")
+        for key in ("cwd", "chrome"):
+            if key in extra:
+                params[key] = extra.pop(key)
         scenario = {"params": params, "cwd": str(ctx_cwd or self.cwd), "abortAfterMs": abort_after_ms}
         result = subprocess.run([NODE, "--disable-warning=ExperimentalWarning", "run.mjs", json.dumps(scenario)],
                                 cwd=self.work, env=dict(self.env, **extra), capture_output=True, text=True, timeout=timeout)
@@ -129,6 +131,18 @@ class Delegate(unittest.TestCase):
         self.assertTrue(self.text(out).startswith("done"))
         self.assertIn("見積もり: $0.0123", self.text(out))
         self.assertEqual(out["result"]["details"]["costUsd"], 0.0123)
+
+    def test_chrome_adds_the_flag_only_when_asked_and_only_for_claude(self):
+        out = self.delegate("claude", chrome=True)
+        [call] = self.calls()
+        self.assertEqual(call["argv"], ["-p", "Task: fix it", "--output-format", "json", "--chrome"])
+        self.assertTrue(out["result"]["details"]["chrome"])
+        self.delegate("claude", chrome=False)
+        self.assertNotIn("--chrome", self.calls()[-1]["argv"])
+        out = self.delegate("codex", chrome=True)
+        self.assertTrue(out["result"]["isError"])
+        self.assertIn("chrome is for claude only", self.text(out))
+        self.assertEqual(len(self.calls()), 2)  # codex は起動しない
 
     def test_codex_runs_in_workspace_write_and_returns_its_last_message(self):
         out = self.delegate("codex", cwd="sub")
