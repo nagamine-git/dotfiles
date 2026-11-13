@@ -40,7 +40,7 @@ window#waybar {
 
 /* 各モジュールの余白 */
 #window, #clock, #temperature, #cpu, #custom-gpu, #memory, #custom-disk,
-#privacy, #tray, #network, #custom-tailscale, #pulseaudio, #custom-notification {
+#privacy, #tray, #network, #custom-tailscale, #pulseaudio, #custom-notification, #custom-keys {
   padding: 0 8px;
 }
 
@@ -154,7 +154,8 @@ window#waybar {
 }
 
 #custom-notification.none,
-#custom-notification.dnd-none {
+#custom-notification.dnd-none,
+#custom-keys {
   color: #{{ $c.text_dim.hex }};
 }
 

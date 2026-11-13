@@ -1,0 +1,79 @@
+#!/usr/bin/env zsh
+# zsh の補完候補を 1 行ずつ出す。使い方: zsh-capture-completion 'git che'
+# 出力は「候補」または「候補 -- 説明」。Pi の ! コマンドの Tab 補完 (~/.pi/agent/extensions/user-zsh.ts) が使う。
+#
+# zpty の中で素の zsh (-f: .zshrc を読まない) を起動して compinit し、compadd を横取りして候補を集める。
+# 補完関数の場所は呼び出し元が環境変数 FPATH で渡す (対話の zsh の $FPATH)。コマンドは実行しない。
+# Valodim/zsh-capture-completion (MIT) の方法による。
+zmodload zsh/zpty || exit 1
+
+zpty z zsh -f -i
+local line
+setopt rcquotes
+() {
+  zpty -w z source $1
+  repeat 4; do
+    zpty -r z line
+    [[ $line == ok* ]] && return
+  done
+  echo 'zsh-capture-completion: 初期化に失敗' >&2
+  exit 2
+} =( <<< '
+PROMPT=
+autoload -Uz compinit
+compinit -C -d ${XDG_CACHE_HOME:-$HOME/.cache}/zcompdump-capture
+# Enter でコマンドを実行させない
+bindkey ''^M'' undefined
+bindkey ''^J'' undefined
+bindkey ''^I'' complete-word
+# 候補の前後に NUL だけの行を出して区切る
+null-line () { echo -E - $''\0'' }
+compprefuncs=( null-line )
+comppostfuncs=( null-line exit )
+zstyle '':completion:*'' list-grouped false
+zstyle '':completion:*'' insert-tab false
+zstyle '':completion:*'' list-separator ''''
+zmodload zsh/zutil
+compadd () {
+  # -O / -A / -D は候補を配列に入れるだけの呼び出しなので、そのまま通す
+  if [[ ${@[1,(i)(-|--)]} == *-(O|A|D)\ * ]]; then
+    builtin compadd "$@"
+    return $?
+  fi
+  typeset -a __hits __dscr __tmp
+  if (( $@[(I)-d] )); then
+    __tmp=${@[$[${@[(i)-d]}+1]]}
+    if [[ $__tmp == \(* ]]; then
+      eval "__dscr=$__tmp"
+    else
+      __dscr=( "${(@P)__tmp}" )
+    fi
+  fi
+  builtin compadd -A __hits -D __dscr "$@"
+  setopt localoptions norcexpandparam extendedglob
+  typeset -A apre hpre hsuf asuf
+  zparseopts -E P:=apre p:=hpre S:=asuf s:=hsuf
+  integer dirsuf=0
+  if [[ -z $hsuf && "${${@//-default-/}% -# *}" == *-[[:alnum:]]#f* ]]; then
+    dirsuf=1
+  fi
+  [[ -n $__hits ]] || return
+  local dsuf dscr
+  for i in {1..$#__hits}; do
+    (( dirsuf )) && [[ -d $__hits[$i] ]] && dsuf=/ || dsuf=
+    (( $#__dscr >= $i )) && dscr=" -- ${${__dscr[$i]}##$__hits[$i] #}" || dscr=
+    echo -E - $IPREFIX$apre$hpre$__hits[$i]$dsuf$hsuf$asuf$dscr
+  done
+}
+echo ok')
+
+zpty -w z "$*"$'\t'
+
+integer tog=0
+while zpty -r z; do :; done | while IFS= read -r line; do
+  if [[ $line == *$'\0\r' ]]; then
+    (( tog++ )) && return 0 || continue
+  fi
+  (( tog )) && echo -E - $line
+done
+return 2

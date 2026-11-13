@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Hyprland のショートカット一覧を rofi で出す (Super+/ と waybar のキーボードのアイコン)。
+# hyprland.lua で description を「カテゴリ｜説明」の形で付けたキー割り当てだけを、カテゴリ順に並べる。
+# 一覧は検索できる。選んでも何も実行しない (見るだけ)。
+set -eu
+
+command -v hyprctl >/dev/null 2>&1 || exit 0
+command -v rofi >/dev/null 2>&1 || exit 0
+
+# 開いていれば閉じる (もう一度押したとき)
+if pkill -x rofi 2>/dev/null; then
+  exit 0
+fi
+
+hyprctl binds -j | jq -r '
+  def mods($m):
+    [ (if ($m / 64 | floor) % 2 == 1 then "Super" else empty end),
+      (if ($m / 4  | floor) % 2 == 1 then "Ctrl"  else empty end),
+      (if ($m / 8  | floor) % 2 == 1 then "Alt"   else empty end),
+      (if  $m        % 2 == 1         then "Shift" else empty end) ];
+  def keyname:
+    { "grave": "`", "slash": "/", "minus": "-", "Return": "Enter", "space": "Space", "tab": "Tab",
+      "left": "←", "right": "→", "up": "↑", "down": "↓",
+      "mouse:272": "左ドラッグ", "mouse:273": "右ドラッグ", "Print": "PrintScreen",
+      "XF86AudioRaiseVolume": "音量+", "XF86AudioLowerVolume": "音量-", "XF86AudioMute": "ミュート",
+      "XF86AudioMicMute": "マイクミュート", "XF86AudioNext": "次の曲", "XF86AudioPlay": "再生",
+      "XF86AudioPrev": "前の曲" }[.] // (if length == 1 then ascii_upcase else . end);
+  [ .[] | select(.has_description and (.description | contains("｜")))
+    | (.description | split("｜")) as $d
+    | { cat: $d[0], desc: $d[1], key: ((mods(.modmask) + [(.key | keyname)]) | join("+")) } ]
+  | (["ヘルプ","起動","アプリ","窓","移動","ワークスペース","グループ","通知","クリップボード","スクリーンショット","システム","マウス","メディア"]) as $order
+  | sort_by((.cat as $c | $order | index($c)) // 99, .key)
+  | .[] | "\(.cat)\t\(.key)\t\(.desc)"' |
+  column -t -s $'\t' |
+  rofi -dmenu -i -no-custom -p "ショートカット" -mesg "Super+/ でも開けます。文字を打つと絞り込めます" >/dev/null || true

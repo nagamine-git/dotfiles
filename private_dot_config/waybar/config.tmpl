@@ -21,7 +21,7 @@
   },
   "group/status": {
     "orientation": "horizontal",
-    "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/notification"]
+    "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/notification", "custom/keys"]
   },
 
   // 番号を出して Super+数字 と対応させる。窓のあるワークスペースと今いるワークスペースだけを出す
@@ -46,7 +46,7 @@
     "interval": 1,
     "locale": "ja_JP.UTF-8",
     "timezone": "Asia/Tokyo",
-    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>\n\nスクロール: 月を送る / 右クリック: 月と年の表示を切替",
     "calendar": {
       "mode": "month",
       "weeks-pos": "right",
@@ -131,8 +131,8 @@
     "format-ethernet": "󰈀",
     "format-linked": "󰈁 {ifname}",
     "format-disconnected": "󰤮",
-    "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
-    "tooltip-format-ethernet": "󰈀 {ifname}: {ipaddr}/{cidr}\n󰕒 {bandwidthUpBits}\n󰇚 {bandwidthDownBits}",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}\n\nクリック: 接続の設定",
+    "tooltip-format-ethernet": "󰈀 {ifname}: {ipaddr}/{cidr}\n󰕒 {bandwidthUpBits}\n󰇚 {bandwidthDownBits}\n\nクリック: 接続の設定",
     "interval": 10,
     "on-click": "nm-connection-editor"
   },
@@ -154,15 +154,15 @@
       "default": ["󰕿  ", "󰖀 ⡀", "󰖀 ⣀", "󰖀 ⣄", "󰖀 ⣤", "󰕾 ⣦", "󰕾 ⣶", "󰕾 ⣷", "󰕾 ⣿"]
     },
     "on-click": "pavucontrol",
-    "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
+    "tooltip-format": "音量: {volume}%\nデバイス: {desc}\n\nクリック: 音量ミキサー / 音量キー: 上げ下げ"
   },
 
-  // swaync の未読数。クリックで通知センター、右クリックでサイレントモード、中クリックで全部消す
+  // swaync の未読数 (0 件のときは数字を出さない)。クリックで通知センター、右クリックでサイレントモード、中クリックで全部消す
   "custom/notification": {
     "exec-if": "command -v swaync-client",
-    "exec": "swaync-client -swb",
+    "exec": "~/.config/waybar/scripts/notification_status.sh",
     "return-type": "json",
-    "format": "{icon} {text}",
+    "format": "{icon}{text}",
     "format-icons": {
       "notification": "󰂚",
       "none": "󰂜",
@@ -177,6 +177,13 @@
     "on-click-right": "swaync-client -d -sw",
     "on-click-middle": "swaync-client -C -sw",
     "escape": true,
-    "tooltip": false
+    "tooltip": true
+  },
+
+  // ショートカットの一覧 (Super+/ と同じ)
+  "custom/keys": {
+    "format": "󰌌",
+    "tooltip-format": "ショートカットの一覧 (Super+/)",
+    "on-click": "~/.local/bin/hypr-keybinds"
   }
 }

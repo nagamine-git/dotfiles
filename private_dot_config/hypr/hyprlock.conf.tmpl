@@ -35,28 +35,31 @@ background {
     blur_passes = 0
 }
 
-# 時計・日付・入力欄の後ろに敷く暗い板。背景は明るい壁紙のこともあるので、文字の読みやすさはこの板で保つ
-# (板の不透明度 0.75 なら、背後が昼の明るい壁紙でも本文と板の差は 5:1 以上)
+# 時計・日付・入力欄を載せるカード (2026-11 に調整)。背景は明るい壁紙のこともあるので、文字の読みやすさはこの板で保つ
+# (不透明度 0.75 なら、背後が昼の明るい壁紙でも本文と板の差は 5:1 以上)。
+# 縦の配置は 32px の余白でそろえる: カードの上端 → 時計 (32) / 時計 → 日付 (12) / 日付 → 入力欄 (32) / 入力欄 → 下端 (32)。
+# position は画面の中心からの距離 (上が正)。カード 400x252 の中心を 54 に置くと、上端 180・下端 -72 になる
 shape {
     monitor =
-    size = 440, 280
+    size = 400, 252
     color = rgba({{ $c.bg_dark.rgb }}, 0.75)
     rounding = {{ .theme.shape.radius_lg }}
     border_size = 1
     border_color = rgba({{ $c.bg_light.rgb }}, 1.0)
-    position = 0, 55
+    position = 0, 54
     halign = center
     valign = center
 }
 
 input-field {
     monitor =
-    size = 300, 50
+    size = 320, 48
     outline_thickness = 2
-    dots_size = 0.33
-    dots_spacing = 0.15
-    outer_color = rgba({{ $c.text.rgb }}, 0.45)
-    inner_color = rgba({{ $c.bg_medium.rgb }}, 0.92)
+    dots_size = 0.25
+    dots_spacing = 0.3
+    dots_center = true
+    outer_color = rgba({{ $c.bg_light.rgb }}, 1.0)
+    inner_color = rgba({{ $c.bg_medium.rgb }}, 1.0)
     font_color = rgba({{ $c.text.rgb }}, 1.0)
     font_family = {{ $f.ui }}
     fade_on_empty = false
@@ -66,34 +69,32 @@ input-field {
     check_color = rgba({{ $c.accent.rgb }}, 1.0)
     fail_color = rgba({{ $c.error.rgb }}, 1.0)
     capslock_color = rgba({{ $c.warning.rgb }}, 1.0)
-    placeholder_text = <span foreground="##{{ $c.text.hex }}aa">パスワードを入力</span>
-    # デバッグ用：失敗時の詳細表示
-    fail_text = <i>認証失敗 <b>($ATTEMPTS)</b> - $FAIL</i>
-
-    position = 0, -20
+    placeholder_text = <span foreground="##{{ $c.text_dim.hex }}">パスワードを入力</span>
+    fail_text = <span foreground="##{{ $c.error_text.hex }}">認証失敗 ($ATTEMPTS) - $FAIL</span>
+    position = 0, -16
     halign = center
     valign = center
 }
 
+# 時計は「時:分」だけを大きく細い字で出す (秒は毎秒動いて目を引くうえ、ロック中は要らない)
 label {
     monitor =
-    text = cmd[update:1000] echo "<span>$(date "+%H:%M:%S")</span>"
+    text = cmd[update:1000] echo "<span>$(date "+%H:%M")</span>"
     color = rgba({{ $c.text.rgb }}, 1.0)
-    # 離れた位置からも読めるよう 28 から倍にした
-    font_size = 56
-    font_family = {{ $f.ui }}
-    position = 0, 120
+    font_size = 64
+    font_family = {{ $f.ui }} Light
+    position = 0, 108
     halign = center
     valign = center
 }
 
 label {
     monitor =
-    text = cmd[update:30000] echo "<span>$(date "+%Y年%m月%d日 (%a)")</span>"
+    text = cmd[update:30000] echo "<span>$(date "+%-m月%-d日 %A")</span>"
     color = rgba({{ $c.text_dim.rgb }}, 1.0)
-    font_size = 16
+    font_size = 15
     font_family = {{ $f.ui }}
-    position = 0, 50
+    position = 0, 48
     halign = center
     valign = center
 }

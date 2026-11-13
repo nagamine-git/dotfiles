@@ -442,26 +442,26 @@ hl.device({
 local mainMod = "SUPER"
 
 -- === BASIC APPLICATIONS ===
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal))
-hl.bind(mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(terminal .. [[ -e zsh -c "vim ~/memo.md"]], { float = true, size = "30% 40%", center = true }))
-hl.bind(mainMod .. " + SHIFT + CTRL + Return", hl.dsp.exec_cmd(terminal .. [[ -e zsh -c "nvim ~/.note.gpg"]], { float = true, size = "30% 40%", center = true }))
-hl.bind(mainMod .. " + SHIFT + q", hl.dsp.window.close())
-hl.bind(mainMod .. " + d", hl.dsp.exec_cmd(menu))
-hl.bind(mainMod .. " + w", hl.dsp.exec_cmd(browser))
-hl.bind(mainMod .. " + s", hl.dsp.exec_cmd(terminal .. " -e yazi"))
-hl.bind(mainMod .. " + SHIFT + s", hl.dsp.exec_cmd(fileManager))
+hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal), { description = "アプリ｜端末" })
+hl.bind(mainMod .. " + SHIFT + Return", hl.dsp.exec_cmd(terminal .. [[ -e zsh -c "vim ~/memo.md"]], { float = true, size = "30% 40%", center = true }), { description = "アプリ｜メモ (~/memo.md) を小窓で" })
+hl.bind(mainMod .. " + SHIFT + CTRL + Return", hl.dsp.exec_cmd(terminal .. [[ -e zsh -c "nvim ~/.note.gpg"]], { float = true, size = "30% 40%", center = true }), { description = "アプリ｜暗号化ノートを小窓で" })
+hl.bind(mainMod .. " + SHIFT + q", hl.dsp.window.close(), { description = "窓｜閉じる" })
+hl.bind(mainMod .. " + d", hl.dsp.exec_cmd(menu), { description = "起動｜アプリを検索 (Vicinae)" })
+hl.bind(mainMod .. " + w", hl.dsp.exec_cmd(browser), { description = "アプリ｜ブラウザ" })
+hl.bind(mainMod .. " + s", hl.dsp.exec_cmd(terminal .. " -e yazi"), { description = "アプリ｜ファイル (yazi)" })
+hl.bind(mainMod .. " + SHIFT + s", hl.dsp.exec_cmd(fileManager), { description = "アプリ｜ファイルマネージャー (Thunar)" })
 
 -- === LAUNCHER (Vicinae: アプリ・ウィンドウ・クリップボード・計算・絵文字・電源・Meet) ===
-hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"))
+hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"), { description = "起動｜ランチャー (Vicinae)" })
 
-hl.bind(mainMod .. " + a", hl.dsp.exec_cmd("~/.local/bin/hypr_perfmodeswitch.sh"))
+hl.bind(mainMod .. " + a", hl.dsp.exec_cmd("~/.local/bin/hypr_perfmodeswitch.sh"), { description = "システム｜性能モードの切替" })
 
 -- === SCREEN LOCK ===
-hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"))
+hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"), { description = "システム｜画面をロック" })
 
 -- === WINDOW OPERATIONS ===
-hl.bind(mainMod .. " + f", hl.dsp.window.fullscreen({ mode = "maximized" }))
-hl.bind(mainMod .. " + SHIFT + f", hl.dsp.window.fullscreen())
+hl.bind(mainMod .. " + f", hl.dsp.window.fullscreen({ mode = "maximized" }), { description = "窓｜最大化 (バーは残す)" })
+hl.bind(mainMod .. " + SHIFT + f", hl.dsp.window.fullscreen(), { description = "窓｜全画面" })
 -- Alt+M: 前面が端末ならキーをそのまま端末へ渡す (中の herdr が zoom する)。それ以外のアプリでは maximize トグル。
 -- pass_event は押下と離しの両方を修飾キーごと届ける。Ghostty のクラスは既定の com.mitchellh.ghostty
 local passAltMClasses = { ["foot"] = true, ["footclient"] = true, ["com.mitchellh.ghostty"] = true }
@@ -471,125 +471,125 @@ hl.bind("ALT + m", function()
         return { pass_event = true }
     end
     return hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized" }))
-end)
-hl.bind(mainMod .. " + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + tab", hl.dsp.focus({ urgent_or_last = true }))
-hl.bind(mainMod .. " + p", hl.dsp.exec_cmd("vicinae 'vicinae://launch/wm/switch-windows?toggle=true'"))
-hl.bind(mainMod .. " + v", hl.dsp.layout("togglesplit"))
+end, { description = "窓｜最大化 (端末では herdr のズーム)" })
+hl.bind(mainMod .. " + SHIFT + space", hl.dsp.window.float({ action = "toggle" }), { description = "窓｜浮動とタイルの切替" })
+hl.bind(mainMod .. " + tab", hl.dsp.focus({ urgent_or_last = true }), { description = "窓｜直前の窓へ" })
+hl.bind(mainMod .. " + p", hl.dsp.exec_cmd("vicinae 'vicinae://launch/wm/switch-windows?toggle=true'"), { description = "窓｜窓を検索して移る" })
+hl.bind(mainMod .. " + v", hl.dsp.layout("togglesplit"), { description = "窓｜分割の向きを切替" })
 
 -- === WINDOW GROUPING (StarCraft2 Grid-inspired: Group commands in left hand) ===
 -- Primary group toggle - most used, so put on strong finger
-hl.bind(mainMod .. " + g", hl.dsp.group.toggle())
-hl.bind(mainMod .. " + SHIFT + g", hl.dsp.window.move({ out_of_group = true }))
+hl.bind(mainMod .. " + g", hl.dsp.group.toggle(), { description = "グループ｜作る・解除" })
+hl.bind(mainMod .. " + SHIFT + g", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
 -- Group navigation - adjacent to primary toggle for easy sequences
-hl.bind(mainMod .. " + t", hl.dsp.group.next())
-hl.bind(mainMod .. " + SHIFT + t", hl.dsp.group.prev())
+hl.bind(mainMod .. " + t", hl.dsp.group.next(), { description = "グループ｜次のタブ" })
+hl.bind(mainMod .. " + SHIFT + t", hl.dsp.group.prev(), { description = "グループ｜前のタブ" })
 
 -- Add to group (vim directions) - keep these as they work well with vim users
-hl.bind(mainMod .. " + CTRL + h", hl.dsp.window.move({ into_group = "left" }))
-hl.bind(mainMod .. " + CTRL + n", hl.dsp.window.move({ into_group = "down" }))
-hl.bind(mainMod .. " + CTRL + e", hl.dsp.window.move({ into_group = "up" }))
-hl.bind(mainMod .. " + CTRL + i", hl.dsp.window.move({ into_group = "right" }))
+hl.bind(mainMod .. " + CTRL + h", hl.dsp.window.move({ into_group = "left" }), { description = "グループ｜左のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + n", hl.dsp.window.move({ into_group = "down" }), { description = "グループ｜下のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + e", hl.dsp.window.move({ into_group = "up" }), { description = "グループ｜上のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + i", hl.dsp.window.move({ into_group = "right" }), { description = "グループ｜右のグループへ入れる" })
 
 -- Add to group (arrows)
-hl.bind(mainMod .. " + CTRL + left", hl.dsp.window.move({ into_group = "left" }))
-hl.bind(mainMod .. " + CTRL + down", hl.dsp.window.move({ into_group = "down" }))
-hl.bind(mainMod .. " + CTRL + up", hl.dsp.window.move({ into_group = "up" }))
-hl.bind(mainMod .. " + CTRL + right", hl.dsp.window.move({ into_group = "right" }))
+hl.bind(mainMod .. " + CTRL + left", hl.dsp.window.move({ into_group = "left" }), { description = "グループ｜左のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + down", hl.dsp.window.move({ into_group = "down" }), { description = "グループ｜下のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + up", hl.dsp.window.move({ into_group = "up" }), { description = "グループ｜上のグループへ入れる" })
+hl.bind(mainMod .. " + CTRL + right", hl.dsp.window.move({ into_group = "right" }), { description = "グループ｜右のグループへ入れる" })
 
 -- Detach from group (vim directions)
 -- 0.56 の moveoutofgroup は 1 文字の方向引数を無視していたので、同じ動作の out_of_group = true にする
-hl.bind(mainMod .. " + CTRL + SHIFT + h", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + n", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + e", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + i", hl.dsp.window.move({ out_of_group = true }))
+hl.bind(mainMod .. " + CTRL + SHIFT + h", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + n", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + e", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + i", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
 
 -- Detach from group (arrows)
-hl.bind(mainMod .. " + CTRL + SHIFT + left", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + down", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + up", hl.dsp.window.move({ out_of_group = true }))
-hl.bind(mainMod .. " + CTRL + SHIFT + right", hl.dsp.window.move({ out_of_group = true }))
+hl.bind(mainMod .. " + CTRL + SHIFT + left", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + down", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + up", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
+hl.bind(mainMod .. " + CTRL + SHIFT + right", hl.dsp.window.move({ out_of_group = true }), { description = "グループ｜窓をグループから外す" })
 
 -- Moved from f to avoid conflict with file manager
-hl.bind(mainMod .. " + ALT + p", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.fullscreen({ mode = 'maximized' }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
+hl.bind(mainMod .. " + ALT + p", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.fullscreen({ mode = 'maximized' }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごと最大化" })
 
 -- Group workspace movement
-hl.bind(mainMod .. " + ALT + 1", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 1 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
-hl.bind(mainMod .. " + ALT + 2", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 2 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
-hl.bind(mainMod .. " + ALT + 3", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 3 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
-hl.bind(mainMod .. " + ALT + 4", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 4 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
-hl.bind(mainMod .. " + ALT + 5", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 5 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]))
+hl.bind(mainMod .. " + ALT + 1", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 1 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごとワークスペース 1 へ" })
+hl.bind(mainMod .. " + ALT + 2", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 2 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごとワークスペース 2 へ" })
+hl.bind(mainMod .. " + ALT + 3", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 3 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごとワークスペース 3 へ" })
+hl.bind(mainMod .. " + ALT + 4", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 4 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごとワークスペース 4 へ" })
+hl.bind(mainMod .. " + ALT + 5", hl.dsp.exec_cmd([[hyprctl --batch "dispatch hl.dsp.group.lock({ action = 'on' }); dispatch hl.dsp.window.move({ workspace = 5 }); dispatch hl.dsp.group.lock({ action = 'off' })"]]), { description = "グループ｜グループごとワークスペース 5 へ" })
 
 -- === WINDOW FOCUS (VIM) ===
-hl.bind(mainMod .. " + h", hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + n", hl.dsp.focus({ direction = "down" }))
-hl.bind(mainMod .. " + e", hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + i", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + h", hl.dsp.focus({ direction = "left" }), { description = "移動｜左の窓へフォーカス" })
+hl.bind(mainMod .. " + n", hl.dsp.focus({ direction = "down" }), { description = "移動｜下の窓へフォーカス" })
+hl.bind(mainMod .. " + e", hl.dsp.focus({ direction = "up" }), { description = "移動｜上の窓へフォーカス" })
+hl.bind(mainMod .. " + i", hl.dsp.focus({ direction = "right" }), { description = "移動｜右の窓へフォーカス" })
 
 -- === WINDOW FOCUS (ARROWS) ===
-hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
-hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "down" }))
+hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "left" }), { description = "移動｜左の窓へフォーカス" })
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }), { description = "移動｜右の窓へフォーカス" })
+hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "up" }), { description = "移動｜上の窓へフォーカス" })
+hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "down" }), { description = "移動｜下の窓へフォーカス" })
 
 -- === WINDOW MOVEMENT (VIM) ===
-hl.bind(mainMod .. " + SHIFT + h", hl.dsp.window.move({ direction = "left" }))
-hl.bind(mainMod .. " + SHIFT + n", hl.dsp.window.move({ direction = "down" }))
-hl.bind(mainMod .. " + SHIFT + e", hl.dsp.window.move({ direction = "up" }))
-hl.bind(mainMod .. " + SHIFT + i", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + h", hl.dsp.window.move({ direction = "left" }), { description = "移動｜窓を左へ動かす" })
+hl.bind(mainMod .. " + SHIFT + n", hl.dsp.window.move({ direction = "down" }), { description = "移動｜窓を下へ動かす" })
+hl.bind(mainMod .. " + SHIFT + e", hl.dsp.window.move({ direction = "up" }), { description = "移動｜窓を上へ動かす" })
+hl.bind(mainMod .. " + SHIFT + i", hl.dsp.window.move({ direction = "right" }), { description = "移動｜窓を右へ動かす" })
 
 -- === WINDOW MOVEMENT (ARROWS) ===
-hl.bind(mainMod .. " + SHIFT + left", hl.dsp.window.move({ direction = "left" }))
-hl.bind(mainMod .. " + SHIFT + down", hl.dsp.window.move({ direction = "down" }))
-hl.bind(mainMod .. " + SHIFT + up", hl.dsp.window.move({ direction = "up" }))
-hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + left", hl.dsp.window.move({ direction = "left" }), { description = "移動｜窓を左へ動かす" })
+hl.bind(mainMod .. " + SHIFT + down", hl.dsp.window.move({ direction = "down" }), { description = "移動｜窓を下へ動かす" })
+hl.bind(mainMod .. " + SHIFT + up", hl.dsp.window.move({ direction = "up" }), { description = "移動｜窓を上へ動かす" })
+hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" }), { description = "移動｜窓を右へ動かす" })
 
 -- === WORKSPACES ===
-hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
-hl.bind(mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
-hl.bind(mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
-hl.bind(mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }))
-hl.bind(mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }))
-hl.bind(mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }))
-hl.bind(mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }))
-hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
-hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
-hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
+hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }), { description = "ワークスペース｜1 へ移る" })
+hl.bind(mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }), { description = "ワークスペース｜2 へ移る" })
+hl.bind(mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }), { description = "ワークスペース｜3 へ移る" })
+hl.bind(mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }), { description = "ワークスペース｜4 へ移る" })
+hl.bind(mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }), { description = "ワークスペース｜5 へ移る" })
+hl.bind(mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }), { description = "ワークスペース｜6 へ移る" })
+hl.bind(mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }), { description = "ワークスペース｜7 へ移る" })
+hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }), { description = "ワークスペース｜8 へ移る" })
+hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }), { description = "ワークスペース｜9 へ移る" })
+hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }), { description = "ワークスペース｜10 へ移る" })
 
 -- === MOVE TO WORKSPACES ===
-hl.bind(mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
-hl.bind(mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
-hl.bind(mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
-hl.bind(mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }))
-hl.bind(mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }))
-hl.bind(mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }))
-hl.bind(mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
-hl.bind(mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
-hl.bind(mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
-hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
+hl.bind(mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }), { description = "ワークスペース｜窓を 1 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }), { description = "ワークスペース｜窓を 2 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }), { description = "ワークスペース｜窓を 3 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }), { description = "ワークスペース｜窓を 4 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }), { description = "ワークスペース｜窓を 5 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }), { description = "ワークスペース｜窓を 6 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }), { description = "ワークスペース｜窓を 7 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }), { description = "ワークスペース｜窓を 8 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }), { description = "ワークスペース｜窓を 9 へ送る" })
+hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }), { description = "ワークスペース｜窓を 10 へ送る" })
 
 -- === SCRATCHPAD ===
-hl.bind(mainMod .. " + grave", hl.dsp.workspace.toggle_special("magic"))
-hl.bind(mainMod .. " + SHIFT + grave", hl.dsp.window.move({ workspace = "special:magic" }))
-hl.bind(mainMod .. " + SHIFT + minus", hl.dsp.workspace.toggle_special("desktop"))
+hl.bind(mainMod .. " + grave", hl.dsp.workspace.toggle_special("magic"), { description = "ワークスペース｜オーバーレイ (magic) の開閉" })
+hl.bind(mainMod .. " + SHIFT + grave", hl.dsp.window.move({ workspace = "special:magic" }), { description = "ワークスペース｜窓をオーバーレイ (magic) へ" })
+hl.bind(mainMod .. " + SHIFT + minus", hl.dsp.workspace.toggle_special("desktop"), { description = "ワークスペース｜オーバーレイ (desktop) の開閉" })
 
 -- === MOUSE OPERATIONS ===
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true , description = "マウス｜ドラッグで窓を動かす" })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true , description = "マウス｜右ドラッグで窓の大きさを変える" })
 
 -- === MULTIMEDIA KEYS (swayosd-client で OSD 付き) ===
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("swayosd-client --output-volume raise"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("swayosd-client --output-volume lower"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("swayosd-client --output-volume mute-toggle"), { locked = true, repeating = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("swayosd-client --input-volume mute-toggle"), { locked = true, repeating = true })
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("swayosd-client --output-volume raise"), { locked = true, repeating = true , description = "メディア｜音量を上げる" })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("swayosd-client --output-volume lower"), { locked = true, repeating = true , description = "メディア｜音量を下げる" })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd("swayosd-client --output-volume mute-toggle"), { locked = true, repeating = true , description = "メディア｜ミュート" })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("swayosd-client --input-volume mute-toggle"), { locked = true, repeating = true , description = "メディア｜マイクのミュート" })
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("swayosd-client --brightness raise"), { locked = true, repeating = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("swayosd-client --brightness lower"), { locked = true, repeating = true })
 
 -- === MEDIA CONTROLS ===
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true , description = "メディア｜次の曲" })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true , description = "メディア｜再生・一時停止" })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true , description = "メディア｜前の曲" })
 
 -- === LAPTOP LID ===
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd([[hyprctl eval 'hl.monitor({ output = "eDP-1", disabled = true })']]), { locked = true })
@@ -606,12 +606,16 @@ hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd([[hyprctl eval 'hl.monitor({ ou
 {{- end }}
 
 -- === CLIPBOARD MANAGEMENT ===
-hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -dmenu -p "📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v]]))
+hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -dmenu -p "📋 選択→貼り付け" | cliphist decode | wl-copy && sleep 0.1 && wtype -M ctrl v]]), { description = "クリップボード｜履歴から選んで貼り付け" })
+
+-- === HELP ===
+-- description を付けたキー割り当ての一覧 (hyprctl binds から作る)。waybar のキーボードのアイコンからも開ける
+hl.bind(mainMod .. " + slash", hl.dsp.exec_cmd("~/.local/bin/hypr-keybinds"), { description = "ヘルプ｜ショートカットの一覧" })
 
 -- === NOTIFICATION CENTER ===
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"))
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"), { description = "通知｜通知センター" })
 -- 最後に完了・承認待ちになった Claude Code の herdr のペインへ移る (herdr の通知はクリックしてもペインへ移らない)
-hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("~/.local/bin/claude-notify-focus --last"))
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("~/.local/bin/claude-notify-focus --last"), { description = "通知｜最後に呼んだ Claude Code のペインへ" })
 
 -- === SCREENSHOTS (satty) ===
 -- grim は ppm (無圧縮) で渡して PNG エンコードを省く。保存先・コピー・early-exit は ~/.config/satty/config.toml。
@@ -619,12 +623,12 @@ hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("~/.local/bin/claude-notify-f
 local shotdir = "~/Pictures/Screenshots"
 
 -- === SCREENSHOTS (WINDOWS/LINUX STYLE) ===
-hl.bind("Print", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. "; grim -t ppm - | satty --filename -"))
-hl.bind("SHIFT + Print", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. [[; grim -g "$(slurp)" -t ppm - | satty --filename -]]))
+hl.bind("Print", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. "; grim -t ppm - | satty --filename -"), { description = "スクリーンショット｜全画面" })
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. [[; grim -g "$(slurp)" -t ppm - | satty --filename -]]), { description = "スクリーンショット｜範囲を選ぶ" })
 
 -- === SCREENSHOTS (CORRECTED) ===
-hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. "; grim -t ppm - | satty --filename -"))
-hl.bind(mainMod .. " + CTRL + SHIFT + P", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. [[; grim -g "$(slurp)" -t ppm - | satty --filename -]]))
+hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. "; grim -t ppm - | satty --filename -"), { description = "スクリーンショット｜全画面" })
+hl.bind(mainMod .. " + CTRL + SHIFT + P", hl.dsp.exec_cmd("mkdir -p " .. shotdir .. [[; grim -g "$(slurp)" -t ppm - | satty --filename -]]), { description = "スクリーンショット｜範囲を選ぶ" })
 
 -- === RENDERING OPTIMIZATION ===
 hl.config({

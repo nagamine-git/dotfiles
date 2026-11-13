@@ -30,7 +30,7 @@ fi
 peers=$(echo "$status" | jq -r '.Peer // {} | to_entries[] | .value | select(.Online==true) | "• \(.HostName) (\(.OS))"' | head -10)
 [[ -z "$peers" ]] && peers="(no online peers)"
 
-tooltip=$(printf 'Self: %s\nBackend: %s\nExit: %s\n\nOnline:\n%s' \
+tooltip=$(printf 'Self: %s\nBackend: %s\nExit: %s\n\nOnline:\n%s\n\nクリック: Exit Node を選ぶ\n右クリック: Tailscale の管理画面' \
   "$self" "$backend" "${exit_host:-direct}" "$peers")
 
 jq -cn --arg t "$text" --arg c "$class" --arg tip "$tooltip" \
