@@ -1,0 +1,9 @@
+{{- /* リポジトリの外から取ってくるもの。am5-itx だけ */ -}}
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+# AI エージェント向けの道具 (非公開のリポジトリ)。2026-11 に dotfiles から分けた。
+# ~/.local/bin の model-route などと ~/.local/lib/model-routing は、ここへのシンボリックリンク (home/dot_local の symlink_*)
+[".local/share/agent-tools"]
+type = "git-repo"
+url = "git@github.com:nagamine-git/agent-tools.git"
+refreshPeriod = "24h"
+{{ end -}}

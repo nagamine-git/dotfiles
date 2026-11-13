@@ -91,13 +91,15 @@ Library/**
 # Busy Desk (BUSY Bar を設置しているホストだけ)
 .config/systemd/user/busy-desk-bridge.service
 .config/agents/busy-desk.env
-# モデルの振り分け (明示的に許可したホストだけ)
+# モデルの振り分け (明示的に許可したホストだけ)。道具の本体は .chezmoiexternal で取る agent-tools
+.local/share/agent-tools
+.local/share/agent-tools/**
 .local/bin/model-route
 .local/bin/model-route-plan
 .local/bin/cc-implement
+.local/bin/claude-delegate
 .claude/profiles/coder-opus.json
 .local/lib/model-routing
-.local/lib/model-routing/**
 .config/model-routing
 .config/model-routing/**
 .config/agents/model-typesafe.env

@@ -32,3 +32,8 @@ uninstall.sh
 # rofi の 3 つの用途 (Exit Node・クリップボード履歴・ショートカット一覧) は vicinae dmenu に移した
 .config/rofi
 {{- end }}
+
+# AI エージェント向けの道具は am5-itx だけに置く (本体は agent-tools)。ほかのホストに残った古いコピーを消す
+{{- if ne .chezmoi.hostname "am5-itx" }}
+.local/bin/claude-delegate
+{{- end }}
