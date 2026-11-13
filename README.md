@@ -29,7 +29,7 @@ waybar の島は壁紙に合わせて色を帯び、明るい壁紙では明る�
 | fp7-e14 | Arch系 / Hyprland (常時稼働) | Catppuccin Mocha (紫) | `eq .chezmoi.hostname "fp7-e14"` |
 
 3台のテーマは CIEDE2000 で色相の被りが無いことを確認して選定
-(どのマシンの画面かが色で即座に分かる)。パレットは `.chezmoidata/data.yaml` に集約。
+(どのマシンの画面かが色で即座に分かる)。パレットは `home/.chezmoidata/data.yaml` に集約。
 
 ## セットアップ
 
@@ -45,8 +45,19 @@ brew install chezmoi     # macOS
 chezmoi init --apply nagamine-git
 ```
 
-- Linux では初回の apply で `run_onchange_setup.sh` が `pkglist.txt` のパッケージを導入します (後から足したものは下の「更新」を参照)
+- Linux では初回の apply で `home/.chezmoiscripts/linux/` のスクリプトが、`system/pkglist.txt` のパッケージ・システム設定 (`system/etc`)・壁紙を入れます (sudo を使う)
 - 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck 等がコミット時に走る)
+
+### 構成
+
+`.chezmoiroot` で、ホームに配るもの (`home/`) とリポジトリの道具を分けている。
+
+| 場所 | 中身 |
+|---|---|
+| `home/` | chezmoi のソース (`dot_*`、`private_dot_*`、`.chezmoidata`、`.chezmoiignore`、`.chezmoiremove`) |
+| `home/.chezmoiscripts/` | 実行スクリプト。`linux/` の 3 つは中身を OS の条件で囲み、Mac では空になって走らない |
+| `system/` | ホームの外へ入れるもの: `etc/` (keyd・systemd・scx など)、`pkglist.txt`、`wolow/` |
+| `tests/` `docs/` `.github/` | テスト・文書・CI (ホームには配らない) |
 
 ### 更新
 
@@ -54,29 +65,19 @@ chezmoi init --apply nagamine-git
 chezmoi apply -v
 ```
 
-#### pkglist.txt が変わった更新の反映手順
+`home/.chezmoiscripts/linux/` のスクリプトは、関係するファイルが変わったときだけ再実行される。
 
-`run_onchange_setup.sh` は自分の中身が変わったときだけ再実行され、`pkglist.txt` の
-ハッシュは含んでいません。setup は sudo を含むので、apply のたびには走らせない作りです。
-そのため **`pkglist.txt` に足したパッケージは `chezmoi apply` では入りません**。
-パッケージを先に入れてから apply します。
+| スクリプト | 再実行の条件 | 中身 |
+|---|---|---|
+| `run_onchange_before_10-packages` | `system/pkglist.txt` が変わったとき | 入っていないパッケージだけを入れる (更新は普段の `paru -Syu`) |
+| `run_onchange_after_20-system` | `system/etc`・`system/wolow` が変わったとき | /etc への設定、サービスの有効化、firewalld、Tailscale |
+| `run_onchange_after_30-wallpaper` | スクリプト自体が変わったとき | 昼と夜の壁紙の取得、waybar の島の色 |
 
-```bash
-# 1. 足したパッケージを入れる (例: ランチャーを Vicinae に、AppImage を Gear Lever にした更新)
-paru -S --needed vicinae-bin gearlever
-# 2. 設定を反映する
-chezmoi apply -v
-# 3. 常駐するものを起動する。Vicinae は Hyprland の起動時に vicinae server を立てるので、
-#    これをするか再ログインするまで Super+Space が効かない (端末を閉じても残るよう切り離す)
-setsid -f vicinae server >/dev/null 2>&1
-```
-
-`pkglist.txt` から外したパッケージ (例: rofi-calc、rofi-emoji) も自動では消えません。
-不要なら `paru -Rns <パッケージ>` で消します。
+`system/pkglist.txt` から外したパッケージは自動では消えない。不要なら `paru -Rns <パッケージ>` で消す。
 
 ### AIの共通回答形式
 
-回答形式の正本は `dot_agents/AGENTS.md` の「Codex のみ」節です。
+回答形式の正本は `home/dot_agents/AGENTS.md` の「Codex のみ」節です。
 Claude Code と Codex の共通指示と同じファイルで、Linux と macOS で `~/.agents/AGENTS.md` と
 `~/.codex/AGENTS.md` に展開します (Claude Code は `~/.claude/CLAUDE.md` から読み込みます)。
 このファイルはOS・ホスト別の除外対象ではありません。
@@ -128,7 +129,7 @@ ChatGPTとdotsの設定はchezmoiから自動同期されません。
 
 iPhone の Wolow アプリからの遠隔電源制御 daemon。
 `50-wolow-companion.rules` (polkit) / `install.sh` / `uninstall.sh` が部品で、
-`run_onchange_setup.sh` から自動導入されます (macOS では `.chezmoiignore` で全て除外)。
+`home/.chezmoiscripts/linux/run_onchange_after_20-system.sh.tmpl` から自動導入されます (macOS では走らない)。
 
 バイナリ `wolow-companion` は **git 管理外** (2026-07 にバイナリ直コミットを廃止)。
 導入済みマシンは `/usr/local/bin/wolow-companion` の既存コピーで動き続けます。
@@ -140,12 +141,12 @@ scp am5-itx:/usr/local/bin/wolow-companion ~/wolow-companion && chezmoi apply
 
 ## マシン追加チェックリスト
 
-1. `.chezmoidata/data.yaml` に配色パレットを追加 (既存3台と CIEDE2000 で色相分離を確認)
+1. `home/.chezmoidata/data.yaml` に配色パレットを追加 (既存3台と CIEDE2000 で色相分離を確認)
 2. hostname 分岐を持つファイルに分岐を追加:
-   `private_dot_config/nvim/init.lua.tmpl` / `dot_tmux.conf.tmpl` /
-   `private_dot_config/starship.toml.tmpl` / `private_dot_config/hypr/hyprland.lua.tmpl` /
-   `private_dot_ssh/config.tmpl` / `run_onchange_fp7-sleep-mask.sh.tmpl` (該当時)
-3. `pkglist.txt` と `.chezmoiignore` の OS 分岐を確認
+   `home/private_dot_config/nvim/init.lua.tmpl` / `home/dot_tmux.conf.tmpl` /
+   `home/private_dot_config/starship.toml.tmpl` / `home/private_dot_config/hypr/hyprland.lua.tmpl` /
+   `home/private_dot_ssh/config.tmpl` / `run_onchange_fp7-sleep-mask.sh.tmpl` (該当時)
+3. `system/pkglist.txt` と `home/.chezmoiignore` の OS 分岐を確認
 4. `chezmoi apply --dry-run -v` で差分を確認してから適用
 
 ## 復元手順 (新規機・被災機)

@@ -12,8 +12,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_slack-notify"
-SHIPPED_KINDS = ROOT / "private_dot_config/slack-notify/kinds.json"
+SCRIPT = ROOT / "home/dot_local/bin/executable_slack-notify"
+SHIPPED_KINDS = ROOT / "home/private_dot_config/slack-notify/kinds.json"
 sys.dont_write_bytecode = True
 LOADER = SourceFileLoader("slack_notify", str(SCRIPT))
 M = module_from_spec(spec_from_loader("slack_notify", LOADER))

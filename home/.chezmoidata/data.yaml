@@ -45,7 +45,8 @@ theme:
   # 案 B「エレベーション」(2026-11、am5-itx のデスクトップの UI: Hyprland・waybar・通知・ロック画面)。
   # Material のダークテーマの考え方: 純黒を避けた背景に白を 5/8/11% 重ねた明るさで面の高さを示し、枠線に頼らない。
   # 文字は白の 87/60/38%、色は彩度を落とす。端末まわり (foot・nvim・starship・tmux) と GTK は colors のまま。
-  # 名前を colors と分けているのは、ソース内に残った古い worktree の .chezmoidata が colors を上書きするため
+  # 名前を colors と分けたのは、当時ソース内に残っていた古い worktree の .chezmoidata が colors を上書きしていたため
+  # (2026-11 に .chezmoiroot でソースを home/ に移し、リポジトリ直下の .claude/ は読まれなくなった)
   colors_elevation:
     # 情報 (青)。彩度を落とした 200 番台
     primary:

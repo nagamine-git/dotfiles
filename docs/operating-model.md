@@ -7,4 +7,4 @@
 
 会社共通の正本は [Linear の運用ルール](https://linear.app/efg/document/運用ルール-9b4270577ad2)。用語・AIとの分担は [用語とAI運用](https://linear.app/efg/document/用語とai運用-37d3dc942662)、製品固有の決まりは各 EFG repo の `AGENTS.md` を参照する。
 
-個人の作業ポリシーは `dot_agents/AGENTS.md`、設定の同期は [agents-unified.md](agents-unified.md)。会社の状態遷移や承認条件をここへ重複して書かない。
+個人の作業ポリシーは `home/dot_agents/AGENTS.md`、設定の同期は [agents-unified.md](agents-unified.md)。会社の状態遷移や承認条件をここへ重複して書かない。

@@ -80,7 +80,7 @@ class PolicyPropagation(unittest.TestCase):
         for name in ("dot_agents/AGENTS.md", "dot_pi/agent/AGENTS.md.tmpl", "private_dot_codex/AGENTS.md.tmpl"):
             target = self.source / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
+            shutil.copyfile(ROOT / "home" / name, target)
         self.config = self.base / "chezmoi.toml"
         self.config.write_text("")
         self.shared = (self.source / "dot_agents/AGENTS.md").read_text().strip()
@@ -104,7 +104,7 @@ class PolicyPropagation(unittest.TestCase):
         self.assertIn("ゲート・フック・権限設定", rendered[len(self.shared):])
 
     def test_claude_imports_the_same_shared_policy(self):
-        self.assertIn("@~/.agents/AGENTS.md", (ROOT / "dot_claude/CLAUDE.md").read_text())
+        self.assertIn("@~/.agents/AGENTS.md", (ROOT / "home/dot_claude/CLAUDE.md").read_text())
 
 
 if __name__ == "__main__":

@@ -15,15 +15,15 @@ from unittest.mock import MagicMock, patch
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-LOADER = SourceFileLoader("model_route", str(ROOT / "dot_local/bin/private_executable_model-route"))
+LOADER = SourceFileLoader("model_route", str(ROOT / "home/dot_local/bin/private_executable_model-route"))
 R = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(R)
-LOADER = SourceFileLoader("provider_probe", str(ROOT / "dot_local/lib/model-routing/provider_probe.py"))
+LOADER = SourceFileLoader("provider_probe", str(ROOT / "home/dot_local/lib/model-routing/provider_probe.py"))
 PROBE = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(PROBE)
 TASK = json.loads((ROOT / "tests/fixtures/model-route-task.json").read_text())
 CONTEXT = json.loads((ROOT / "tests/fixtures/model-route-context.json").read_text())
-CONFIG = json.loads((ROOT / "private_dot_config/model-routing/private_policy.json").read_text())
+CONFIG = json.loads((ROOT / "home/private_dot_config/model-routing/private_policy.json").read_text())
 NATIVE = {"model": "gpt-6.1-sol", "model_reasoning_effort": "high", "mcp_servers": {}, "plugins": {}}
 SUCCESS = '\n'.join(json.dumps(x) for x in [
     {"type": "item.completed", "item": {"type": "agent_message", "text": "OK"}},

@@ -1,0 +1,122 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Linux のシステム設定とサービス。system/ の下の etc・wolow のファイルを /etc などへ入れ、サービスを有効にする。
+# どの処理も冪等。system/ の中身が変わったときにも再実行する:
+# {{ output "sh" "-c" (printf "cd %q && find etc wolow -type f | LC_ALL=C sort | xargs sha256sum | sha256sum" (joinPath .chezmoi.workingTree "system")) | trim }}
+set -eu
+cd "{{ .chezmoi.workingTree }}/system"
+
+# Windows と時刻が合わないので、システム時刻を RTC のローカル時刻に合わせる
+# 設定済みなら触らない (polkit 認証待ちでタイムアウトし set -e で全体が止まるため)
+[ "$(timedatectl show -p LocalRTC --value 2>/dev/null)" = yes ] || sudo timedatectl set-local-rtc 1 --adjust-system-clock
+
+# キー配列 (keyd)
+sudo cp etc/keyd/default.conf /etc/keyd/default.conf
+
+# === 据置きデスクトップ専用の Wake-on-LAN (バッテリの有無で自動振り分け) ===
+if ls /sys/class/power_supply/BAT* >/dev/null 2>&1; then
+  echo "→ laptop 検出: WoL はスキップ"
+else
+  ETH_IF=$(ip -o link show | awk -F': ' '/: (en|eth)/{print $2; exit}')
+  if [ -n "$ETH_IF" ]; then
+    sudo install -m 644 etc/systemd/system/wol-enable.service /etc/systemd/system/wol-enable.service
+    sudo install -m 755 etc/usr-lib-systemd-system-sleep/wol-rearm.sh /usr/lib/systemd/system-sleep/wol-rearm.sh
+    # 検出した IF をインストール済みファイルへ反映 (etc/ の既定 enp9s0 を置換)
+    sudo sed -i "s/enp9s0/$ETH_IF/g" /etc/systemd/system/wol-enable.service /usr/lib/systemd/system-sleep/wol-rearm.sh
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now wol-enable.service
+  else
+    echo "  (有線IF が見つからないため WoL はスキップ)"
+  fi
+fi
+{{ if eq .chezmoi.hostname "am5-itx" }}
+# === am5-itx: OOM 対策 (zram 16GB×2 + systemd-oomd、2026-08-29) ===
+# Arch の systemd は oomd 有効化の drop-in を同梱しないので、-.slice / user-.slice を自前で ManagedOOM 化する
+sudo pacman -S --needed --noconfirm zram-generator
+sudo install -D -m 644 etc/systemd/zram-generator.conf /etc/systemd/zram-generator.conf
+sudo install -D -m 644 "etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf" "/etc/systemd/system/-.slice.d/10-oomd-root-slice-defaults.conf"
+sudo install -D -m 644 etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf /etc/systemd/system/user-.slice.d/10-oomd-user-slice-defaults.conf
+sudo systemctl daemon-reload
+sudo systemctl start systemd-zram-setup@zram0.service systemd-zram-setup@zram1.service
+sudo systemctl enable --now systemd-oomd.service
+
+# === am5-itx: sched-ext (scx_bpfland) で重い処理中の入力遅延を減らす (2026-09-06) ===
+# `systemctl stop scx_loader` で即座に既定のスケジューラへ戻る
+sudo pacman -S --needed --noconfirm scx-scheds scx-tools
+sudo install -D -m 644 etc/scx_loader/config.toml /etc/scx_loader/config.toml
+sudo rm -f /etc/default/scx
+sudo systemctl disable --now scx.service 2>/dev/null || true
+sudo systemctl enable --now scx_loader.service
+
+# === am5-itx: アイドル省電力 EPP balance_power (2026-09-22) ===
+# power-profiles-daemon が起動後に上書きするので mask する。戻すときは `systemctl unmask --now power-profiles-daemon`
+sudo install -D -m 644 etc/tmpfiles.d/cpu-epp.conf /etc/tmpfiles.d/cpu-epp.conf
+sudo systemctl disable --now power-profiles-daemon.service 2>/dev/null || true
+sudo systemctl mask power-profiles-daemon.service
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/cpu-epp.conf
+{{ end }}
+# === sleep / lid ===
+# logind は restart しない (稼働中の Hyprland が DRM/input を失って tty へ落ちる)。次回ブートで反映される
+sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp etc/systemd/logind.conf.d/lid-action.conf /etc/systemd/logind.conf.d/lid-action.conf
+
+# === Wolow Companion (iPhone の Wolow アプリからの遠隔電源制御 daemon) ===
+# install.sh が冪等にバイナリ・systemd service・polkit を設置する。x86-64 ビルドなのでアーキを確認
+if [ "$(uname -m)" = "x86_64" ]; then
+  (cd wolow && bash ./install.sh) || echo "⚠ wolow-companion install 失敗 (継続)"
+fi
+
+# BBR
+echo "net.core.default_qdisc=fq" | sudo tee /etc/sysctl.d/99-bbr.conf
+echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.d/99-bbr.conf
+
+# ログインシェル (既に zsh なら chsh のパスワード入力を求めない)
+[ "$(getent passwd "$USER" | cut -d: -f7)" = "$(command -v zsh)" ] || chsh -s "$(command -v zsh)"
+
+mise i || echo "⚠ mise i 失敗 (継続)"
+
+# DroidCam (v4l2loopback)。未ビルド・未ロードでも全体を止めない
+sudo dkms autoinstall || true
+sudo modprobe -r v4l2loopback 2>/dev/null || true
+sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="DroidCam 1920" max_width=1920 max_height=1080 || true
+
+# Bluetooth (今の bluez は 'bluetooth' グループを作らないので、ある環境だけ追加)
+sudo systemctl enable --now bluetooth
+getent group bluetooth >/dev/null && sudo usermod -a -G bluetooth "$USER"
+
+sudo systemctl enable --now keyd greetd tailscaled irqbalance
+
+# Tailscale: sudo 無しの CLI/taildrop、Tailscale SSH (sshd 不要)、自動更新。未ログインなら静かにスキップ
+sudo tailscale set --operator="$USER" 2>/dev/null || true
+sudo tailscale set --ssh 2>/dev/null || true
+sudo tailscale set --auto-update 2>/dev/null || true
+
+# === ファイアウォール: firewalld に一本化 ===
+# Tailscale は trusted。物理 LAN は既定拒否。Wolow (無認証の電源操作, 20388) と SSH は LAN に開けない。
+# firewalld が起動してから ufw を止める (先に止めるとファイアウォール無しの時間ができる)
+if sudo pacman -S --needed --noconfirm firewalld && sudo systemctl enable --now firewalld.service; then
+  sudo systemctl disable --now ufw.service 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
+  sudo firewall-cmd --permanent --zone=public --remove-service=ssh 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=public --remove-port=20388/tcp 2>/dev/null || true
+  sudo firewall-cmd --permanent --zone=public --remove-port=20388/udp 2>/dev/null || true
+  sudo firewall-cmd --reload
+else
+  echo "⚠ firewalld を有効化できないため ufw のまま (要確認)"
+fi
+
+# ユーザーのサービス: taildrop の自動受信、週次のセキュリティ更新チェック
+systemctl --user daemon-reload
+systemctl --user enable --now taildrop.service 2>/dev/null || true
+systemctl --user enable --now security-update-check.timer 2>/dev/null || true
+
+# === Btrfs スナップショット (snap-pac が pacman の前後を保存し、grub-btrfs が GRUB へ反映) ===
+if [ "$(findmnt -no FSTYPE / 2>/dev/null)" = "btrfs" ] && command -v snapper >/dev/null 2>&1; then
+  sudo snapper -c root get-config >/dev/null 2>&1 || sudo snapper -c root create-config /
+  sudo systemctl enable --now snapper-timeline.timer snapper-cleanup.timer grub-btrfsd.service
+fi
+
+# ファームウェア情報の定期更新 (適用は確認して手動)
+sudo systemctl enable --now fwupd-refresh.timer 2>/dev/null || true
+{{ end -}}

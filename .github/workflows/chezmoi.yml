@@ -38,12 +38,12 @@ jobs:
 
       - name: Shell syntax of the scripts the tests drive
         run: |
-          scripts="dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
-            dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify dot_local/bin/executable_pi-jev
-            dot_local/share/vicinae/scripts/executable_meet-join.sh"
+          scripts="home/dot_local/bin/executable_agent-gateway home/dot_local/bin/executable_claude-statusline
+            home/dot_local/bin/executable_chatgpt-launch home/dot_local/bin/executable_claude-notify home/dot_local/bin/executable_pi-jev
+            home/dot_local/share/vicinae/scripts/executable_meet-join.sh"
           bash -n $scripts
           shellcheck $scripts
-          shellcheck -S warning dot_claude/hooks/executable_herdr-agent-summary.sh dot_claude/hooks/executable_herdr-tab-title.sh
+          shellcheck -S warning home/dot_claude/hooks/executable_herdr-agent-summary.sh home/dot_claude/hooks/executable_herdr-tab-title.sh
 
       # 全テストを回す (列挙すると足し忘れる: 2026-11 時点で 7 本が CI で走っていなかった)。
       # テストは鍵・ネットワーク・モデル呼び出しを使わない。unittest.main を持たないファイル (pi_real.py などの補助) は飛ばす。
@@ -101,5 +101,5 @@ jobs:
           # 2026-05-29), so the default severity made the check meaningless.
           severity: error
           ignore_paths: >-
-            etc
+            system/etc
           scandir: .

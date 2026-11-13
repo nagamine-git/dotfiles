@@ -14,7 +14,7 @@ import threading
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_slack-claude"
+SCRIPT = ROOT / "home/dot_local/bin/executable_slack-claude"
 sys.dont_write_bytecode = True
 logging.disable(logging.CRITICAL)  # 失敗系テストの traceback を出さない
 LOADER = SourceFileLoader("slack_claude", str(SCRIPT))

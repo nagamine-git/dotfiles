@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-EXTENSION = ROOT / "dot_pi/agent/extensions/delegate.ts"
+EXTENSION = ROOT / "home/dot_pi/agent/extensions/delegate.ts"
 NODE = shutil.which("node")
 HERDR = {"HERDR_ENV": "1", "HERDR_PANE_ID": "p1", "HERDR_TAB_ID": "t1", "HERDR_WORKSPACE_ID": "w1",
          "HERDR_SOCKET_PATH": "/tmp/herdr.sock", "HERDR_BIN_PATH": "/usr/bin/herdr"}

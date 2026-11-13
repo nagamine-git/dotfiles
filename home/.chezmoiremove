@@ -22,6 +22,10 @@ bin/server.sh
 .config/waybar/colors.css
 # リングライトの見張り役は ringlight watch に統合した
 .local/bin/ringa-camera-watch
+# Wolow の導入物はリポジトリの system/wolow から入れるようにした (ホームの直下には置かない)
+install.sh
+uninstall.sh
+50-wolow-companion.rules
 # 使われていなかったスクリプト (月次の AA リーダーボードの投稿、Blender のメモリ上限)
 .local/bin/aa-coding-snapshot
 .local/bin/blender-guard

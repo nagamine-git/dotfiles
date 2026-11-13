@@ -14,11 +14,11 @@ import tomllib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTIFY = ROOT / "dot_local/bin/executable_claude-notify"
-FOCUS = ROOT / "dot_local/bin/executable_claude-notify-focus"
-HERDR_CONFIG = ROOT / "private_dot_config/herdr/config.toml.tmpl"
-SETTINGS = ROOT / "dot_claude/private_settings.json.tmpl"
-HYPR = ROOT / "private_dot_config/hypr/hyprland.lua.tmpl"
+NOTIFY = ROOT / "home/dot_local/bin/executable_claude-notify"
+FOCUS = ROOT / "home/dot_local/bin/executable_claude-notify-focus"
+HERDR_CONFIG = ROOT / "home/private_dot_config/herdr/config.toml.tmpl"
+SETTINGS = ROOT / "home/dot_claude/private_settings.json.tmpl"
+HYPR = ROOT / "home/private_dot_config/hypr/hyprland.lua.tmpl"
 CHEZMOI = shutil.which("chezmoi")
 JQ = shutil.which("jq")
 

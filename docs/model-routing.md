@@ -283,4 +283,4 @@ python3 -B tests/cc-implement.py
 
 テストは合成入力と偽プロセスのみで、実キー・モデル・ネットワークを使わない。
 app-server の通信テストは、合成の偽 stdio サーバーを子プロセスとして使い、実際の Codex は起動しない。
-配布は `.chezmoiignore` の既存ホスト条件に従いam5-itxだけ。反映は必ず対象を指定したchezmoi diff / dry-run後に行う。
+配布は `home/.chezmoiignore` の既存ホスト条件に従いam5-itxだけ。反映は必ず対象を指定したchezmoi diff / dry-run後に行う。

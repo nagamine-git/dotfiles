@@ -18,10 +18,10 @@ from unittest.mock import MagicMock, call, patch
 
 REAL_POPEN, REAL_KILL = subprocess.Popen, os.kill  # Before setUp replaces them.
 ROOT = Path(__file__).resolve().parents[1]
-LOADER = SourceFileLoader("cc_implement", str(ROOT / "dot_local/bin/executable_cc-implement"))
+LOADER = SourceFileLoader("cc_implement", str(ROOT / "home/dot_local/bin/executable_cc-implement"))
 CC = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(CC)
-PROFILE_SOURCE = ROOT / "dot_claude/profiles/coder-opus.json"
+PROFILE_SOURCE = ROOT / "home/dot_claude/profiles/coder-opus.json"
 # The only four values the launcher adds, both as inline --settings env and in the child's copied env.
 FORCED = {"CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5-5", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1",
           "CLAUDE_CODE_EFFORT_LEVEL": "xhigh", "CC_IMPLEMENT_USAGE_NO_MODEL_CALL": "1"}

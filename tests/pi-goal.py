@@ -11,7 +11,7 @@ import unittest
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 # PI_GOAL_EXTENSION lets the owner review a draft before it enters the control path.
-EXTENSION = Path(os.environ.get("PI_GOAL_EXTENSION") or ROOT / "dot_pi/agent/extensions/goal.ts")
+EXTENSION = Path(os.environ.get("PI_GOAL_EXTENSION") or ROOT / "home/dot_pi/agent/extensions/goal.ts")
 NODE = shutil.which("node")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pi_real

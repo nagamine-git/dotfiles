@@ -1,6 +1,6 @@
 # 個人の作業ポリシー (Claude Code / Codex / Pi 共通)
 
-正本は chezmoi の `dot_agents/AGENTS.md`。`~` 側を直接編集せず、ソースから反映する。同期・道具ごとの差は dotfiles の `docs/agents-unified.md` を参照する。
+正本は chezmoi の `home/dot_agents/AGENTS.md`。`~` 側を直接編集せず、ソースから反映する。同期・道具ごとの差は dotfiles の `docs/agents-unified.md` を参照する。
 これは本人の既定であり、会社・顧客の運用は対象組織の規約とリポジトリの指示に従う。
 
 ## 作業と報告

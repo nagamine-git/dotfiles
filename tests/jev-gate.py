@@ -18,8 +18,8 @@ sys.dont_write_bytecode = True
 import pi_real  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-EXTENSION = ROOT / "dot_pi/agent/extensions/jev-gate.ts"
-INJECTION_GUARD = ROOT / "dot_claude/hooks/executable_injection-guard.sh"
+EXTENSION = ROOT / "home/dot_pi/agent/extensions/jev-gate.ts"
+INJECTION_GUARD = ROOT / "home/dot_claude/hooks/executable_injection-guard.sh"
 NODE = shutil.which("node")
 JQ = shutil.which("jq")
 REF = "op://Agents/synthetic-typesafe/password"

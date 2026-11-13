@@ -7,8 +7,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-GATEWAY = ROOT / "dot_local/bin/executable_agent-gateway"
-STATUS = ROOT / "dot_local/bin/executable_claude-statusline"
+GATEWAY = ROOT / "home/dot_local/bin/executable_agent-gateway"
+STATUS = ROOT / "home/dot_local/bin/executable_claude-statusline"
 
 
 class AgentLifecycle(unittest.TestCase):

@@ -1,41 +1,19 @@
 # Espanso の個人値は端末内の平文で管理し、chezmoi には取り込まない。
 .config/espanso/match/*.local.yml*
 
-README.md
-AGENTS.md
-REVIEW.md
-pkglist.txt
-.editorconfig
-.gitattributes
-.gitignore
-.pre-commit-config.yaml
-.github
-.github/**
-tests
-tests/**
 # tests/ が dot_local/bin の Python スクリプトを読み込むと、隣に __pycache__ ができる
 **/__pycache__
 **/__pycache__/**
-# リポジトリ用の資料 (radar / model-radar のレポート等)。ホームには置かない
-docs
-docs/**
-etc
-etc/**
 .claude-code-router
 .claude-code-router/**
 
 {{- /*
    macOS 用に Linux 専用の設定を無視する。
    Linux では空になるので元の挙動は一切変わらない。
-   パターンは target (ホーム配下) のパス。
+   パターンは target (ホーム配下) のパス。Linux 用の実行スクリプト (.chezmoiscripts) は中身を OS の条件で囲み、
+   Mac では空になって実行されない (ここの名前の除外は .chezmoiscripts/ の下の名前に一致しないため使わない)。
 */ -}}
 {{- if eq .chezmoi.os "darwin" }}
-setup.sh
-install.sh
-uninstall.sh
-wolow-companion
-50-wolow-companion.rules
-
 .zshenv
 
 .config/hypr
@@ -97,32 +75,23 @@ wolow-companion
 .local/bin/hypr-logout
 {{- end }}
 
-# Agent lifecycle documentation and OS-specific service
-docs/agent-lifecycle.md
+# macOS 専用 (launchd など)
 {{ if ne .chezmoi.os "darwin" }}
 Library
 Library/**
 {{ end }}
 
-# ChatGPT のメモリ上限は am5-itx で測った値なので、起動スクリプトは am5-itx だけに置く
+# am5-itx 専用のもの。ほかのホストには置かない
 {{ if ne .chezmoi.hostname "am5-itx" -}}
+# ChatGPT のメモリ上限は am5-itx で測った値
 .local/bin/chatgpt-launch
-{{ end -}}
-
-# Slack から Claude Code に依頼する bot は am5-itx 専用
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# Slack から Claude Code に依頼する bot
 .local/bin/slack-claude
 .config/systemd/user/slack-claude.service
-{{ end -}}
-
-# Busy Desk は BUSY Bar を設置しているホストだけで起動する
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# Busy Desk (BUSY Bar を設置しているホストだけ)
 .config/systemd/user/busy-desk-bridge.service
 .config/agents/busy-desk.env
-{{ end -}}
-
-# Model routing is installed only on the explicitly authorized host.
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# モデルの振り分け (明示的に許可したホストだけ)
 .local/bin/model-route
 .local/bin/model-route-plan
 .local/bin/cc-implement
@@ -135,25 +104,15 @@ Library/**
 .config/agents/model-anthropic.env
 .agents/skills/model-routing
 .agents/skills/model-routing/**
-{{ end -}}
-
-# Pi (本体は ~/.pi/agent/bin/pi に手で入れる) は am5-itx だけで使う。ほかのホストには
-# 本体が無く、jev-gate の TypeSafe 鍵の参照 (model-typesafe.env) も am5-itx だけに置いている
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# Pi (本体は ~/.pi/agent/bin/pi に手で入れる)。jev-gate の TypeSafe 鍵の参照も am5-itx だけ
 .local/bin/pi-jev
 .pi
 .pi/**
 .config/agents/model-openrouter.env
-{{ end -}}
-
-# tower (新規事業ループの司令塔) は am5-itx 専用
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# tower (新規事業ループの司令塔)
 .config/systemd/user/tower.service
 .config/agents/tower.env
-{{ end -}}
-
-# Musepass (Machitsuku-inc) の Dependabot 週次まとめは am5-itx 専用
-{{ if ne .chezmoi.hostname "am5-itx" -}}
+# Musepass (Machitsuku-inc) の Dependabot 週次まとめ
 .local/bin/musepass-dependabot-weekly
 .config/systemd/user/musepass-dependabot-weekly.service
 .config/systemd/user/musepass-dependabot-weekly.timer

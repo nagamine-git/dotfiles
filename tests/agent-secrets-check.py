@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_agent-secrets-check"
+SCRIPT = ROOT / "home/dot_local/bin/executable_agent-secrets-check"
 SECRET = "top-secret-do-not-log"
 
 FAKE_OP = """#!/usr/bin/env python3

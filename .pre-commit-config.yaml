@@ -19,7 +19,7 @@ repos:
         exclude: '\.(md|tsv)$'
       # fcitx5 は設定を末尾の空行付きで書き戻すので、そろえると apply のたびに差分が出る
       - id: end-of-file-fixer
-        exclude: '^private_dot_config/private_fcitx5/'
+        exclude: '^home/private_dot_config/private_fcitx5/'
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ["--maxkb=500"]

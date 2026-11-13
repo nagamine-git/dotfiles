@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-ZSHRC = ROOT / "dot_zshrc"
+ZSHRC = ROOT / "home/dot_zshrc"
 ZSH = shutil.which("zsh")
 JQ = shutil.which("jq")
 

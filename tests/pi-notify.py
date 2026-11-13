@@ -14,8 +14,8 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-EXTENSIONS = ROOT / "dot_pi/agent/extensions"
-INJECTION_GUARD = ROOT / "dot_claude/hooks/executable_injection-guard.sh"
+EXTENSIONS = ROOT / "home/dot_pi/agent/extensions"
+INJECTION_GUARD = ROOT / "home/dot_claude/hooks/executable_injection-guard.sh"
 NODE = shutil.which("node")
 JQ = shutil.which("jq")
 

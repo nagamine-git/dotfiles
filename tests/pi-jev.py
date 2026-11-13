@@ -14,9 +14,9 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_pi-jev"
-IGNORE = ROOT / ".chezmoiignore"
-ZSHRC = ROOT / "dot_zshrc"
+SCRIPT = ROOT / "home/dot_local/bin/executable_pi-jev"
+IGNORE = ROOT / "home/.chezmoiignore"
+ZSHRC = ROOT / "home/dot_zshrc"
 CHEZMOI = shutil.which("chezmoi")
 KEYS = ("TYPESAFE_API_KEY", "OPENROUTER_API_KEY", "ARTIFICIAL_ANALYSIS_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")
 

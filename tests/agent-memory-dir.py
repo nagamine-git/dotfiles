@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_agent-memory-dir"
+SCRIPT = ROOT / "home/dot_local/bin/executable_agent-memory-dir"
 
 
 def git(cwd, *args):

@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'dot_local/bin/executable_agent-mac-ssh-bootstrap'
+SCRIPT = Path(__file__).resolve().parents[1] / 'home/dot_local/bin/executable_agent-mac-ssh-bootstrap'
 loader = importlib.machinery.SourceFileLoader('bootstrap', str(SCRIPT))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 app = importlib.util.module_from_spec(spec)

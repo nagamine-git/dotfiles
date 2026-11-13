@@ -20,12 +20,12 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-EXTENSIONS = ROOT / "dot_pi/agent/extensions"
+EXTENSIONS = ROOT / "home/dot_pi/agent/extensions"
 NODE = shutil.which("node")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pi_real  # noqa: E402
 
-LOADER = SourceFileLoader("agents_sync", str(ROOT / "dot_local/bin/executable_agents-sync"))
+LOADER = SourceFileLoader("agents_sync", str(ROOT / "home/dot_local/bin/executable_agents-sync"))
 SYNC = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(SYNC)
 
@@ -120,7 +120,7 @@ class SubagentLoaderStub(unittest.TestCase):
 class SubagentWithRealPi(unittest.TestCase):
     def generated_agents(self):
         out = {}
-        for md in sorted((ROOT / "dot_claude/agents").glob("*.md")):
+        for md in sorted((ROOT / "home/dot_claude/agents").glob("*.md")):
             meta, body = SYNC.parse_agent_md(md.read_text(encoding="utf-8"))
             out[md.stem] = (meta, SYNC.render_pi_agent(meta, body, md.name)[0])
         return out

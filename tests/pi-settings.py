@@ -43,7 +43,7 @@ class PiSettings(unittest.TestCase):
         self.source = self.base / "source"
         for rel in (TEMPLATE, DATA):
             (self.source / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / rel, self.source / rel)
+            shutil.copyfile(ROOT / "home" / rel, self.source / rel)
         (self.base / "chezmoi.toml").write_text("")
 
     def chezmoi(self, *args, stdin="", path=None):

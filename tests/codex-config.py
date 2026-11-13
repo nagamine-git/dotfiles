@@ -5,7 +5,7 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "private_dot_codex/modify_private_config.toml"
+SCRIPT = ROOT / "home/private_dot_codex/modify_private_config.toml"
 FALLBACK = "project_doc_fallback_filenames"
 MCP_STORE = "mcp_oauth_credentials_store"
 

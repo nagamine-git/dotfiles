@@ -11,4 +11,4 @@
 
 状態はセッションの現在の枝に `pi-goal` として残り、reload や resume で復元されます。拡張自体は時刻での実行をしません。
 
-拡張の置き場所 (`dot_pi/agent/extensions/`) はゲートの制御ファイル扱いなので、追加と反映は本人の確認が必要です。テストは `python3 -B tests/pi-goal.py` (偽のPi 12件と、モデルを呼ばない実Piの登録確認1件)。
+拡張の置き場所 (`home/dot_pi/agent/extensions/`) はゲートの制御ファイル扱いなので、追加と反映は本人の確認が必要です。テストは `python3 -B tests/pi-goal.py` (偽のPi 12件と、モデルを呼ばない実Piの登録確認1件)。

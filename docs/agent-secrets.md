@@ -10,7 +10,7 @@ Personal などの既存 Vault を一括で移したり、エージェントの�
 |---|---|
 | ChatGPT / Codex / Claude の接続アプリ、MCP の OAuth | 各ツールの接続設定。Google / GitHub 等の認証情報を Vault にコピーしない |
 | CLI や常駐サービスに必要な API キー | 1Password の `Agents` Vault |
-| 環境変数と秘密の対応 | chezmoi の `private_dot_config/agents/private_*.env`。`op://Agents/...` の参照だけを書く |
+| 環境変数と秘密の対応 | chezmoi の `home/private_dot_config/agents/private_*.env`。`op://Agents/...` の参照だけを書く |
 | 1Password service account のトークン | ホストごとの `~/.config/op/agents-sa-token`。chezmoi 管理外 |
 
 `op-agent` は service account で 1Password CLI を呼ぶ。

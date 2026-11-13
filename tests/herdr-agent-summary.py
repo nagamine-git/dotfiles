@@ -11,7 +11,7 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-HOOKS = ROOT / "dot_claude/hooks"
+HOOKS = ROOT / "home/dot_claude/hooks"
 SUMMARY = HOOKS / "executable_herdr-agent-summary.sh"
 TAB_TITLE = HOOKS / "executable_herdr-tab-title.sh"
 

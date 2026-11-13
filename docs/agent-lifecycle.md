@@ -4,11 +4,11 @@
 
 ## 設定
 
-- `dot_local/bin/executable_agent-gateway`: native RC を worktree / capacity 1 / 会話の事前作成なしで起動。モデル・effort・権限を上書きしない。
-- `private_dot_config/systemd/user/claude-ops-gateway.service.tmpl`: Linux の user service。
+- `home/dot_local/bin/executable_agent-gateway`: native RC を worktree / capacity 1 / 会話の事前作成なしで起動。モデル・effort・権限を上書きしない。
+- `home/private_dot_config/systemd/user/claude-ops-gateway.service.tmpl`: Linux の user service。
 - `Library/LaunchAgents/com.efg.claude-ops-gateway.plist.tmpl`: macOS の LaunchAgent。
-- `dot_local/bin/executable_claude-statusline`: native `session_name`。表示のためのモデル呼び出し・会話本文読み取り・要約キャッシュを持たない。
-- `dot_tmux.conf.tmpl`: `@agent-role` のある pane は役割を、無い pane は通常の title を表示する。
+- `home/dot_local/bin/executable_claude-statusline`: native `session_name`。表示のためのモデル呼び出し・会話本文読み取り・要約キャッシュを持たない。
+- `home/dot_tmux.conf.tmpl`: `@agent-role` のある pane は役割を、無い pane は通常の title を表示する。
 
 ## 初回配置
 

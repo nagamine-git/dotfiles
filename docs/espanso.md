@@ -7,13 +7,13 @@
 | パス | 内容 |
 |---|---|
 | `~/.config/espanso/match/private.local.yml` | 端末内だけの平文マッチ。権限は 0600 |
-| `private_dot_config/espanso/onepassword-references.json` | 公開可能なトリガーと参照の対応表 |
-| `private_dot_config/espanso/scripts/onepassword-sync.py` | 初回取り込み・明示的な更新 |
-| `private_dot_config/espanso/match/base.yml` | 公開許可済みの氏名 |
-| `private_dot_config/espanso/match/secrets.yml` | 空のマッチ。旧版の動的展開を無効にする |
-| `private_dot_config/espanso/config/default.yml.tmpl` | OS 別の配列・貼り付け設定 |
+| `home/private_dot_config/espanso/onepassword-references.json` | 公開可能なトリガーと参照の対応表 |
+| `home/private_dot_config/espanso/scripts/onepassword-sync.py` | 初回取り込み・明示的な更新 |
+| `home/private_dot_config/espanso/match/base.yml` | 公開許可済みの氏名 |
+| `home/private_dot_config/espanso/match/secrets.yml` | 空のマッチ。旧版の動的展開を無効にする |
+| `home/private_dot_config/espanso/config/default.yml.tmpl` | OS 別の配列・貼り付け設定 |
 
-個人値はリポジトリの外に置く。`.chezmoiignore` で取り込み対象から外し、誤ってソース側にコピーしても `.gitignore` が `private_` 接頭辞付きの名前やバックアップを除外する。
+個人値はリポジトリの外に置く。`home/.chezmoiignore` で取り込み対象から外し、誤ってソース側にコピーしても `.gitignore` が `private_` 接頭辞付きの名前やバックアップを除外する。
 
 これは暗号化ではなく、Git への混入防止である。本人権限で動くアプリはローカルの平文を読める。
 

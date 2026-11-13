@@ -16,7 +16,7 @@ except ImportError:  # Python < 3.11 (macOS system python): skip the TOML round-
 
 sys.dont_write_bytecode = True  # dot_local/bin に __pycache__ を作ると chezmoi が ~/.local/bin へ配ってしまう
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_agents-sync"
+SCRIPT = ROOT / "home/dot_local/bin/executable_agents-sync"
 LOADER = SourceFileLoader("agents_sync", str(SCRIPT))
 SYNC = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(SYNC)
@@ -83,7 +83,7 @@ class Subagents(unittest.TestCase):
     @unittest.skipIf(tomllib is None, "tomllib needs Python 3.11+")
     def test_real_claude_agents_all_convert_to_valid_toml(self):
         names = []
-        for md in sorted((ROOT / "dot_claude/agents").glob("*.md")):
+        for md in sorted((ROOT / "home/dot_claude/agents").glob("*.md")):
             meta, body = SYNC.parse_agent_md(md.read_text(encoding="utf-8"))
             data = tomllib.loads(SYNC.render_codex_agent(meta, body, md.name))
             self.assertEqual(data["name"], meta["name"])

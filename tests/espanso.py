@@ -17,7 +17,7 @@ except ImportError:
     yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = ROOT / "private_dot_config/espanso"
+CONFIG = ROOT / "home/private_dot_config/espanso"
 SYNC = CONFIG / "scripts/onepassword-sync.py"
 
 
@@ -197,7 +197,7 @@ exit "${TEST_RESTART_FAIL:-0}"
         rendered = subprocess.run([
             "chezmoi", "--config", "/dev/null", "--config-format", "toml",
             "--source", str(ROOT), "execute-template",
-        ], input=(ROOT / "run_onchange_after_espanso.sh.tmpl").read_text(),
+        ], input=(ROOT / "home/.chezmoiscripts/run_onchange_after_espanso.sh.tmpl").read_text(),
             text=True, capture_output=True, check=True)
         environment = {
             **os.environ, "HOME": str(home), "PATH": f"{self.bin}:{os.environ['PATH']}",
@@ -260,7 +260,7 @@ class ChezmoiDeployment(unittest.TestCase):
         self.source = self.root / "source"
         self.config_source = self.source / "private_dot_config/espanso"
         shutil.copytree(CONFIG, self.config_source)
-        shutil.copyfile(ROOT / ".chezmoiignore", self.source / ".chezmoiignore")
+        shutil.copyfile(ROOT / "home/.chezmoiignore", self.source / ".chezmoiignore")
         self.config = self.root / "chezmoi.toml"
         self.config.write_text("")
 
@@ -349,9 +349,9 @@ class PlatformConfiguration(unittest.TestCase):
 class GitIgnore(unittest.TestCase):
     def test_plaintext_cache_and_chezmoi_private_names_are_ignored(self):
         paths = [
-            "private_dot_config/espanso/match/private.local.yml",
-            "private_dot_config/espanso/match/private_private.local.yml",
-            "private_dot_config/espanso/match/private.local.yml.bak",
+            "home/private_dot_config/espanso/match/private.local.yml",
+            "home/private_dot_config/espanso/match/private_private.local.yml",
+            "home/private_dot_config/espanso/match/private.local.yml.bak",
         ]
         result = subprocess.run([
             "git", "-C", str(ROOT), "check-ignore", "--no-index", "--stdin",

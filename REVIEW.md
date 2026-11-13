@@ -3,7 +3,7 @@
 日本語でレビューする。観点は [Google Engineering Practices](https://google.github.io/eng-practices/review/reviewer/looking-for.html) を基本とし、設計・動作・複雑さ・テスト・保守性を見る。形式指定がなければ [Conventional Comments](https://conventionalcomments.org/) を使う。
 
 - 変更ファイルと関連する呼び出し元・反映先を確認する。実害のある問題を根拠・発生条件・場所とともに示し、好みの整形は lint / formatter に任せる。
-- chezmoi のソースから生成先・ホスト条件・`.chezmoiignore`・実行スクリプトまで追う。ホームへの意図しない配置、既存設定の上書き、適用時の副作用を確認する。
+- chezmoi のソースから生成先・ホスト条件・`home/.chezmoiignore`・実行スクリプトまで追う。ホームへの意図しない配置、既存設定の上書き、適用時の副作用を確認する。
 - 秘密値の混入、権限の拡大、認証・公開先・費用への影響を見る。文書の簡約が実際の allow / ask / deny、sandbox、承認境界を弱めていないか確認する。
 - 破壊的・不可逆な変更は復旧方法も確認する。Critical / High は根拠と影響を示して修正を求める。承認・マージの可否は組織の運用とリポジトリ保護に従い、重大度だけで自動承認しない。
 - 重要な指摘から最大5件を示す。5件は表示の上限であり、調査範囲や重大な問題の確認を打ち切る理由にしない。小さい問題が多ければ PR の分割も提案する。

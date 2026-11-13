@@ -9,11 +9,11 @@ ChatGPT が膨らんだときに、システム全体の OOM で別のアプリ�
 
 次の 3 か所が chatgpt-launch を通す。ほかの経路 (端末で `command chatgpt` を直接実行するなど) で起動した ChatGPT には上限が付かない。
 
-- **ログイン時の起動**:`private_dot_config/hypr/hyprland.lua.tmpl` の am5-itx の条件の中。
-- **desktop entry**:`dot_local/share/applications/chatgpt.desktop.tmpl`。Vicinae のアプリ検索と `codex://` の URI ハンドラーもこれを使う。
-- **zsh の `chatgpt`**:`dot_zshrc`。`~/.local/bin/chatgpt-launch` があるときだけ使う。
+- **ログイン時の起動**:`home/private_dot_config/hypr/hyprland.lua.tmpl` の am5-itx の条件の中。
+- **desktop entry**:`home/dot_local/share/applications/chatgpt.desktop.tmpl`。Vicinae のアプリ検索と `codex://` の URI ハンドラーもこれを使う。
+- **zsh の `chatgpt`**:`home/dot_zshrc`。`~/.local/bin/chatgpt-launch` があるときだけ使う。
 
-上限の値は am5-itx で測ったものなので、ほかのホストには `.chezmoiignore` でスクリプトを置かない。
+上限の値は am5-itx で測ったものなので、ほかのホストには `home/.chezmoiignore` でスクリプトを置かない。
 ほかのホストの desktop entry と zsh は、`chatgpt --ozone-platform=wayland` を直接起動する。
 
 ## 仕組み

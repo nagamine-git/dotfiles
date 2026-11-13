@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pi_real  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-EXTENSION = ROOT / "dot_pi/agent/extensions/usage-aware.ts"
+EXTENSION = ROOT / "home/dot_pi/agent/extensions/usage-aware.ts"
 NODE = shutil.which("node")
 HARNESS = r'''
 const s = JSON.parse(process.argv[2]);

@@ -9,7 +9,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_chatgpt-launch"
+SCRIPT = ROOT / "home/dot_local/bin/executable_chatgpt-launch"
 
 FAKE_GUI = '''#!/usr/bin/env python3
 import json, os, pathlib, sys, time

@@ -11,7 +11,7 @@ from unittest.mock import patch
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_claude-delegate"
+SCRIPT = ROOT / "home/dot_local/bin/executable_claude-delegate"
 LOADER = SourceFileLoader("claude_delegate", str(SCRIPT))
 BRIDGE = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(BRIDGE)

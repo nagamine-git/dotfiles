@@ -30,8 +30,8 @@ Piを終了したりPCがスリープしたりすると巡回は実行できま�
 
 ## ソースと検証
 
-- ソース：`dot_pi/agent/extensions/loop.ts`
-- 反映先：`~/.pi/agent/extensions/loop.ts`（Pi全体と同様、`.chezmoiignore`でam5-itxだけ）
+- ソース：`home/dot_pi/agent/extensions/loop.ts`
+- 反映先：`~/.pi/agent/extensions/loop.ts`（Pi全体と同様、`home/.chezmoiignore`でam5-itxだけ）
 - テスト：`python3 -B tests/pi-loop.py`。仮のPi・時計・HOMEと、モデル呼び出しなしの実Pi RPCで確認します。
 
 対象指定の`chezmoi diff`、`chezmoi apply --dry-run --verbose`を確認してから、このファイルだけを反映します。ゲート・フック・権限設定の変更は含めません。

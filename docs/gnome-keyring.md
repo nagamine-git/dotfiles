@@ -49,7 +49,7 @@ sudo pacman -S gnome-keyring
 
 ## Codex の file 保存は残す
 
-`private_dot_codex/modify_private_config.toml` は、Linux で `mcp_oauth_credentials_store = "file"` を設定している。これは、ChatGPT 同梱の Codex が MCP の OAuth トークンを keyring に置かないようにするための設定で、このクラッシュを引き起こすきっかけを減らしていた。デーモンを修正した後も、次の理由で外さない。
+`home/private_dot_codex/modify_private_config.toml` は、Linux で `mcp_oauth_credentials_store = "file"` を設定している。これは、ChatGPT 同梱の Codex が MCP の OAuth トークンを keyring に置かないようにするための設定で、このクラッシュを引き起こすきっかけを減らしていた。デーモンを修正した後も、次の理由で外さない。
 
 - 公式版に戻った場合の保険になる。
 - 修正したのは `OpenSession` だけで、プロパティの取得など、ほかの呼び出しが最初に来たときの同種の競合 (上流 #195・#203) は残っている。

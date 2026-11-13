@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_musepass-dependabot-weekly"
+SCRIPT = ROOT / "home/dot_local/bin/executable_musepass-dependabot-weekly"
 sys.dont_write_bytecode = True
 LOADER = SourceFileLoader("musepass_dependabot_weekly", str(SCRIPT))
 M = module_from_spec(spec_from_loader("musepass_dependabot_weekly", LOADER))

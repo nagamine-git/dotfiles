@@ -6,9 +6,9 @@ import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-HYPR = ROOT / "private_dot_config/hypr/hyprland.lua.tmpl"
-DESKTOP = ROOT / "dot_local/share/applications/chatgpt.desktop.tmpl"
-IGNORE = ROOT / ".chezmoiignore"
+HYPR = ROOT / "home/private_dot_config/hypr/hyprland.lua.tmpl"
+DESKTOP = ROOT / "home/dot_local/share/applications/chatgpt.desktop.tmpl"
+IGNORE = ROOT / "home/.chezmoiignore"
 CHEZMOI = shutil.which("chezmoi")
 
 CHATGPT = 'hl.exec_cmd("~/.local/bin/chatgpt-launch")'

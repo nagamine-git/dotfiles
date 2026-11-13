@@ -14,7 +14,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-LOADER = SourceFileLoader("model_route_plan", str(ROOT / "dot_local/bin/executable_model-route-plan"))
+LOADER = SourceFileLoader("model_route_plan", str(ROOT / "home/dot_local/bin/executable_model-route-plan"))
 ROUTER = module_from_spec(spec_from_loader(LOADER.name, LOADER))
 LOADER.exec_module(ROUTER)
 POLICY = json.loads((ROOT / "docs/model-routing-policy.example.json").read_text())

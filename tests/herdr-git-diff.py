@@ -9,10 +9,10 @@ import tomllib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "dot_local/bin/executable_herdr-git-diff"
-CONFIG = ROOT / "private_dot_config/herdr/config.toml.tmpl"
-MANIFEST = ROOT / "dot_local/share/herdr-plugins/git-diff/herdr-plugin.toml"
-NVIM_INIT = ROOT / "private_dot_config/nvim/init.lua.tmpl"
+SCRIPT = ROOT / "home/dot_local/bin/executable_herdr-git-diff"
+CONFIG = ROOT / "home/private_dot_config/herdr/config.toml.tmpl"
+MANIFEST = ROOT / "home/dot_local/share/herdr-plugins/git-diff/herdr-plugin.toml"
+NVIM_INIT = ROOT / "home/private_dot_config/nvim/init.lua.tmpl"
 CHEZMOI = shutil.which("chezmoi")
 
 FAKE_HERDR = '''#!/usr/bin/env python3

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wolow Companion (iPhone Wolow アプリからの遠隔電源制御 daemon) のインストーラ。
-# chezmoi のブートストラップではない。Linux では run_onchange_setup.sh から
-# cwd=$HOME で自動実行され、~/wolow-companion と ~/50-wolow-companion.rules を参照する。
+# chezmoi のブートストラップではない。Linux では home/.chezmoiscripts/linux/run_onchange_after_20-system から
+# cwd=system/wolow で自動実行され、同じ場所の wolow-companion と 50-wolow-companion.rules を参照する。
 set -euo pipefail
 
 BINARY_NAME="wolow-companion"
@@ -15,11 +15,11 @@ echo "Installing Wolow Companion..."
 
 # Install binary
 # バイナリは git 管理外 (2026-07 監査で追跡廃止)。導入済みマシンは /usr/local/bin の
-# 既存コピーで継続。新規マシンは既存機から ~/wolow-companion へ scp してから apply する。
+# 既存コピーで継続。新規マシンは既存機から chezmoi の作業ツリーの system/wolow/wolow-companion へ scp してから apply する (git の管理外)。
 if [ -f "$BINARY_NAME" ]; then
     sudo install -Dm755 "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 elif [ -x "$INSTALL_DIR/$BINARY_NAME" ]; then
-    echo "wolow-companion: binary not in \$HOME — keeping existing $INSTALL_DIR/$BINARY_NAME"
+    echo "wolow-companion: binary not in system/wolow — keeping existing $INSTALL_DIR/$BINARY_NAME"
 else
     echo "⚠ wolow-companion: binary が見つかりません。既存機から scp で配置してください (スキップ)"
     exit 0

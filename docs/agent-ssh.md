@@ -184,7 +184,7 @@ env -u SSH_AUTH_SOCK ssh -F /dev/null \
   tsuyoshi.nagamine@m1pro-mbp14-agent.tailcda87f.ts.net. /usr/bin/id -un
 ```
 
-通常の OpenSSH でも成功を確認後、`private_dot_ssh/config.tmpl` の Linux 側 Mac Host ブロックを同じ方式へ変更し、am5 に scoped apply した。
+通常の OpenSSH でも成功を確認後、`home/private_dot_ssh/config.tmpl` の Linux 側 Mac Host ブロックを同じ方式へ変更し、am5 に scoped apply した。
 `ssh -G mac` で認証・ホスト鍵の設定を確認し、さらに `env -u SSH_AUTH_SOCK ssh -o ControlMaster=no -o ControlPath=none -v mac /usr/bin/id -un` で新規接続に成功した。
 ログの認証方式は `none`、ユーザー名は `tsuyoshi.nagamine`、終了コードは 0。
 別の Linux ホストに反映するときは、先に `tailscale ssh` で制御プレーンからホスト鍵を取得し、同じ試験を行う。

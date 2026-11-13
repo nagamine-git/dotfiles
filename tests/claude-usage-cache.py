@@ -11,7 +11,7 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-BIN = ROOT / "dot_local/bin"
+BIN = ROOT / "home/dot_local/bin"
 READER = BIN / "executable_claude-usage-cache"
 COLORED = BIN / "executable_claude-usage-colored.tmpl"
 NOTIFY = BIN / "executable_claude-usage-notify"
@@ -138,7 +138,7 @@ class UsageCache(unittest.TestCase):
         self.assertIn("usage:不明", result.stdout)
 
     def test_stop_hook_has_no_usage_refresh(self):
-        settings = (ROOT / "dot_claude/private_settings.json.tmpl").read_text()
+        settings = (ROOT / "home/dot_claude/private_settings.json.tmpl").read_text()
         self.assertTrue("claude-usage --refresh" not in settings,
                         "Stop must not refresh usage by starting a model")
 
