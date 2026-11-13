@@ -9,6 +9,17 @@
 OS / ホスト名によるテンプレート分岐が中核機構です。Linux は主に CachyOS
 (Archベース) 向けで、EndeavourOS でもそのまま利用可能 (いずれも `ID_LIKE=arch`)。
 
+## 見た目
+
+Hyprland (am5-itx、2026-11)。端末は Ghostty、ファイラーは yazi と Thunar。配色はダークモードの「エレベーション」(背景に白 5/8/11% を重ねた面で高さを示す)。
+waybar の島は壁紙に合わせて色を帯び、明るい壁紙では明るい島に反転する (`waybar-wallpaper-tint`、壁紙は darkman で昼と夜に切り替わる)。
+画像は `desktop-showcase` で空のワークスペースにデモの窓だけを並べて撮ったもの。
+
+| 夜 | 昼 (バーが明るい島に反転) |
+|---|---|
+| ![夜の壁紙のデスクトップ](docs/screenshots/desktop.webp) | ![昼の壁紙のデスクトップ](docs/screenshots/desktop-day.webp) |
+| ![Super+/ のショートカット一覧](docs/screenshots/keybinds.webp) | ![Super+Space のランチャー (Vicinae)](docs/screenshots/launcher.webp) |
+
 ## マシン構成
 
 | ホスト | OS / WM | テーマ (色分離) | 分岐条件 |

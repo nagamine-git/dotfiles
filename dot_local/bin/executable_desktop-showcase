@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# デスクトップの見本のスクリーンショットを撮る (dotfiles の README 用。リポジトリは公開なので、私的な内容を写さない)。
+#   desktop-showcase [出力先 (既定 ~/.local/share/chezmoi/docs/screenshots)] [--both]
+# 空のワークスペース 9 に、/tmp のデモ用フォルダを開いた窓 (端末 2 つ・Thunar) だけを並べて撮る。普段の窓・通知・
+# herdr のセッション名は写さない: 通知は撮影中だけサイレントにし、オーバーレイ (special:magic) は撮らない。
+# 撮るもの: desktop.png (全体)、wallpaper.png (窓の無いワークスペース 10 = 壁紙とバーだけ)、
+# keybinds.png (Super+/ の一覧)、launcher.png (Super+Space)。
+# --both: 昼の壁紙に一時的に替えて desktop-day.png と wallpaper-day.png も撮る (撮影後に元の壁紙とバーの色へ戻す)。
+# launcher.png はアプリの一覧に Web アプリの名前 (ページ名) が出ることがあるので、公開前に特に確かめる。
+# ロック中・画面の消灯中は何もせずに止まる。撮った画像は公開する前に必ず目で確かめる。
+set -eu
+
+out="${1:-$HOME/.local/share/chezmoi/docs/screenshots}"
+both=0
+for a in "$@"; do [ "$a" = "--both" ] && both=1; done
+[ "$out" = "--both" ] && out="$HOME/.local/share/chezmoi/docs/screenshots"
+
+if pgrep -x hyprlock >/dev/null; then echo "ロック中なので撮らない" >&2; exit 1; fi
+if hyprctl monitors | grep -q 'dpmsStatus: 0'; then echo "画面が消灯中なので撮らない" >&2; exit 1; fi
+
+demo=/tmp/desktop-showcase
+rm -rf "$demo" && mkdir -p "$demo/projects/website" "$demo/projects/notes" "$demo/Pictures" "$demo/Documents"
+printf '# website\n\nA small static site.\n' > "$demo/projects/website/README.md"
+printf 'export default { title: "Hello" }\n' > "$demo/projects/website/config.ts"
+printf '# 読書メモ\n\n- 第 1 章\n- 第 2 章\n' > "$demo/projects/notes/books.md"
+printf 'Lorem ipsum dolor sit amet.\n' > "$demo/Documents/draft.txt"
+for v in day night; do
+  magick "$HOME/.local/share/wallpaper/wallpaper-$v.jpg" -resize 1600x "$demo/Pictures/wallpaper-$v.jpg"
+done
+mkdir -p "$out"
+
+prev_ws=$(hyprctl activeworkspace -j | jq -r .id)
+prev_dnd=$(swaync-client -D 2>/dev/null || echo false)
+wall="$HOME/.local/share/wallpaper"
+cp -f "$wall/wallpaper.jpg" "$demo/.wallpaper-backup.jpg"
+
+# デモの窓: 端末 2 つ (class で) と、デモ用フォルダを開いた Thunar (窓名で)
+demo_windows() {
+  hyprctl clients -j | jq -r '.[] | select(.class == "showcase.fetch" or .class == "showcase.files"
+    or (((.class // "") | ascii_downcase) == "thunar" and ((.title // "") | test("^Pictures")))) | .address'
+}
+
+restore() {
+  pkill -x rofi 2>/dev/null || true
+  demo_windows | while read -r addr; do
+    hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })" >/dev/null
+    hyprctl dispatch 'hl.dsp.window.close()' >/dev/null
+  done
+  if [ "$both" = 1 ]; then
+    cp -f "$demo/.wallpaper-backup.jpg" "$wall/wallpaper.jpg"
+    pkill -x hyprpaper 2>/dev/null || true; sleep 0.3; (hyprpaper >/dev/null 2>&1 &)
+    "$HOME/.local/bin/waybar-wallpaper-tint" >/dev/null 2>&1 || true
+  fi
+  [ "$prev_dnd" = "true" ] || swaync-client -df >/dev/null 2>&1 || true
+  hyprctl dispatch "hl.dsp.focus({ workspace = $prev_ws })" >/dev/null
+}
+trap restore EXIT
+
+swaync-client -dn >/dev/null 2>&1 || true
+swaync-client --hide-all >/dev/null 2>&1 || true   # 画面に出ている吹き出しを隠す (通知センターの履歴は残る)
+hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })' >/dev/null
+sleep 0.5
+
+ghostty --class=showcase.fetch --working-directory="$demo" \
+  -e zsh -c 'fastfetch --structure Title:Separator:OS:Kernel:WM:Shell:Terminal:TerminalFont:CPU:GPU:Memory:Break:Colors; exec zsh' &
+sleep 1.2
+ghostty --class=showcase.files --working-directory="$demo/projects" -e yazi &
+sleep 1.2
+thunar "$demo/Pictures" &
+sleep 2.5
+# 端末に入力の焦点を置く (窓名に私的な内容が出ない)
+addr=$(hyprctl clients -j | jq -r '.[] | select(.class == "showcase.fetch") | .address' | head -1)
+[ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })" >/dev/null
+sleep 1
+
+grim "$out/desktop.png"
+
+# 壁紙とバーだけ (窓の無いワークスペース 10)
+hyprctl dispatch 'hl.dsp.focus({ workspace = 10 })' >/dev/null; sleep 0.8
+grim "$out/wallpaper.png"
+hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })' >/dev/null; sleep 0.8
+
+(~/.local/bin/hypr-keybinds &) ; sleep 1.2
+grim "$out/keybinds.png"
+pkill -x rofi 2>/dev/null || true; sleep 0.5
+
+vicinae 'vicinae://launch/applications?toggle=true' >/dev/null 2>&1 || true; sleep 1.2
+grim "$out/launcher.png"
+vicinae 'vicinae://launch/applications?toggle=true' >/dev/null 2>&1 || true; sleep 0.5
+
+if [ "$both" = 1 ]; then
+  cp -f "$wall/wallpaper-day.jpg" "$wall/wallpaper.jpg"
+  pkill -x hyprpaper 2>/dev/null || true; sleep 0.3; (hyprpaper >/dev/null 2>&1 &); sleep 1
+  "$HOME/.local/bin/waybar-wallpaper-tint" "$wall/wallpaper.jpg" >/dev/null 2>&1 || true; sleep 1.5
+  grim "$out/desktop-day.png"
+  hyprctl dispatch 'hl.dsp.focus({ workspace = 10 })' >/dev/null; sleep 0.8
+  grim "$out/wallpaper-day.png"
+fi
+
+ls -la "$out"
