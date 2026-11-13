@@ -26,8 +26,7 @@ bin/server.sh
 install.sh
 uninstall.sh
 50-wolow-companion.rules
-# 使われていなかったスクリプト (月次の AA リーダーボードの投稿、Blender のメモリ上限)
-.local/bin/aa-coding-snapshot
+# 使われていなかったスクリプト (Blender のメモリ上限。goldlab-producer の InaccessiblePaths に名前だけ残る)
 .local/bin/blender-guard
 # rofi の 3 つの用途 (Exit Node・クリップボード履歴・ショートカット一覧) は vicinae dmenu に移した
 .config/rofi
