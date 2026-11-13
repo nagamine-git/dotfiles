@@ -1,0 +1,13 @@
+# ringa (Web 会議のリングライト) の設定。点いている間に書き換えると、その場で反映される。
+# waybar のリングライトのアイコン (右クリックのメニュー・ホイール) と `ringlight set` が書き換える。
+# chezmoi は無いときだけ作る (create_)。以後の変更はこのファイルにだけ残る。
+#
+# kelvin          色温度 (1000..40000)。2700 = 電球色、4000 = 中間、6500 = 昼光
+# intensity       強さ (0.1..1.0)
+# focus           光を寄せる位置: none (全周) / top-left / top / top-right / left / right / bottom-left / bottom / bottom-right / <x>,<y>
+# focus_strength  寄せる度合い (0 = 全周に均等、1 = 寄せた位置の近くだけ)
+# am5-itx のカメラはモニターの左上の外にあるので、左上に寄せる
+kelvin = 4000
+intensity = 0.8
+focus = top-left
+focus_strength = 0.6

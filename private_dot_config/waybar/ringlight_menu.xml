@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- waybar の custom/ringlight の右クリックのメニュー。項目の id は config の menu-actions と対応する -->
+<interface>
+  <object class="GtkMenu" id="menu">
+    <child><object class="GtkMenuItem" id="toggle"><property name="label">点ける / 消す</property></object></child>
+    <child><object class="GtkSeparatorMenuItem" id="sep0"/></child>
+    <child><object class="GtkMenuItem" id="m_k2"><property name="label">色温度</property><child type="submenu"><object class="GtkMenu" id="sub_k2">
+      <child><object class="GtkMenuItem" id="k2700"><property name="label">2700K (電球色)</property></object></child>
+      <child><object class="GtkMenuItem" id="k3200"><property name="label">3200K</property></object></child>
+      <child><object class="GtkMenuItem" id="k4000"><property name="label">4000K (中間)</property></object></child>
+      <child><object class="GtkMenuItem" id="k5000"><property name="label">5000K</property></object></child>
+      <child><object class="GtkMenuItem" id="k6500"><property name="label">6500K (昼光)</property></object></child>
+    </object></child></object></child>
+    <child><object class="GtkMenuItem" id="m_i3"><property name="label">強さ</property><child type="submenu"><object class="GtkMenu" id="sub_i3">
+      <child><object class="GtkMenuItem" id="i30"><property name="label">30%</property></object></child>
+      <child><object class="GtkMenuItem" id="i50"><property name="label">50%</property></object></child>
+      <child><object class="GtkMenuItem" id="i70"><property name="label">70%</property></object></child>
+      <child><object class="GtkMenuItem" id="i100"><property name="label">100%</property></object></child>
+    </object></child></object></child>
+    <child><object class="GtkMenuItem" id="m_f_"><property name="label">位置</property><child type="submenu"><object class="GtkMenu" id="sub_f_">
+      <child><object class="GtkMenuItem" id="f_tl"><property name="label">左上</property></object></child>
+      <child><object class="GtkMenuItem" id="f_t"><property name="label">上</property></object></child>
+      <child><object class="GtkMenuItem" id="f_tr"><property name="label">右上</property></object></child>
+      <child><object class="GtkMenuItem" id="f_l"><property name="label">左</property></object></child>
+      <child><object class="GtkMenuItem" id="f_r"><property name="label">右</property></object></child>
+      <child><object class="GtkMenuItem" id="f_none"><property name="label">全周 (寄せない)</property></object></child>
+    </object></child></object></child>
+    <child><object class="GtkMenuItem" id="m_s3"><property name="label">寄せる度合い</property><child type="submenu"><object class="GtkMenu" id="sub_s3">
+      <child><object class="GtkMenuItem" id="s3"><property name="label">弱 (0.3)</property></object></child>
+      <child><object class="GtkMenuItem" id="s6"><property name="label">中 (0.6)</property></object></child>
+      <child><object class="GtkMenuItem" id="s9"><property name="label">強 (0.9)</property></object></child>
+    </object></child></object></child>
+  </object>
+</interface>

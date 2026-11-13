@@ -1,13 +1,13 @@
 {{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
-// waybar の設定 (JSONC)。見た目は style.css。2026-11 の UI 見直し (案 B「エレベーション」):
-// 画面の上端に密着した 1 本の不透明なバー。端まで振り切ってもクリックが当たる (Fitts の法則)。
-// 左 (ワークスペースと窓名) / 中央 (時計) / 右 (メーター・状態) のまとまりは間隔で示す。
+// waybar の設定 (JSONC)。見た目は style.css。2026-11 の UI 見直し:
+// 「左 (ワークスペースと窓名) / 中央 (時計) / 右 (メーター・状態)」の不透明な島。配色は案 B「エレベーション」。
+// 島の外側の余白は Hyprland のギャップ (theme.shape.gap) とそろえる。上端に密着した 1 本のバーも試したが、島に戻した。
 {
   "layer": "top",
   "position": "top",
-  "height": 34,
-  "margin": "0",
+  "height": 32,
+  "margin": "{{ .theme.shape.gap }} {{ .theme.shape.gap }} 0 {{ .theme.shape.gap }}",
   "spacing": {{ .theme.shape.gap }},
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
@@ -21,7 +21,7 @@
   },
   "group/status": {
     "orientation": "horizontal",
-    "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/notification", "custom/keys"]
+    "modules": ["privacy", "tray", "network", "custom/tailscale", "pulseaudio", "custom/ringlight", "custom/notification", "custom/keys"]
   },
 
   // 番号を出して Super+数字 と対応させる。窓のあるワークスペースと今いるワークスペースだけを出す
@@ -178,6 +178,42 @@
     "on-click-middle": "swaync-client -C -sw",
     "escape": true,
     "tooltip": true
+  },
+
+  // Web 会議のリングライト (ringlight)。クリックで点け消し、ホイールで強さ、右クリックで色温度と位置。
+  // 状態が変わると ringlight が SIGRTMIN+9 で即座に描き直させる
+  "custom/ringlight": {
+    "exec": "~/.local/bin/ringlight status",
+    "return-type": "json",
+    "interval": 5,
+    "signal": 9,
+    "tooltip": true,
+    "on-click": "~/.local/bin/ringlight toggle",
+    "on-scroll-up": "~/.local/bin/ringlight step 0.1",
+    "on-scroll-down": "~/.local/bin/ringlight step -0.1",
+    "menu": "on-click-right",
+    "menu-file": "~/.config/waybar/ringlight_menu.xml",
+    "menu-actions": {
+      "toggle": "~/.local/bin/ringlight toggle",
+      "k2700": "~/.local/bin/ringlight set kelvin 2700",
+      "k3200": "~/.local/bin/ringlight set kelvin 3200",
+      "k4000": "~/.local/bin/ringlight set kelvin 4000",
+      "k5000": "~/.local/bin/ringlight set kelvin 5000",
+      "k6500": "~/.local/bin/ringlight set kelvin 6500",
+      "i30": "~/.local/bin/ringlight set intensity 0.3",
+      "i50": "~/.local/bin/ringlight set intensity 0.5",
+      "i70": "~/.local/bin/ringlight set intensity 0.7",
+      "i100": "~/.local/bin/ringlight set intensity 1.0",
+      "f_tl": "~/.local/bin/ringlight set focus top-left",
+      "f_t": "~/.local/bin/ringlight set focus top",
+      "f_tr": "~/.local/bin/ringlight set focus top-right",
+      "f_l": "~/.local/bin/ringlight set focus left",
+      "f_r": "~/.local/bin/ringlight set focus right",
+      "f_none": "~/.local/bin/ringlight set focus none",
+      "s3": "~/.local/bin/ringlight set focus_strength 0.3",
+      "s6": "~/.local/bin/ringlight set focus_strength 0.6",
+      "s9": "~/.local/bin/ringlight set focus_strength 0.9"
+    }
   },
 
   // ショートカットの一覧 (Super+/ と同じ)

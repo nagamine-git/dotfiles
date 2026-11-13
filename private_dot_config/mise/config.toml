@@ -5,8 +5,6 @@ go   = 'latest'
 node = 'lts'
 python = 'latest'
 bun = "latest"
-# Web 会議のリングライト (画面の縁を光らせる Wayland の重ね表示)。ringa-camera-watch がカメラの使用に合わせて点ける
-"cargo:ringa" = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]

@@ -89,8 +89,8 @@ hl.on("hyprland.start", function()
     -- sleep_backup は exec-once では機能せず (起動時点で「スリープ復帰5分以内」を満たさず
     -- 即終了 + sudo timeshift が対話不能)、systemd timer 方式も未運用のまま 2026-07 に撤去済み。
     hl.exec_cmd("way-thumbsense --exclude-left=10 --exclude-right=10 &")
-    -- Web 会議のリングライト: カメラを使っている間だけ画面の縁を光らせる (Super+F12 で手動の点け消し)
-    hl.exec_cmd("~/.local/bin/ringa-camera-watch &")
+    -- Web 会議のリングライト: カメラを使っている間だけ画面の縁を光らせる (Super+F12・waybar で手動の点け消しと設定)
+    hl.exec_cmd("~/.local/bin/ringlight watch &")
 end)
 
 -- Float these instances on special workspaces
@@ -609,7 +609,7 @@ hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -
 hl.bind(mainMod .. " + slash", hl.dsp.exec_cmd("~/.local/bin/hypr-keybinds"), { description = "ヘルプ｜ショートカットの一覧" })
 
 -- === WEB 会議 ===
-hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("~/.local/bin/ringa-camera-watch toggle"), { description = "会議｜リングライトの点け消し" })
+hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("~/.local/bin/ringlight toggle"), { description = "会議｜リングライトの点け消し" })
 
 -- === NOTIFICATION CENTER ===
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"), { description = "通知｜通知センター" })

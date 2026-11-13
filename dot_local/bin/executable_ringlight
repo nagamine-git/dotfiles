@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Web 会議のリングライト (画面の縁を光らせる Wayland の重ね表示)。本体は ringa の手元の改造版
+# (~/ghq/github.com/nagamine-git/ringa、~/.local/bin/ringa)。設定は ~/.config/ringa/config で、
+# 点いている間に書き換えるとその場で反映される。
+#
+#   ringlight watch                 カメラ (/dev/video*) を開いているプロセスがある間だけ点ける (Hyprland の起動時に 1 つ)
+#   ringlight toggle | on | off     手動の点け消し (Super+F12、waybar のアイコンのクリック)
+#   ringlight set <key> <value>     kelvin / intensity / focus / focus_strength を書き換える (waybar の右クリックのメニュー)
+#   ringlight step <+0.1|-0.1>      強さを上げ下げする (waybar のアイコンのホイール)
+#   ringlight status                waybar の custom/ringlight 用の JSON
+set -u
+
+RINGA="$HOME/.local/bin/ringa"
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}/ringa/config"
+WAYBAR_SIGNAL=9
+INTERVAL=2
+
+running() { pgrep -x ringa >/dev/null 2>&1; }
+refresh_bar() { pkill -RTMIN+"$WAYBAR_SIGNAL" -x waybar 2>/dev/null || true; }
+light_on() { running || (setsid "$RINGA" >/dev/null 2>&1 < /dev/null &); }
+light_off() { pkill -x ringa 2>/dev/null || true; }
+
+get() {  # get <key> <default>
+  local v
+  v=$(sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*([^#]*).*/\1/p" "$CFG" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
+  printf '%s' "${v:-$2}"
+}
+
+set_key() {  # set_key <key> <value>
+  mkdir -p "$(dirname "$CFG")"
+  touch "$CFG"
+  local tmp
+  tmp=$(mktemp "$CFG.XXXXXX")
+  grep -vE "^[[:space:]]*$1[[:space:]]*=" "$CFG" > "$tmp" || true
+  printf '%s = %s\n' "$1" "$2" >> "$tmp"
+  mv -f "$tmp" "$CFG"
+}
+
+camera_in_use() {
+  local dev
+  for dev in /dev/video*; do
+    [ -e "$dev" ] || continue
+    fuser -s "$dev" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+focus_label() {
+  case "$1" in
+    none) echo "全周" ;; top-left) echo "左上" ;; top) echo "上" ;; top-right) echo "右上" ;;
+    left) echo "左" ;; right) echo "右" ;; bottom-left) echo "左下" ;; bottom) echo "下" ;;
+    bottom-right) echo "右下" ;; center) echo "中央" ;; *) echo "$1" ;;
+  esac
+}
+
+case "${1:-}" in
+  toggle)
+    if running; then light_off; else light_on; fi
+    sleep 0.3; refresh_bar ;;
+  on) light_on; sleep 0.3; refresh_bar ;;
+  off) light_off; refresh_bar ;;
+  set)
+    [ $# -eq 3 ] || { echo "usage: ringlight set <kelvin|intensity|focus|focus_strength> <value>" >&2; exit 2; }
+    case "$2" in kelvin|intensity|focus|focus_strength) ;; *) echo "unknown key: $2" >&2; exit 2 ;; esac
+    set_key "$2" "$3"; refresh_bar ;;
+  step)
+    cur=$(get intensity 0.8)
+    next=$(awk -v c="$cur" -v d="${2:-0.1}" 'BEGIN { v = c + d; if (v < 0.1) v = 0.1; if (v > 1) v = 1; printf "%.1f", v }')
+    set_key intensity "$next"; refresh_bar ;;
+  status)
+    k=$(get kelvin 4000); i=$(get intensity 0.8); f=$(get focus none); s=$(get focus_strength 0)
+    pct=$(awk -v i="$i" 'BEGIN { printf "%d", i * 100 }')
+    if running; then text="󰛨"; class="on"; state="点灯中"; else text="󰛩"; class="off"; state="消灯"; fi
+    tip="リングライト: ${state}\n色温度 ${k}K / 強さ ${pct}% / 位置 $(focus_label "$f") (寄せ ${s})\n\nクリック / Super+F12: 点け消し\nホイール: 強さ\n右クリック: 色温度・位置\nカメラを使っている間は自動で点きます"
+    printf '{"text":"%s","class":"%s","tooltip":"%s"}\n' "$text" "$class" "$tip" ;;
+  watch)
+    [ -x "$RINGA" ] || { echo "ringlight: $RINGA が無い (~/ghq/github.com/nagamine-git/ringa で cargo install --path . --root ~/.local)" >&2; exit 1; }
+    exec 9>"${XDG_RUNTIME_DIR:-/tmp}/ringlight-watch.lock"
+    flock -n 9 || exit 0
+    prev=0
+    while true; do
+      if camera_in_use; then now=1; else now=0; fi
+      if [ "$now" != "$prev" ]; then
+        if [ "$now" = 1 ]; then light_on; else light_off; fi
+        prev=$now
+        sleep 0.3; refresh_bar
+      fi
+      sleep "$INTERVAL"
+    done ;;
+  *)
+    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+    exit 2 ;;
+esac

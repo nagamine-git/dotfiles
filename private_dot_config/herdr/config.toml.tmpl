@@ -95,6 +95,26 @@ description = "ツリーを開いた Neovim を開く"
 # - M-x / M-X / M-q / M-D / M-w (閉じる・切り離す): 1打で壊れる操作は直接キーにしない
 # - 自動レイアウトとの差分: ペインを閉じたときの再整列はしない。prefix M-Enter のトグルは移していない。手動分割は prefix+shift+v / prefix+minus
 
+{{- if eq .chezmoi.hostname "am5-itx" }}
+{{- $c := .theme.colors_elevation }}
+# 配色 (am5-itx)。端末の配色を引き継ぐ terminal テーマに、デスクトップと同じ案 B「エレベーション」(colors_elevation) の色を重ねる。
+# サイドバーは高さ 1 の面、選択行は高さ 3 の面、強調色は選択中だけに使う青緑 (Hyprland の窓の枠・waybar と同じ)。
+[theme]
+name = "terminal"
+
+[theme.custom]
+accent = "#{{ $c.accent.hex }}"
+sidebar_bg = "#{{ $c.bg_medium.hex }}"
+active_row_bg = "#{{ $c.surface.hex }}"
+selection_bg = "#{{ $c.surface.hex }}"
+surface_dim = "#{{ $c.bg_light.hex }}"
+mauve = "#{{ $c.primary.hex }}"
+green = "#{{ $c.success.hex }}"
+yellow = "#{{ $c.warning.hex }}"
+red = "#{{ $c.error.hex }}"
+peach = "#{{ $c.warning_alt.hex }}"
+{{- end }}
+
 [ui]
 # ズーム中 (alt+m / alt+z / prefix+z) はタブの行の右端に ZOOM を出す。
 # タブが 1 つでも表示が見えるよう、タブの行は常に出す (隠すと ZOOM も一緒に消える)

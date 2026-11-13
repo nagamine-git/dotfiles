@@ -2,10 +2,9 @@
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 {{- $s := .theme.shape -}}
-/* waybar の見た目。2026-11 の UI 見直し、配色と形は案 B「エレベーション」(colors_elevation)。
-   - 画面の上端に密着した 1 本の不透明なバー (高さ 1 の面 = 背景に白 5%)。枠線も影も付けない
+/* waybar の見た目。2026-11 の UI 見直し: 左・中央・右の不透明な島、配色は案 B「エレベーション」(colors_elevation)。
+   - 島は高さ 1 の面 (背景に白 5%)。枠線も影も付けず、面の明るさで浮かせる
    - 半透明やぼかしは使わない (読みやすさが壁紙しだいになる)。どの面でも本文 10:1 以上、補助 5:1 以上
-   - まとまりは背景ではなく間隔で示す (左・中央・右、右はメーターと状態の 2 つ)
    - 選択の色は青緑 (accent) の 1 色 (ウィンドウの枠と同じ)。橙は常時の強調に使わず、状態だけに使う
    - 状態は色だけでなく太字も付けて示す */
 
@@ -21,23 +20,24 @@
   background-color: transparent;
 }
 
+/* バー自体は透明にして、島だけを描く */
 window#waybar {
-  background-color: #{{ $c.bg_medium.hex }};
+  background-color: transparent;
 }
 
+/* 島: 左・中央・右 2 つ */
 .modules-left,
-.modules-right {
-  padding: 0 6px;
-}
-
-/* 右側の 2 つのまとまり (メーター・状態) の間を広げる */
+.modules-center,
+#meters,
 #status {
-  margin-left: 12px;
+  background-color: #{{ $c.bg_medium.hex }};
+  border-radius: {{ $s.radius_lg }}px;
+  padding: 0 6px;
 }
 
 /* 各モジュールの余白 */
 #window, #clock, #temperature, #cpu, #custom-gpu, #memory, #custom-disk,
-#privacy, #tray, #network, #custom-tailscale, #pulseaudio, #custom-notification, #custom-keys {
+#privacy, #tray, #network, #custom-tailscale, #pulseaudio, #custom-ringlight, #custom-notification, #custom-keys {
   padding: 0 8px;
 }
 
@@ -135,6 +135,9 @@ window#waybar {
   color: #{{ $c.error_text.hex }};
   font-weight: bold;
 }
+
+#custom-ringlight.off { color: #{{ $c.text_dim.hex }}; }
+#custom-ringlight.on  { color: #{{ $c.warning.hex }}; font-weight: bold; }
 
 #custom-tailscale.direct { color: #{{ $c.text_dim.hex }}; }
 #custom-tailscale.exit   { color: #{{ $c.warning_alt.hex }}; font-weight: bold; }
