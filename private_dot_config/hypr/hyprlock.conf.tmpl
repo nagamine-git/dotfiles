@@ -1,4 +1,4 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 general {
@@ -44,8 +44,8 @@ shape {
     size = 400, 252
     color = rgba({{ $c.bg_dark.rgb }}, 0.75)
     rounding = {{ .theme.shape.radius_lg }}
-    border_size = 1
-    border_color = rgba({{ $c.bg_light.rgb }}, 1.0)
+    # 枠線は付けない (案 B: 面の明るさで浮かせる)
+    border_size = 0
     position = 0, 54
     halign = center
     valign = center
@@ -58,7 +58,7 @@ input-field {
     dots_size = 0.25
     dots_spacing = 0.3
     dots_center = true
-    outer_color = rgba({{ $c.bg_light.rgb }}, 1.0)
+    outer_color = rgba({{ $c.surface.rgb }}, 1.0)
     inner_color = rgba({{ $c.bg_medium.rgb }}, 1.0)
     font_color = rgba({{ $c.text.rgb }}, 1.0)
     font_family = {{ $f.ui }}

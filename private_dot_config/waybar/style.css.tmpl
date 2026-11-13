@@ -1,14 +1,13 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 {{- $s := .theme.shape -}}
-/* waybar の見た目。2026-11 の UI 見直し (デスクトップは案 2「静かな面」、バーは案 3 の島の形だけ取り入れた)。
-   - 島は不透明 (bg_medium)。半透明やぼかしだと読みやすさが壁紙しだいになり、明るい壁紙で状態色が
-     1.6–1.8:1 まで落ちていた。不透明なら本文 9:1 前後、補助テキスト 4.5:1 以上を壁紙に関係なく保てる
-   - 選択の色は青緑 (accent) の 1 色にそろえる (ウィンドウの枠と同じ)。橙は警告の黄と色相が近いので
-     常時の強調には使わず、状態 (Tailscale の出口ノード・マイク使用中) にだけ使う
-   - 状態は色だけでなく太字も付けて示す
-   - 島の影は付けない (暗い壁紙では見えず、明るい壁紙では 1px の枠で足りる) */
+/* waybar の見た目。2026-11 の UI 見直し、配色と形は案 B「エレベーション」(colors_elevation)。
+   - 画面の上端に密着した 1 本の不透明なバー (高さ 1 の面 = 背景に白 5%)。枠線も影も付けない
+   - 半透明やぼかしは使わない (読みやすさが壁紙しだいになる)。どの面でも本文 10:1 以上、補助 5:1 以上
+   - まとまりは背景ではなく間隔で示す (左・中央・右、右はメーターと状態の 2 つ)
+   - 選択の色は青緑 (accent) の 1 色 (ウィンドウの枠と同じ)。橙は常時の強調に使わず、状態だけに使う
+   - 状態は色だけでなく太字も付けて示す */
 
 * {
   margin: 0;
@@ -22,20 +21,18 @@
   background-color: transparent;
 }
 
-/* バー自体は透明にして、島だけを描く */
 window#waybar {
-  background-color: transparent;
+  background-color: #{{ $c.bg_medium.hex }};
 }
 
-/* 島: 左・中央・右 2 つ */
 .modules-left,
-.modules-center,
-#meters,
-#status {
-  background-color: #{{ $c.bg_medium.hex }};
-  border: 1px solid #{{ $c.bg_light.hex }};
-  border-radius: {{ $s.radius_lg }}px;
+.modules-right {
   padding: 0 6px;
+}
+
+/* 右側の 2 つのまとまり (メーター・状態) の間を広げる */
+#status {
+  margin-left: 12px;
 }
 
 /* 各モジュールの余白 */
@@ -159,10 +156,9 @@ window#waybar {
   color: #{{ $c.text_dim.hex }};
 }
 
-/* ツールチップとメニュー */
+/* ツールチップとメニュー: バーより一段高い面 (高さ 3) にして、枠線なしで浮いて見せる */
 tooltip {
-  background-color: #{{ $c.bg_medium.hex }};
-  border: 1px solid #{{ $c.bg_light.hex }};
+  background-color: #{{ $c.surface.hex }};
   border-radius: {{ $s.radius_md }}px;
 }
 
@@ -172,8 +168,7 @@ tooltip label {
 }
 
 menu {
-  background-color: #{{ $c.bg_medium.hex }};
-  border: 1px solid #{{ $c.bg_light.hex }};
+  background-color: #{{ $c.surface.hex }};
   border-radius: {{ $s.radius_md }}px;
 }
 
@@ -183,5 +178,5 @@ menuitem {
 }
 
 menuitem:hover {
-  background-color: #{{ $c.bg_light.hex }};
+  background-color: #{{ $c.bg_medium.hex }};
 }

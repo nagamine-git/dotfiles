@@ -1,4 +1,4 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 -- #######################################################################################
@@ -89,6 +89,8 @@ hl.on("hyprland.start", function()
     -- sleep_backup は exec-once では機能せず (起動時点で「スリープ復帰5分以内」を満たさず
     -- 即終了 + sudo timeshift が対話不能)、systemd timer 方式も未運用のまま 2026-07 に撤去済み。
     hl.exec_cmd("way-thumbsense --exclude-left=10 --exclude-right=10 &")
+    -- Web 会議のリングライト: カメラを使っている間だけ画面の縁を光らせる (Super+F12 で手動の点け消し)
+    hl.exec_cmd("~/.local/bin/ringa-camera-watch &")
 end)
 
 -- Float these instances on special workspaces
@@ -218,7 +220,7 @@ hl.config({
 ---------------------
 
 hl.config({
-    -- 2026-11 の UI 見直し (案 2「静かな面」)。面は不透明にして壁紙に読みやすさを左右させず、
+    -- 2026-11 の UI 見直し (案 2「静かな面」、のち配色は案 B「エレベーション」= colors_elevation)。面は不透明にして壁紙に読みやすさを左右させず、
     -- 選択中のウィンドウは 2px の不透明な青緑の枠 (非選択の枠との差は約 6:1) と、非選択側を暗くすることで示す。
     -- 旧: 1px の半透明の枠 + 非選択を透明度 0.8。明るい壁紙では枠の差がほぼ 1:1 になっていた
     general = {
@@ -241,9 +243,9 @@ hl.config({
         rounding_power = 2,
         active_opacity = 1.0,
         inactive_opacity = 1.0,
-        -- 非選択のウィンドウを 12% 暗くする。本文のコントラストは 7:1 以上を保つ
+        -- 非選択のウィンドウを 10% 暗くする (案 B)。本文のコントラストは 7:1 以上を保つ
         dim_inactive = true,
-        dim_strength = 0.12,
+        dim_strength = 0.10,
         -- スペシャルワークスペース (Super+` など) を開いている間、後ろの通常の画面を 45% 暗くする (既定 0.2)。
         -- 周りの余白 (workspaces.lua) と合わせて、手前に浮いた別の層だと分かるようにする
         dim_special = 0.45,
@@ -256,7 +258,7 @@ hl.config({
             color = "rgba(00000066)",
         },
 
-        -- ウィンドウとバーは不透明なので、ぼかしは半透明の rofi と Vicinae にだけ効く
+        -- ウィンドウ・バー・rofi は不透明なので、ぼかしは Vicinae にだけ効く
         blur = {
             enabled = true,
             size = 10,
@@ -362,12 +364,6 @@ hl.window_rule({
     stay_focused = true,
 })
 
--- rofi (waybar の Exit Node の選択と Ctrl+Super+V のクリップボード履歴) も blur。
--- 半透明のまま背後をぼかすことで、後ろに端末など
--- 文字の多いウィンドウがあっても行のテキストが読める (blur 無しだと素通しで
--- 実効コントラストが背後次第になり、テーマ側で測った 8.66:1 が保証されない)
-hl.layer_rule({ match = { namespace = "rofi" }, blur = true })
-hl.layer_rule({ match = { namespace = "rofi" }, ignore_alpha = 0.5 })
 
 -- ランチャー (Vicinae) は blur して、開閉のアニメーションを付けない (公式の Hyprland 向けの設定)
 hl.layer_rule({ match = { namespace = "vicinae" }, blur = true, ignore_alpha = 0 })
@@ -611,6 +607,9 @@ hl.bind("CTRL + " .. mainMod .. " + V", hl.dsp.exec_cmd([[cliphist list | rofi -
 -- === HELP ===
 -- description を付けたキー割り当ての一覧 (hyprctl binds から作る)。waybar のキーボードのアイコンからも開ける
 hl.bind(mainMod .. " + slash", hl.dsp.exec_cmd("~/.local/bin/hypr-keybinds"), { description = "ヘルプ｜ショートカットの一覧" })
+
+-- === WEB 会議 ===
+hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd("~/.local/bin/ringa-camera-watch toggle"), { description = "会議｜リングライトの点け消し" })
 
 -- === NOTIFICATION CENTER ===
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("swaync-client -t -sw"), { description = "通知｜通知センター" })

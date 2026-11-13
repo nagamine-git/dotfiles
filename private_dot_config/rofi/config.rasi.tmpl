@@ -1,21 +1,16 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 /*
  * rofi theme — rofi -dmenu の選択画面 (waybar の Exit Node、Ctrl+Super+V のクリップボード履歴)。
  * ランチャー (Super+Space) は Vicinae に移した
  *
- * 設計の根拠:
+ * 設計の根拠 (2026-11 に配色を案 B「エレベーション」= colors_elevation へ):
  *  - 文字サイズは 1.25 の等比スケール: 本文 13 / 入力欄 16 (入力欄を焦点にする)
- *  - 本文 #{{ $c.text.hex }} は入力欄背景に対し 8.66:1 (WCAG AA 4.5 を大きく満たす)
- *  - 補助テキストは旧パレットの text_dim (#5a626a) だと 2.69:1 で AA 不合格だった。
- *    色相を保ったまま明度のみ上げた fg-dim を定義し 4.56:1 を確保している
- *  - 選択状態は「背景 + 文字色 + 左アクセントバー」の3チャネルで冗長に示す。
- *    背景差だけでは 1.57:1 しかなく状態変化の手がかりとして弱いため
- *  - 半透明なので実効コントラストは背後のウィンドウに左右される。対策は2段構え:
- *    (1) hyprland.lua の namespace rofi の layer_rule (blur) で背後を均す
- *        (実測: ランチャー内側の輪郭成分が素の画面比 0.40 まで低下)
- *    (2) 背景の不透明度を 97% にし、背後が真っ白でも AA を割らないようにする
+ *  - 不透明な面の明るさで高さを示し、外枠は付けない: 窓 = 高さ 2、入力欄 = 高さ 1 (一段沈める)、選択行 = 高さ 3
+ *  - am5-itx の配色では、本文は選択行の上でも 10.6:1、補助テキスト (text_dim) は 5.1:1
+ *  - 選択状態は「背景 + 文字色 + 左アクセントバー」の3チャネルで冗長に示す
+ *  - 不透明なので、背後のウィンドウや壁紙に読みやすさが左右されない
  *
  * 寸法についての注意 (スクリーンショットからの実測ベース):
  *  rofi のフォント指定は pt で、モニタスケール (この環境では 1.5) が乗る。
@@ -69,21 +64,16 @@ configuration {
 * {
     font: "{{ $f.ui }} 13";
 
-    /* 97%: 背後が真っ白でも本文 8.67:1 / 補助 4.56:1 で AA を満たす最小値。
-       92% だと補助テキストが 3.93:1 まで落ちる (下のコメント参照) */
-    bg-window: rgba({{ $c.bg_dark.rgb }}, 97%);
-    bg-input: rgba({{ $c.bg_medium.rgb }}, 85%);
-    bg-selected: rgba({{ $c.primary.rgb }}, 30%);
-    border-col: rgba({{ $c.primary.rgb }}, 25%);
+    bg-window: #{{ $c.bg_light.hex }};
+    bg-input: #{{ $c.bg_medium.hex }};
+    bg-selected: #{{ $c.surface.hex }};
+    border-col: transparent;
 
     fg: #{{ $c.text.hex }};
     fg-accent: #{{ $c.accent.hex }};
-    /* 旧パレットの text_dim (#5a626a) は 2.69:1 で AA 不合格だったため、
-       色相 210° を保ち明度のみ上げて 4.56:1 にした値 */
-    fg-dim: #7d8791;
-    /* 行番号バッジ用。本文でも補助でもない装飾なので AA(4.5) ではなく
-       非テキスト UI の 3:1 を基準にした (最悪ケースで 3.45:1) */
-    fg-faint: #69737c;
+    fg-dim: #{{ $c.text_dim.hex }};
+    /* 行番号バッジ用の飾り。文字ではないので非テキスト UI の 3:1 を基準にする */
+    fg-faint: #{{ (default $c.text_dim (index $c "text_faint")).hex }};
 
     background-color: transparent;
     text-color: @fg;
@@ -95,8 +85,7 @@ window {
     padding: 8px;
     border-radius: {{ .theme.shape.radius_lg }}px;
     background-color: @bg-window;
-    border: 1px;
-    border-color: @border-col;
+    border: 0px;
 }
 
 /* message を listview の後ろに置いて Raycast 的なフッターにする

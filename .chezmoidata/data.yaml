@@ -42,6 +42,64 @@ theme:
     warning_alt:
       hex: "e58a50"
       rgb: "229, 138, 80"
+  # 案 B「エレベーション」(2026-11、am5-itx のデスクトップの UI: Hyprland・waybar・通知・rofi・ロック画面)。
+  # Material のダークテーマの考え方: 純黒を避けた背景に白を 5/8/11% 重ねた明るさで面の高さを示し、枠線に頼らない。
+  # 文字は白の 87/60/38%、色は彩度を落とす。端末まわり (foot・nvim・starship・tmux) と GTK は colors のまま。
+  # 名前を colors と分けているのは、ソース内に残った古い worktree の .chezmoidata が colors を上書きするため
+  colors_elevation:
+    # 情報 (青)。彩度を落とした 200 番台
+    primary:
+      hex: "9db7d3"
+      rgb: "157, 183, 211"
+    # 選択中だけに使う青緑
+    accent:
+      hex: "8fcfc4"
+      rgb: "143, 207, 196"
+    # 背景 (純黒ではない)
+    bg_dark:
+      hex: "121314"
+      rgb: "18, 19, 20"
+    # 高さ 1: バー・窓の中の面 (白 5%)
+    bg_medium:
+      hex: "1d1e1f"
+      rgb: "29, 30, 31"
+    # 高さ 2: 通知・ランチャー (白 8%)
+    bg_light:
+      hex: "232425"
+      rgb: "35, 36, 37"
+    # 高さ 3: メニュー・選択行 (白 11%)
+    surface:
+      hex: "2a2b2c"
+      rgb: "42, 43, 44"
+    # 本文 (白 87%)。高さ 3 の面でも 10.6:1
+    text:
+      hex: "dedfe0"
+      rgb: "222, 223, 224"
+    # 補助 (白 60%)。高さ 3 でも 5.1:1
+    text_dim:
+      hex: "9a9b9c"
+      rgb: "154, 155, 156"
+    # 飾り・無効 (白 38%)。文字には使わない (高さ 2 で 3.1:1)
+    text_faint:
+      hex: "6e6f70"
+      rgb: "110, 111, 112"
+    warning:
+      hex: "e9c77f"
+      rgb: "233, 199, 127"
+    # 状態 (Tailscale の出口ノード・マイク使用中)
+    warning_alt:
+      hex: "e3a07a"
+      rgb: "227, 160, 122"
+    # 高さ 3 でも 5.5:1
+    error:
+      hex: "e08a8c"
+      rgb: "224, 138, 140"
+    error_text:
+      hex: "e08a8c"
+      rgb: "224, 138, 140"
+    success:
+      hex: "b5c98a"
+      rgb: "181, 201, 138"
   # Gruvbox Material (medium background, material foreground) - used on darwin
   colors_darwin:
     primary:
@@ -123,12 +181,12 @@ theme:
       hex: "fab387"
       rgb: "250, 179, 135"
   # 形の体系。角丸は 3 段 (小: ボタン・ワークスペース番号 / 中: ウィンドウ・通知・入力欄 /
-  # 大: バーの島・ランチャー・通知センター)。ウィンドウの角丸は端末の角の文字を欠かない 6 以下にする。
+  # 大: ランチャー・通知センター・ロック画面のカード)。ウィンドウの角丸は端末の角の文字を欠かない 6 以下にする。
   # gap は画面端・バーの外側の余白で、ウィンドウどうしの間 (gaps_in の 2 倍) も同じ値にそろえる。
   shape:
     radius_sm: 4
     radius_md: 6
-    radius_lg: 8
+    radius_lg: 12
     gap: 8
   fonts:
     ui: "IBM Plex Sans JP"

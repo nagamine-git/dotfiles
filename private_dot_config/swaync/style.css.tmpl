@@ -1,8 +1,9 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
 {{- $f := .theme.fonts -}}
 {{- $sh := .theme.shape -}}
-/* 2026-11 の UI 見直し: 不透明・角丸 6・左端の色の帯で緊急度を示す・文字を 13pt に上げる
+/* 2026-11 の UI 見直し (配色は案 B「エレベーション」= colors_elevation): 不透明・枠線なしで、面の明るさで高さを示す
+   (通知センター = 高さ 1、通知と中の部品 = 高さ 2、ボタン・選択 = 高さ 3)。角丸 6・左端の色の帯で緊急度を示す・文字を 13pt に上げる
    (通知は日本語を周辺視野でちらっと読むので、10pt では漢字が小さすぎた。70cm で 13pt は漢字 1 文字が視角約 20 分) */
 /* 基本スタイル */
 * {
@@ -16,15 +17,15 @@
 
 .notification-row:focus,
 .notification-row:hover {
-  background: rgba({{ $c.primary.rgb }}, 0.18);
+  background: #{{ $c.surface.hex }};
 }
 
 .notification {
-  background: #{{ $c.bg_dark.hex }};
+  background: #{{ $c.bg_light.hex }};
   padding: 12px 14px;
   margin: {{ $sh.gap }}px;
   border-radius: {{ $sh.radius_md }}px;
-  border: 1px solid #{{ $c.bg_light.hex }};
+  border: none;
   font-size: 13pt;
 }
 
@@ -35,7 +36,7 @@
 }
 
 .close-button {
-  background: rgba({{ $c.surface.rgb }}, 0.5);
+  background: #{{ $c.surface.hex }};
   color: rgba({{ $c.text.rgb }}, 1);
   text-shadow: none;
   padding: 0;
@@ -45,12 +46,13 @@
 }
 
 .close-button:hover {
-  background: rgba({{ $c.primary.rgb }}, 0.6);
+  background: #{{ $c.primary.hex }};
+  color: #{{ $c.bg_dark.hex }};
 }
 
 .notification-default-action,
 .notification-action {
-  background: rgba({{ $c.bg_medium.rgb }}, 0.92);
+  background: #{{ $c.bg_light.hex }};
   color: rgba({{ $c.text.rgb }}, 1);
   margin: 4px;
   border-radius: {{ $sh.radius_sm }}px;
@@ -59,15 +61,15 @@
 
 .notification-default-action:hover,
 .notification-action:hover {
-  background: rgba({{ $c.surface.rgb }}, 0.92);
+  background: #{{ $c.surface.hex }};
 }
 
 .notification-default-action {
-  background: rgba({{ $c.bg_dark.rgb }}, 0.97);
+  background: #{{ $c.bg_light.hex }};
 }
 
 .notification-default-action:hover {
-  background: rgba({{ $c.bg_medium.rgb }}, 0.92);
+  background: #{{ $c.bg_light.hex }};
 }
 
 .summary {
@@ -96,8 +98,8 @@
 }
 
 .control-center {
-  background: #{{ $c.bg_dark.hex }};
-  border: 1px solid #{{ $c.bg_light.hex }};
+  background: #{{ $c.bg_medium.hex }};
+  border: none;
   border-radius: {{ $sh.radius_lg }}px;
   margin: {{ $sh.gap }}px;
 }
@@ -121,7 +123,7 @@
 
 .widget-title {
   color: rgba({{ $c.text.rgb }}, 1);
-  background: rgba({{ $c.bg_medium.rgb }}, 0.92);
+  background: #{{ $c.bg_light.hex }};
   padding: 8px 12px;
   margin: 12px;
   border-radius: {{ $sh.radius_md }}px;
@@ -132,8 +134,7 @@
 .widget-title > button {
   font-size: 10pt;
   color: rgba({{ $c.text.rgb }}, 1);
-  background: rgba({{ $c.surface.rgb }}, 0.92);
-  border: 1px solid rgba({{ $c.primary.rgb }}, 0.4);
+  background: #{{ $c.surface.hex }};
   border-radius: {{ $sh.radius_sm }}px;
   padding: 4px 8px;
 }
@@ -145,7 +146,7 @@
 
 .widget-dnd {
   color: rgba({{ $c.text.rgb }}, 1);
-  background: rgba({{ $c.bg_medium.rgb }}, 0.92);
+  background: #{{ $c.bg_light.hex }};
   padding: 8px 12px;
   margin: 12px;
   border-radius: {{ $sh.radius_md }}px;
@@ -154,7 +155,7 @@
 
 .widget-dnd > switch {
   border-radius: 8px;
-  background: rgba({{ $c.surface.rgb }}, 0.92);
+  background: #{{ $c.surface.hex }};
 }
 
 .widget-dnd > switch:checked {
@@ -163,18 +164,17 @@
 
 /* 緊急度は左端 4px の色の帯 (低: 灰 / 通常: 青 / 緊急: 赤 + 明るめの背景) */
 .urgency-low {
-  background: #{{ $c.bg_dark.hex }};
+  background: #{{ $c.bg_light.hex }};
   border-left: 4px solid #{{ $c.text_dim.hex }};
 }
 
 .urgency-normal {
-  background: #{{ $c.bg_dark.hex }};
+  background: #{{ $c.bg_light.hex }};
   border-left: 4px solid #{{ $c.primary.hex }};
 }
 
 .urgency-critical {
-  background: #{{ $c.bg_medium.hex }};
-  border: 1px solid #{{ $c.error.hex }};
+  background: #{{ $c.surface.hex }};
   border-left: 4px solid #{{ $c.error.hex }};
 }
 

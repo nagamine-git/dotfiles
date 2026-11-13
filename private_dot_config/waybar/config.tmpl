@@ -1,20 +1,20 @@
-{{- $c := .theme.colors -}}
+{{- $c := .theme.colors_elevation -}}
 {{- if eq .chezmoi.hostname "fp7-e14" -}}{{- $c = .theme.colors_catppuccin -}}{{- end -}}
-// waybar の設定 (JSONC)。見た目は style.css。2026-11 の UI 見直しで、上端の 1 本のバーを
-// 「左 (ワークスペースと窓名) / 中央 (時計) / 右 (メーター・状態)」の不透明な島に分けた。
-// 島の外側の余白は Hyprland のギャップ (theme.shape.gap) とそろえる。
+// waybar の設定 (JSONC)。見た目は style.css。2026-11 の UI 見直し (案 B「エレベーション」):
+// 画面の上端に密着した 1 本の不透明なバー。端まで振り切ってもクリックが当たる (Fitts の法則)。
+// 左 (ワークスペースと窓名) / 中央 (時計) / 右 (メーター・状態) のまとまりは間隔で示す。
 {
   "layer": "top",
   "position": "top",
-  "height": 32,
-  "margin": "{{ .theme.shape.gap }} {{ .theme.shape.gap }} 0 {{ .theme.shape.gap }}",
+  "height": 34,
+  "margin": "0",
   "spacing": {{ .theme.shape.gap }},
 
   "modules-left": ["hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],
   "modules-right": ["group/meters", "group/status"],
 
-  // 右側は 2 つの島に分ける: 負荷のメーターと、接続・音・通知の状態
+  // 右側は 2 つのまとまりに分ける: 負荷のメーターと、接続・音・通知の状態
   "group/meters": {
     "orientation": "horizontal",
     "modules": ["temperature", "cpu", "custom/gpu", "memory", "custom/disk"]

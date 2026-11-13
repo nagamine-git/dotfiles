@@ -28,7 +28,7 @@ hyprctl binds -j | jq -r '
   [ .[] | select(.has_description and (.description | contains("｜")))
     | (.description | split("｜")) as $d
     | { cat: $d[0], desc: $d[1], key: ((mods(.modmask) + [(.key | keyname)]) | join("+")) } ]
-  | (["ヘルプ","起動","アプリ","窓","移動","ワークスペース","グループ","通知","クリップボード","スクリーンショット","システム","マウス","メディア"]) as $order
+  | (["ヘルプ","起動","アプリ","窓","移動","ワークスペース","グループ","通知","会議","クリップボード","スクリーンショット","システム","マウス","メディア"]) as $order
   | sort_by((.cat as $c | $order | index($c)) // 99, .key)
   | .[] | "\(.cat)\t\(.key)\t\(.desc)"' |
   column -t -s $'\t' |
