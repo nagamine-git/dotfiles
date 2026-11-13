@@ -154,3 +154,11 @@ Library/**
 .config/systemd/user/tower.service
 .config/agents/tower.env
 {{ end -}}
+
+# Musepass (Machitsuku-inc) の Dependabot 週次まとめは am5-itx 専用
+{{ if ne .chezmoi.hostname "am5-itx" -}}
+.local/bin/musepass-dependabot-weekly
+.config/systemd/user/musepass-dependabot-weekly.service
+.config/systemd/user/musepass-dependabot-weekly.timer
+.config/agents/musepass-dependabot.env
+{{ end -}}

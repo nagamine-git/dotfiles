@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""Musepass (GitHub org Machitsuku-inc) の Dependabot アラートを週次で集計し、Slack の Incoming Webhook に投稿する。
+
+  op-agent run --env-file ~/.config/agents/musepass-dependabot.env -- musepass-dependabot-weekly
+  musepass-dependabot-weekly --dry-run   投稿せず本文を標準出力に出す (Webhook 不要、状態ファイルも更新しない)
+
+対象は musepass-frontend と musepass-backend-api。本人の gh の認証で、open / fixed のアラートと
+label security の open PR を読む。新しい GitHub トークンは使わない。
+前回比は ${XDG_STATE_HOME:-~/.local/state}/musepass-dependabot/last.json と比べ、投稿に成功したときだけ更新する。
+Webhook は環境変数 MUSEPASS_DEPENDABOT_SLACK_WEBHOOK。URL は出力に出さず、curl にも引数ではなく標準入力の設定で渡す。
+終了コードは 0 成功、1 gh・GitHub API・Slack の失敗、2 使い方・設定の誤り。
+起動: systemd --user の musepass-dependabot-weekly.timer (月曜 9:30)。
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+ORG = "Machitsuku-inc"
+REPOS = ("musepass-frontend", "musepass-backend-api")
+SEVERITIES = ("critical", "high", "medium", "low")
+WEBHOOK_ENV = "MUSEPASS_DEPENDABOT_SLACK_WEBHOOK"
+RECENT_DAYS = 7
+STALE_DAYS = 30
+TOP_PACKAGES = 5
+
+
+class FetchError(Exception):
+    pass
+
+
+class PostError(Exception):
+    pass
+
+
+def parse_time(value):
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def gh(args, run=subprocess.run):
+    try:
+        result = run(["gh", *args], capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise FetchError("gh %s: %s" % (" ".join(args[:2]), type(exc).__name__)) from None
+    if result.returncode != 0:
+        raise FetchError("gh %s が失敗しました (終了コード %d): %s"
+                         % (" ".join(args[:2]), result.returncode, (result.stderr or "").strip()[:500]))
+    return result.stdout
+
+
+def parse_pages(text):
+    """gh api --paginate はページごとの配列を続けて出すので、順に読んで 1 つの配列にする。"""
+    decoder = json.JSONDecoder()
+    items, pos, text = [], 0, text.strip()
+    while pos < len(text):
+        try:
+            page, pos = decoder.raw_decode(text, pos)
+        except ValueError:
+            raise FetchError("GitHub API の応答を JSON として読めません") from None
+        if not isinstance(page, list):
+            raise FetchError("GitHub API の応答が配列ではありません")
+        items.extend(page)
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+    return items
+
+
+def fetch_alerts(repo, state, run=subprocess.run):
+    return parse_pages(gh(["api", "--paginate",
+                           "repos/%s/%s/dependabot/alerts?state=%s&per_page=100" % (ORG, repo, state)], run))
+
+
+def fetch_security_prs(repo, run=subprocess.run):
+    out = gh(["pr", "list", "-R", "%s/%s" % (ORG, repo), "--label", "security", "--state", "open",
+              "--limit", "100", "--json", "number,title,createdAt,url"], run)
+    try:
+        prs = json.loads(out)
+    except ValueError:
+        raise FetchError("gh pr list の応答を JSON として読めません") from None
+    if not isinstance(prs, list):
+        raise FetchError("gh pr list の応答が配列ではありません")
+    return prs
+
+
+def severity(alert):
+    value = str((alert.get("security_advisory") or {}).get("severity") or "").lower()
+    return value if value in SEVERITIES else "unknown"
+
+
+def package_name(alert):
+    return ((alert.get("dependency") or {}).get("package") or {}).get("name") or "(不明)"
+
+
+def summarize(open_alerts, fixed_alerts, prs, now):
+    recent = now - timedelta(days=RECENT_DAYS)
+    stale = now - timedelta(days=STALE_DAYS)
+    try:
+        by_severity = Counter(severity(a) for a in open_alerts)
+        stale_alerts = [a for a in open_alerts if parse_time(a["created_at"]) <= stale]
+        packages = Counter(package_name(a) for a in stale_alerts)
+        security_prs = sorted(
+            ({"number": p["number"], "title": p.get("title") or "", "url": p["url"],
+              "days": (now - parse_time(p["createdAt"])).days} for p in prs),
+            key=lambda p: p["number"])
+        return {
+            "open_total": len(open_alerts),
+            "open": {s: by_severity.get(s, 0) for s in SEVERITIES + ("unknown",)},
+            "created_recent": sum(1 for a in open_alerts + fixed_alerts if parse_time(a["created_at"]) >= recent),
+            "fixed_recent": sum(1 for a in fixed_alerts if a.get("fixed_at") and parse_time(a["fixed_at"]) >= recent),
+            "stale_total": len(stale_alerts),
+            "stale_packages": sorted(packages.items(), key=lambda kv: (-kv[1], kv[0]))[:TOP_PACKAGES],
+            "prs": security_prs,
+        }
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        raise FetchError("GitHub の応答が想定と違います (%s)" % type(exc).__name__) from None
+
+
+def escape(text):
+    """Slack mrkdwn の制御文字 (&, <, >) を逃がす。"""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def signed(n):
+    return "±0" if n == 0 else "%+d" % n
+
+
+def delta_text(summary, previous_repo, previous_date):
+    if not isinstance(previous_repo, dict) or "open_total" not in previous_repo:
+        return "（前回の記録なし）"
+    text = "（前回 %s 比 %s件" % (previous_date, signed(summary["open_total"] - previous_repo["open_total"]))
+    previous_open = previous_repo.get("open") or {}
+    changes = ["%s %s" % (s, signed(summary["open"][s] - previous_open.get(s, 0)))
+               for s in SEVERITIES + ("unknown",) if summary["open"][s] != previous_open.get(s, 0)]
+    if changes:
+        text += ": " + ", ".join(changes)
+    return text + "）"
+
+
+def render(summaries, previous, now):
+    local_now = now.astimezone()
+    previous = previous if isinstance(previous, dict) else {}
+    previous_repos = previous.get("repos") if isinstance(previous.get("repos"), dict) else {}
+    try:
+        previous_date = parse_time(previous["updated_at"]).astimezone().strftime("%Y-%m-%d")
+    except (KeyError, TypeError, ValueError, AttributeError):
+        previous_date = "?"
+    lines = ["*Musepass Dependabot 週次まとめ* (%s 時点)" % local_now.strftime("%Y-%m-%d %H:%M")]
+    for repo in REPOS:
+        s = summaries[repo]
+        lines += ["", "*%s*  <https://github.com/%s/%s/security/dependabot|Dependabot アラート>" % (repo, ORG, repo)]
+        breakdown = " / ".join("%s %d" % (k, s["open"][k]) for k in SEVERITIES)
+        if s["open"]["unknown"]:
+            breakdown += " / 不明 %d" % s["open"]["unknown"]
+        lines.append("• 未対応 %d件 (%s) %s" % (s["open_total"], breakdown,
+                                               delta_text(s, previous_repos.get(repo), previous_date)))
+        lines.append("• 直近%d日: 新規 %d件 / 解消 (fixed) %d件" % (RECENT_DAYS, s["created_recent"], s["fixed_recent"]))
+        stale = "• %d日以上未対応 %d件" % (STALE_DAYS, s["stale_total"])
+        if s["stale_packages"]:
+            stale += " (上位: %s)" % ", ".join("%s %d件" % (escape(name), n) for name, n in s["stale_packages"])
+        lines.append(stale)
+        lines.append("• 対応待ちの修正PR (label security) %d件" % len(s["prs"]))
+        for pr in s["prs"]:
+            lines.append("    ◦ <%s|#%d> %d日経過 %s" % (pr["url"], pr["number"], pr["days"], escape(pr["title"])))
+    return "\n".join(lines)
+
+
+def post(webhook, text, run=subprocess.run):
+    """Webhook に {"text": ...} を POST する。URL は curl の引数に載せず、-K - で標準入力から渡す。"""
+    def hide(message):
+        return (message or "").replace(webhook, "<webhook>").strip()[:300]
+
+    config = 'url = "%s"\n' % webhook.replace("\\", "\\\\").replace('"', '\\"')
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json") as payload:
+        json.dump({"text": text}, payload, ensure_ascii=False)
+        payload.flush()
+        try:
+            result = run(["curl", "-sS", "--max-time", "30", "-H", "Content-Type: application/json; charset=utf-8",
+                          "--data-binary", "@" + payload.name, "-w", "\n%{http_code}", "-K", "-"],
+                         input=config, capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise PostError("curl: %s" % type(exc).__name__) from None
+    if result.returncode != 0:
+        raise PostError("curl が失敗しました (終了コード %d): %s" % (result.returncode, hide(result.stderr)))
+    body, _, code = (result.stdout or "").rpartition("\n")
+    if code.strip() != "200":
+        raise PostError("Slack が投稿を受け付けませんでした (HTTP %s: %s)" % (hide(code), hide(body)))
+
+
+def state_path(environ):
+    base = environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
+    return Path(base) / "musepass-dependabot" / "last.json"
+
+
+def load_state(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        print("musepass-dependabot-weekly: 前回の状態を読めないので前回比を出しません: %s (%s)"
+              % (path, type(exc).__name__), file=sys.stderr)
+        return None
+
+
+def save_state(path, summaries, now):
+    state = {"updated_at": now.isoformat(),
+             "repos": {repo: {"open_total": s["open_total"], "open": s["open"]} for repo, s in summaries.items()}}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def main(argv=None, environ=None, run=subprocess.run, now=None):
+    environ = os.environ if environ is None else environ
+    parser = argparse.ArgumentParser(prog="musepass-dependabot-weekly",
+                                     description="Musepass の Dependabot アラートを集計して Slack に投稿する")
+    parser.add_argument("--dry-run", action="store_true", help="投稿せず本文を標準出力に出す (状態ファイルも更新しない)")
+    args = parser.parse_args(argv)
+    webhook = None
+    if not args.dry_run:
+        webhook = (environ.get(WEBHOOK_ENV) or "").strip()
+        if not webhook:
+            print("musepass-dependabot-weekly: 環境変数がありません: %s (op-agent run --env-file"
+                  " ~/.config/agents/musepass-dependabot.env -- musepass-dependabot-weekly で呼ぶ)" % WEBHOOK_ENV,
+                  file=sys.stderr)
+            return 2
+    now = now or datetime.now(timezone.utc)
+    try:
+        summaries = {repo: summarize(fetch_alerts(repo, "open", run), fetch_alerts(repo, "fixed", run),
+                                     fetch_security_prs(repo, run), now) for repo in REPOS}
+    except FetchError as exc:
+        print("musepass-dependabot-weekly: %s" % exc, file=sys.stderr)
+        return 1
+    path = state_path(environ)
+    text = render(summaries, load_state(path), now)
+    if args.dry_run:
+        print(text)
+        return 0
+    try:
+        post(webhook, text, run)
+    except PostError as exc:
+        print("musepass-dependabot-weekly: %s" % exc, file=sys.stderr)
+        return 1
+    try:
+        save_state(path, summaries, now)
+    except OSError as exc:
+        print("musepass-dependabot-weekly: 投稿は済んだが状態ファイルを書けませんでした: %s (%s)"
+              % (path, type(exc).__name__), file=sys.stderr)
+        return 1
+    print("musepass-dependabot-weekly: 投稿しました (%s)" % ", ".join(
+        "%s 未対応 %d件" % (repo, s["open_total"]) for repo, s in summaries.items()))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
