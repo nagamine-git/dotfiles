@@ -244,6 +244,9 @@ hl.config({
         -- 非選択のウィンドウを 12% 暗くする。本文のコントラストは 7:1 以上を保つ
         dim_inactive = true,
         dim_strength = 0.12,
+        -- スペシャルワークスペース (Super+` など) を開いている間、後ろの通常の画面を 45% 暗くする (既定 0.2)。
+        -- 周りの余白 (workspaces.lua) と合わせて、手前に浮いた別の層だと分かるようにする
+        dim_special = 0.45,
 
         -- 影は浮いているウィンドウだけ (並べたウィンドウは window_rule の tiled-no-shadow で消す)
         shadow = {

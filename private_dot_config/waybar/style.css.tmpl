@@ -101,6 +101,19 @@ window#waybar {
   font-weight: 700;
 }
 
+/* スペシャルワークスペース (Super+` のオーバーレイ) は開いている間だけ出る。選択の青緑とは別の青 (primary) の札にして、
+   通常のワークスペースにいるのか、上に重ねた層を見ているのかを区別する */
+#workspaces button.special {
+  background: #{{ $c.primary.hex }};
+  padding: 0 10px;
+  margin-left: 6px;
+}
+
+#workspaces button.special label {
+  color: #{{ $c.bg_dark.hex }};
+  font-weight: 700;
+}
+
 #workspaces button.urgent {
   background: #{{ $c.error_text.hex }};
 }

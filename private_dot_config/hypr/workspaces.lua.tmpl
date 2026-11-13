@@ -1,8 +1,11 @@
 {{/*
-  Workspace ルール。special workspace (scratchpad 系) の定義。
+  Workspace ルール。special workspace (scratchpad 系、Super+` など) の定義。
   hyprland.lua の window_rule で name:special:* を参照しているので整合させる。
+  2026-11: 通常のワークスペースと見分けられるよう、周りに余白 (gap の 6 倍) を取って後ろの画面を額縁のように見せる。
+  背後の暗さは hyprland.lua の decoration.dim_special、waybar には開いている間だけ名前の札が出る。
 */ -}}
-hl.workspace_rule({ workspace = "special:magic", gaps_in = 0, gaps_out = 0 })
-hl.workspace_rule({ workspace = "special:term", gaps_in = 0, gaps_out = 0 })
-hl.workspace_rule({ workspace = "special:notes", gaps_in = 0, gaps_out = 0 })
-hl.workspace_rule({ workspace = "special:desktop", gaps_in = 0, gaps_out = 0 })
+{{- $inset := mul .theme.shape.gap 6 }}
+hl.workspace_rule({ workspace = "special:magic", gaps_in = {{ div .theme.shape.gap 2 }}, gaps_out = {{ $inset }} })
+hl.workspace_rule({ workspace = "special:term", gaps_in = {{ div .theme.shape.gap 2 }}, gaps_out = {{ $inset }} })
+hl.workspace_rule({ workspace = "special:notes", gaps_in = {{ div .theme.shape.gap 2 }}, gaps_out = {{ $inset }} })
+hl.workspace_rule({ workspace = "special:desktop", gaps_in = {{ div .theme.shape.gap 2 }}, gaps_out = {{ $inset }} })
