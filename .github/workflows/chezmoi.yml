@@ -26,48 +26,6 @@ jobs:
           EOF
           sudo chmod +x /usr/local/bin/op
 
-      - name: Verify agent lifecycle without model calls
-        run: |
-          bash -n dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
-          shellcheck dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
-          python3 tests/agent-lifecycle.py
-
-      - name: Verify shared agent config (Claude Code / Codex / Pi) without model calls
-        run: |
-          python3 tests/agents-sync.py
-          python3 tests/agent-memory-dir.py
-          python3 tests/codex-config.py
-          python3 -B tests/agent-autonomy.py
-
-      - name: Verify model routing without credentials, network, or model calls
-        run: |
-          python3 -B tests/model-route-plan.py
-          python3 -B tests/model-route.py
-          python3 -B tests/cc-implement.py
-
-      - name: Verify Slack bot logic without network or model calls
-        run: |
-          python3 tests/slack-claude.py
-          python3 tests/slack-notify.py
-
-      - name: Verify herdr agent summary hook with stubbed claude/herdr
-        run: |
-          shellcheck -S warning dot_claude/hooks/executable_herdr-agent-summary.sh dot_claude/hooks/executable_herdr-tab-title.sh
-          python3 tests/herdr-agent-summary.py
-
-      - name: Verify herdr helpers with stubbed tools
-        run: |
-          python3 tests/herdr-git-diff.py
-          python3 tests/hgh.py
-
-      - name: Verify notifications and desktop launch with stubbed tools
-        run: |
-          bash -n dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify
-          shellcheck dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify
-          python3 tests/claude-notify.py
-          python3 tests/desktop-autostart.py
-          python3 tests/chatgpt-launch.py
-
       - name: Install Node 24 (tests/jev-gate.py loads the TypeScript extension by stripping its types)
         uses: actions/setup-node@v4
         with:
@@ -78,29 +36,29 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends zsh
 
-      - name: Verify Pi wrapper, extensions and settings with stubbed tools (no keys, no model calls)
+      - name: Shell syntax of the scripts the tests drive
         run: |
-          bash -n dot_local/bin/executable_pi-jev
-          shellcheck dot_local/bin/executable_pi-jev
-          python3 tests/pi-jev.py
-          node --version
-          # With CI set, an old Node fails these instead of skipping them.
-          python3 tests/jev-gate.py
-          python3 tests/pi-notify.py
-          python3 tests/pi-delegate.py
-          python3 tests/claude-usage-cache.py
-          python3 tests/pi-usage.py
-          # Their checks against the installed Pi skip here: Pi is only on am5-itx. pi-settings uses chezmoi from above.
-          python3 tests/pi-subagent.py
-          python3 tests/pi-settings.py
+          scripts="dot_local/bin/executable_agent-gateway dot_local/bin/executable_claude-statusline
+            dot_local/bin/executable_chatgpt-launch dot_local/bin/executable_claude-notify dot_local/bin/executable_pi-jev
+            dot_local/share/vicinae/scripts/executable_meet-join.sh"
+          bash -n $scripts
+          shellcheck $scripts
+          shellcheck -S warning dot_claude/hooks/executable_herdr-agent-summary.sh dot_claude/hooks/executable_herdr-tab-title.sh
 
-      - name: Verify Vicinae launcher config and Meet script with stubbed tools
+      # 全テストを回す (列挙すると足し忘れる: 2026-11 時点で 7 本が CI で走っていなかった)。
+      # テストは鍵・ネットワーク・モデル呼び出しを使わない。unittest.main を持たないファイル (pi_real.py などの補助) は飛ばす。
+      # CI が設定されていると、古い Node は jev-gate のテストを飛ばさず失敗させる。Pi 本体が要る確認は Pi の無い CI では飛ぶ
+      - name: Run every test (no keys, network or model calls)
+        shell: bash
         run: |
-          shellcheck dot_local/share/vicinae/scripts/executable_meet-join.sh
-          python3 tests/vicinae.py
-
-      - name: Verify Espanso local imports without vault access
-        run: python3 tests/espanso.py
+          fail=0
+          for t in tests/*.py; do
+            grep -q 'unittest.main' "$t" || continue
+            echo "::group::$t"
+            python3 -B "$t" || { echo "::error file=$t::$t failed"; fail=1; }
+            echo "::endgroup::"
+          done
+          exit "$fail"
 
       - name: Verify chezmoi source state
         run: |
