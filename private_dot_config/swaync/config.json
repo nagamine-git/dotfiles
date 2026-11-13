@@ -28,10 +28,16 @@
   "hide-on-action": true,
   "script-fail-notify": true,
   "widgets": [
+    "title",
     "dnd",
     "notifications"
   ],
   "widget-config": {
+    "title": {
+      "text": "通知",
+      "clear-all-button": true,
+      "button-text": "すべて消す"
+    },
     "dnd": {
       "text": "サイレントモード"
     }

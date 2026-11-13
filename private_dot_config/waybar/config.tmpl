@@ -157,7 +157,7 @@
     "tooltip-format": "音量: {volume}%\nデバイス: {desc}"
   },
 
-  // swaync の未読数。クリックで通知センター、右クリックでサイレントモード
+  // swaync の未読数。クリックで通知センター、右クリックでサイレントモード、中クリックで全部消す
   "custom/notification": {
     "exec-if": "command -v swaync-client",
     "exec": "swaync-client -swb",
@@ -175,6 +175,7 @@
     },
     "on-click": "swaync-client -t -sw",
     "on-click-right": "swaync-client -d -sw",
+    "on-click-middle": "swaync-client -C -sw",
     "escape": true,
     "tooltip": false
   }
