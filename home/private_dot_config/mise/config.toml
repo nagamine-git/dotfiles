@@ -5,6 +5,8 @@ go   = 'latest'
 node = 'lts'
 python = 'latest'
 bun = "latest"
+# エージェントの変更を `hunk diff --watch` で追う差分ビューア (https://hunk.dev)
+hunk = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
