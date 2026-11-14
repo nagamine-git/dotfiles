@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Blender を「起動時の空きメモリ − 4GiB」を上限にした cgroup で動かす。
+#
+# 2026-09-27 夜、sim-shorts のレンダリング (Blender 12〜21GB) で RAM と zram を使い切り、
+# OOM killer が Slack・Brave・Claude デスクトップ・Actions ランナーを約 60 回殺した。
+# Blender は oom_score_adj=0 で後回しにされ、周りのアプリだけが落ちていた。
+#
+# - 上限は起動時点の MemAvailable から決める。空いていれば Blender がほぼ全部使える
+# - 上限を超えたら、止まるのはこの Blender だけ (cgroup 内の OOM)
+# - スワップは使わせない。zram に逃がすとレンダリングが極端に遅くなり、どのみち時間を失う
+# - oom_score_adj=1000。あとから他のアプリがメモリを要したときも、真っ先にこれが止まる
+# - CPU / GPU は制限しない
+#
+# 導入: ~/apps/blender-*/blender を blender.real に改名し、元の名前をこのスクリプトへのリンクにする。
+#   mv ~/apps/blender-X/blender ~/apps/blender-X/blender.real
+#   ln -s ~/.local/bin/blender-guard ~/apps/blender-X/blender
+set -eu
+
+# Brave / Slack などが急にメモリを使っても足りる余裕 (OOM で殺された各アプリは 0.3〜0.4GiB)
+RESERVE_GIB="${BLENDER_GUARD_RESERVE_GIB:-4}"
+# これ未満しか渡せないなら、起動しても途中で落ちるだけなので始めない
+MIN_GIB=2
+
+find_real() {
+  if [ -n "${BLENDER_REAL:-}" ]; then
+    printf '%s\n' "$BLENDER_REAL"
+    return
+  fi
+  local here
+  here="$(dirname "$0")/blender.real"
+  if [ -x "$here" ]; then
+    printf '%s\n' "$here"
+    return
+  fi
+  # ~/.local/bin/blender など別の場所から呼ばれたときは、最新版の本体を使う
+  find "$HOME/apps" -maxdepth 2 -path '*/blender-*/blender.real' 2>/dev/null | sort -V | tail -n 1
+}
+
+real="$(find_real)"
+if [ -z "$real" ] || [ ! -x "$real" ]; then
+  echo "blender-guard: blender.real が見つからない (BLENDER_REAL で指定できる)" >&2
+  exit 127
+fi
+
+if [ -n "${BLENDER_GUARD_MAX:-}" ]; then
+  max="$BLENDER_GUARD_MAX"  # テスト用の明示指定 (例: 1G)
+else
+  avail_kib="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
+  max_kib=$((avail_kib - RESERVE_GIB * 1024 * 1024))
+  if [ "$max_kib" -lt $((MIN_GIB * 1024 * 1024)) ]; then
+    echo "blender-guard: 空きメモリ不足 (空き $((avail_kib / 1024 / 1024))GiB、予約 ${RESERVE_GIB}GiB)。他の重い処理を止めてから再実行する" >&2
+    exit 75
+  fi
+  max="${max_kib}K"
+fi
+
+# ユーザーの systemd が無い環境 (コンテナ等) では cgroup を作れないので、殺されやすさだけ上げる
+if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -S "${XDG_RUNTIME_DIR}/bus" ]; then
+  exec systemd-run --user --scope --quiet --collect \
+    --description="Blender (上限 ${max})" \
+    -p MemoryMax="$max" -p MemorySwapMax=0 \
+    -- choom -n 1000 -- "$real" "$@"
+fi
+exec choom -n 1000 -- "$real" "$@"
