@@ -63,7 +63,7 @@
       "general-purpose": {"model": "claude-haiku-5-5", "effort": "max"},
       "reason": "IIv5 36/$0.41 vs Opus 5.5 low 35/$0.98",
       "branch": "model-radar/2026-11-15",
-      "pr": null
+      "pr": "https://github.com/nagamine-git/dotfiles/pull/35"
     },
     "unchanged": ["main"],
     "incomparable": ["coder"],
