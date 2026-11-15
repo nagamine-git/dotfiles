@@ -263,6 +263,51 @@ def chart(snap, picks, needs):
     return "\n".join(g)
 
 
+def panels(snap, picks, needs):
+    """One small chart per model, on the same axes: its efforts labelled, every other model faint behind."""
+    W, H, L, R, T, B = 470, 300, 44, 16, 30, 36
+    xs = [v["cost"] for m in snap["models"].values() for v in m["efforts"].values() if v["cost"]]
+    lo, hi = math.log10(max(min(xs), 0.003)) - 0.1, math.log10(max(xs)) + 0.35
+    ymax = max(70, max(v["score"] for m in snap["models"].values() for v in m["efforts"].values()) + 5)
+    X = lambda c: L + (math.log10(c) - lo) / (hi - lo) * (W - L - R)
+    Y = lambda s: T + (1 - s / ymax) * (H - T - B)
+    order = sorted(snap["models"].items(), key=lambda kv: (kv[1]["provider"], -max(v["score"] for v in kv[1]["efforts"].values())))
+    out = []
+    for mid, m in order:
+        g = [f'<figure class=panel><svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(m["name"])} の点数とコスト">',
+             f'<text x="{L}" y="18" class=ptitle>{html.escape(m["name"])}</text>']
+        for s in range(0, int(ymax) + 1, 10):
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(s):.1f}" y2="{Y(s):.1f}" class="grid"/><text x="{L - 6}" y="{Y(s) + 4:.1f}" class="ax" text-anchor="end">{s}</text>')
+        for c in (0.01, 0.1, 1, 10):
+            if lo <= math.log10(c) <= hi:
+                g.append(f'<line x1="{X(c):.1f}" x2="{X(c):.1f}" y1="{T}" y2="{H - B}" class="grid"/><text x="{X(c):.1f}" y="{H - B + 16}" class="ax" text-anchor="middle">${c:g}</text>')
+        n = needs.get("standard", (None,))[0]
+        if n is not None:
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(n):.1f}" y2="{Y(n):.1f}" class="need"/><text x="{W - R}" y="{Y(n) - 4:.1f}" class="ax" text-anchor="end">基準 {n:g}</text>')
+        for mid2, m2 in snap["models"].items():
+            if mid2 == mid:
+                continue
+            pts = [(X(v["cost"]), Y(v["score"])) for v in m2["efforts"].values() if v["cost"]]
+            g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts)}" class="ghost"/>')
+        pts = [(X(v["cost"]), Y(v["score"]), e, v) for e, v in m["efforts"].items() if v["cost"]]
+        dash = ' stroke-dasharray="4 3"' if m["provider"] == "openai" else ""
+        g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y, _, _ in pts)}" class="own"{dash}/>')
+        rows = []
+        for i, (x, y, e, v) in enumerate(pts):
+            on = (mid, e) in picks
+            # effort names only on the chart, alternating above and below; the numbers go in the table
+            dy = -9 if i % 2 == 0 else 16
+            g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{5 if on else 3.5}" class="{"pick" if on else "ownpt"}"/>')
+            g.append(f'<text x="{x:.1f}" y="{y + dy:.1f}" class="{"picklabel" if on else "elabel"}" text-anchor="middle">{e}</text>')
+            use = "・".join(LEVEL_JA[l] for l in picks.get((mid, e), []))
+            secs = "—" if v["seconds"] is None else f"{v['seconds']:.0f} 秒"
+            rows.append(f'<tr class="{"pickrow" if on else ""}"><td>{e}</td><td>{v["score"]:g}</td><td>${v["cost"]:.2f}</td><td>{secs}</td><td>{use}</td></tr>')
+        g.append("</svg>")
+        g.append('<table class=mini><tr><th>effort</th><th>点数</th><th>$/タスク</th><th>時間</th><th>jev/auto</th></tr>' + "".join(rows) + "</table></figure>")
+        out.append("".join(g))
+    return '<div class=grid2>' + "".join(out) + "</div>"
+
+
 def report(snap, tiers):
     needs = {lv: need(snap, tiers, lv) for lv in LEVELS}
     picks = {}
@@ -305,6 +350,9 @@ th{{color:#999;font-weight:500}} .pickc,.pickrow td{{color:#4da3ff}} tr.dim td{{
 svg{{width:100%;height:auto}} .grid{{stroke:#262626}} .ax{{fill:#888;font-size:11px}} .need{{stroke:#555;stroke-dasharray:3 4}}
 .line{{fill:none;stroke:#555;stroke-width:1.2}} .pt{{fill:#888}} .pick{{fill:#4da3ff}} .picklabel{{fill:#4da3ff;font-size:12px}} .name{{fill:#aaa;font-size:11px}}
 ul{{padding-left:20px}} li{{margin:4px 0}}
+.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:8px}} .panel{{margin:0;border:1px solid #222}}
+.ptitle{{fill:#ddd;font-size:14px;font-weight:600}} .ghost{{fill:none;stroke:#2a2a2a;stroke-width:1}}
+.mini{{font-size:12px;margin:0 0 6px}} .mini td,.mini th{{padding:2px 8px}} .own{{fill:none;stroke:#aaa;stroke-width:1.5}} .ownpt{{fill:#ccc}} .elabel{{fill:#bbb;font-size:11px}}
 </style>
 <h1>jev/auto の選び方</h1>
 <div class=dim>{html.escape(snap["source"])} ・ 取得 {html.escape(snap["fetched_at"])} ・ 段: {tier_line}</div>
@@ -317,6 +365,10 @@ ul{{padding-left:20px}} li{{margin:4px 0}}
 <h2>点数とコスト (全モデル・全 effort)</h2>
 <p class=dim>実線は Claude、破線は GPT。点は low から max へ左から右に並びます。青は jev/auto が使う組み合わせ、横の点線は段階の基準です。</p>
 {chart(snap, picks, needs)}
+
+<h2>モデルごとの点数とコスト (effort 別)</h2>
+<p class=dim>各図は同じ目盛りです (縦: 点数、横: 1 タスクのコストの対数)。点の横は effort、下の表に点数・コスト・応答時間の中央値。後ろの薄い線はほかのモデル、青は jev/auto が使う組み合わせ。</p>
+{panels(snap, picks, needs)}
 
 <h2>一覧</h2>
 <p class=dim>「劣る」は、点数・コスト・時間のすべてで別の組み合わせに並ばれるか負けているものです。時間は AA の測定の中央値で、Pi での体感とは違います。Pi 列は Pi のモデル一覧にあるか。</p>
