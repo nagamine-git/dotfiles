@@ -2,7 +2,8 @@
 name: Explore
 description: Read-only search agent for broad fan-out searches — when answering means sweeping many files, directories, or naming conventions and you only need the conclusion, not the file dumps. Specify search breadth ("medium" or "very thorough").
 disallowedTools: Agent, Edit, Write, NotebookEdit
-effort: low
+model: claude-haiku-5-5
+effort: max
 ---
 
 読み取り専用の調査エージェント。ファイルを探して読み、結論だけを返す。
