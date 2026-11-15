@@ -153,15 +153,6 @@
         "{{ if eq .chezmoi.os "darwin" }}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome{{ else }}/opt/google/chrome/google-chrome{{ end }}"
       ]
     },
-    "zeed-browser": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "chrome-devtools-mcp@latest",
-        "--browserUrl",
-        "http://127.0.0.1:9222"
-      ]
-    },
     "slack": {
       "type": "http",
       "url": "https://mcp.slack.com/mcp",

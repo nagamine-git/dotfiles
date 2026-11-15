@@ -70,6 +70,18 @@ jev-gate の既定は `auto`。本人が依頼した通常作業は、固定ル�
 
 反映前の残件: 共通指示3か所とゲートは本人確認の境界で未反映。ゲートの簡素化案には `JEV_GATE_*` の拒否ルールの欠落もあり、`tests/jev-gate.py` の `test_owner_gate_overrides_remain_denied_in_both_modes` が auto/ask の両方で失敗する。配置済みゲートにはこの保護が残っている。本人が確認方式を選び、ソースの保護復旧・回帰テスト成功・対象指定の diff/dry-run を確認するまでは反映しない。
 
+### Pi からログイン済みの Chrome と PC の画面を使う
+
+Claude Code の Claude in Chrome と Codex の Computer Use にあたるものを、Pi に 2 つ入れた (2026-11-15、本人の依頼)。
+
+- **chrome** (`home/dot_agents/mcp.json`、Pi だけ): Google の `chrome-devtools-mcp --autoConnect`。動いている本人の Chrome (144 以上) に、タブとログインのままつなぐ。Chrome 側で `chrome://inspect/#remote-debugging` を一度有効にし、つなぐたびに Chrome の確認で許可する。プロファイルの全タブが見える (Claude in Chrome は専用のタブグループだけ)。道具は `mcp__chrome__*` で codemode から呼ぶ。
+- **computer-use-linux** (`pi install npm:@agent-sh/computer-use-linux@0.7.53`、`~/.pi/agent/settings.json` の `packages`): 画面の読み取り・クリック・キー入力・ウィンドウ指定。`computer_use_linux_tools` で必要な道具を有効にすると、次のターンから `computer_use_linux_*` が使える。Hyprland では `hyprctl` でウィンドウを扱い、入力は `/dev/uinput` (本人は `input` グループ)。アクセシビリティのツリーには `gsettings set org.gnome.desktop.interface toolkit-accessibility true` が要る (設定済み。戻すなら `false`)。スクリーンショットは最初にポータルの許可が出る。npm の postinstall は走らず、実行ファイルは最初の呼び出しで同じリポジトリの GitHub Releases から取る (sha256 は同じ配布元のもので、改ざんの検証にはならない)。版は固定で、上げるときは中身を見直す。
+- **live-gate** (`home/dot_pi/agent/extensions/live-gate.ts`): jev-gate の auto は MCP とパッケージの道具を止めないので、この 2 つだけ別の床を置く。見るだけの道具 (一覧・スナップショット・スクリーンショット・ツリー・診断) はそのまま通す。操作する道具 (クリック・入力・移動・スクリプト実行・アップロード・ウィンドウ操作、および知らない道具) は、セッションの分岐と対象 (chrome / desktop) ごとに最初の 1 回だけ本人に確認し、答えを分岐に保存する。断った答えも保存し、再確認はしない。本人は `/live <chrome|desktop|all> <on|off>` で切り替える。UI の無い実行 (`pi -p`・subagent) では操作を止める。環境変数やファイルで許可を与える口は無い。送信・購入・公開・削除は、許可のあとも本人が頼んだものだけ行う (システムプロンプトに書く)。判断は `~/.pi/agent/jev-gate.log.jsonl` (layer `live`) に入力なしで残す。テストは `tests/pi-live-gate.py`。
+- 無人で本人の Chrome を使う作業は、これまでどおり `delegate` で claude (`chrome: true`) に任せる。PC が止まっていても動く定期実行は Claude Code のクラウドルーティンだけ。
+- 旧 `zeed-browser` (chrome-devtools-mcp を 127.0.0.1:9222 へ) は、そのポートを使っていないので 3 つの道具すべてから外した。
+
+裏で Pi を走らせるときは `--no-session` を付けず、`--session-dir` で記録を残す (成果の集計に入らなくなるため)。
+
 ### Pi は委譲前に利用枠を確認する
 
 `extensions/usage-aware.ts` の `usage_status` は、Claude と Codex の利用枠の参考情報を読み取る。任意の `delegate`・`subagent` の追加や並列化の前に確認するよう、Pi に指示を渡す。`/usage` でも同じ情報と、その時点の autocompact 設定を表示できる。フッターの状態は取得時点のもので、アイドル中には更新しない。
