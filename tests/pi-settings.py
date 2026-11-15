@@ -60,15 +60,25 @@ class PiSettings(unittest.TestCase):
     def tiers(self):
         return json.loads(self.chezmoi('{{ .pi.models | toJson }}'))
 
-    def expected(self, tiers):
+    def router(self):
+        return json.loads(self.chezmoi('{{ get .pi "router" | toJson }}'))
+
+    def expected(self, tiers, router=None):
         key = lambda t: "%s/%s" % (tiers[t]["provider"], tiers[t]["id"])
-        return {
+        want = {
             "defaultProvider": tiers["default"]["provider"],
             "defaultModel": tiers["default"]["id"],
             "defaultThinkingLevel": tiers["default"]["thinking"],
             "modelThinkingLevels": {key(t): tiers[t]["thinking"] for t in TIERS},
             "enabledModels": ["%s:%s" % (key(t), tiers[t]["thinking"]) for t in TIERS],
         }
+        if router and router.get("enabled"):
+            rkey = "%s/%s" % (router["provider"], router["id"])
+            want.update(defaultProvider=router["provider"], defaultModel=router["id"],
+                        defaultThinkingLevel=router["thinking"])
+            want["modelThinkingLevels"][rkey] = router["thinking"]
+            want["enabledModels"].insert(0, "%s:%s" % (rkey, router["thinking"]))
+        return want
 
     def test_data_has_four_complete_tiers(self):
         tiers = self.tiers()
@@ -80,11 +90,11 @@ class PiSettings(unittest.TestCase):
     def test_empty_input_starts_from_an_empty_object_without_shell_overrides(self):
         for current in ("", "\n  \n"):
             with self.subTest(current=current):
-                self.assertEqual(json.loads(self.render(current)), self.expected(self.tiers()))
+                self.assertEqual(json.loads(self.render(current)), self.expected(self.tiers(), self.router()))
 
     def test_other_keys_are_kept_and_the_tier_keys_follow_the_data(self):
         out = json.loads(self.render(json.dumps(PI_SETTINGS, indent=2)))
-        want = self.expected(self.tiers())
+        want = self.expected(self.tiers(), self.router())
         for key in ("lastChangelogVersion", "deviceId", "theme"):
             self.assertEqual(out[key], PI_SETTINGS[key])
         for key in ("defaultProvider", "defaultModel", "defaultThinkingLevel", "enabledModels"):
@@ -112,6 +122,23 @@ class PiSettings(unittest.TestCase):
         self.assertEqual(out["modelThinkingLevels"]["openai/gpt-6.1-terra"], "xhigh")
         self.assertEqual(out["modelThinkingLevels"]["anthropic/claude-opus-5-5"], "xhigh")
 
+    def test_router_is_the_default_selection_and_first_in_the_cycle(self):
+        router = self.router()
+        self.assertEqual(router, {"enabled": True, "provider": "jev", "id": "auto", "thinking": "high"})
+        out = json.loads(self.render(json.dumps(PI_SETTINGS)))
+        self.assertEqual((out["defaultProvider"], out["defaultModel"]), ("jev", "auto"))
+        self.assertEqual(out["enabledModels"][0], "jev/auto:high")
+        self.assertEqual(len(out["enabledModels"]), 5)
+
+    def test_disabled_router_starts_on_the_default_tier(self):
+        data = (self.source / DATA).read_text().replace("    enabled: true", "    enabled: false")
+        (self.source / DATA).write_text(data)
+        out = json.loads(self.render(json.dumps(PI_SETTINGS)))
+        want = self.expected(self.tiers())
+        for key in ("defaultProvider", "defaultModel", "defaultThinkingLevel", "enabledModels"):
+            self.assertEqual(out[key], want[key])
+        self.assertNotIn("jev/auto", out["modelThinkingLevels"])
+
     def test_legacy_snapshot_prefix_removes_only_the_owned_shell_overrides(self):
         old = dict(PI_SETTINGS, shellPath="/fixture/bin/zsh", shellCommandPrefix=LEGACY_PREFIX)
         out = json.loads(self.render(json.dumps(old)))
@@ -122,7 +149,7 @@ class PiSettings(unittest.TestCase):
 
     def test_legacy_prefix_is_removed_even_without_a_shell_path(self):
         out = json.loads(self.render(json.dumps({"shellCommandPrefix": LEGACY_PREFIX})))
-        self.assertEqual(out, self.expected(self.tiers()))
+        self.assertEqual(out, self.expected(self.tiers(), self.router()))
 
     def test_custom_shell_path_and_prefix_are_preserved(self):
         for settings in ({"shellPath": "/bin/bash", "shellCommandPrefix": "export CI=1"},
@@ -157,13 +184,16 @@ class PiSettings(unittest.TestCase):
         self.assertFalse((self.base / "snapshot-ran").exists())
 
     @unittest.skipUnless(pi_real.available(), "Pi が入っていない (am5-itx だけ)")
-    def test_real_pi_starts_on_the_default_tier_and_ctrl_p_cycles_the_tiers(self):
+    def test_real_pi_starts_on_the_router_and_ctrl_p_cycles_the_tiers(self):
         tiers = self.tiers()
         settings = self.render(json.dumps({"lastChangelogVersion": "1.5.0"}))
-        commands = [{"type": "get_state"}] + [{"type": "cycle_model"}] * len(TIERS)
-        responses, stderr, _ = pi_real.rpc({"settings.json": settings}, commands)
-        seen = [pi_real.model_of(responses.get("c%d" % i, {})) for i in range(len(TIERS) + 1)]
-        want = [("%s/%s" % (tiers[t]["provider"], tiers[t]["id"]), tiers[t]["thinking"]) for t in TIERS + ("default",)]
+        files = {"settings.json": settings, "model-tiers.json": json.dumps(tiers),
+                 "extensions/jev-router.ts": (ROOT / "home/dot_pi/agent/extensions/jev-router.ts").read_text()}
+        commands = [{"type": "get_state"}] + [{"type": "cycle_model"}] * (len(TIERS) + 1)
+        responses, stderr, _ = pi_real.rpc(files, commands)
+        seen = [pi_real.model_of(responses.get("c%d" % i, {})) for i in range(len(TIERS) + 2)]
+        want = ([("jev/auto", "high")] + [("%s/%s" % (tiers[t]["provider"], tiers[t]["id"]), tiers[t]["thinking"])
+                                          for t in TIERS] + [("jev/auto", "high")])
         self.assertEqual(seen, want, stderr)
 
 

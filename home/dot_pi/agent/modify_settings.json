@@ -5,6 +5,7 @@
     defaultProvider / defaultModel / defaultThinkingLevel  default 段
     modelThinkingLevels                                     4 段の "provider/id": thinking (ほかのキーは残す)
     enabledModels                                           Ctrl+P の切り替え。"provider/id:thinking" を default・strong・peak・light の順
+  router.enabled なら既定の選択は仮想モデル (jev/auto、jev-router.ts) にし、Ctrl+P の先頭にも置く。
   空 (新ホスト) なら {} から作る。何度通しても同じ結果になる。
 
   bash ツールと ! コマンドは Pi の既定 (bash) で動かす。以前ここで入れていた zsh のスナップショット用の
@@ -28,6 +29,18 @@
 {{-   $key := printf "%s/%s" $t.provider $t.id -}}
 {{-   $levels = set $levels $key $t.thinking -}}
 {{-   $cycle = append $cycle (printf "%s:%s" $key $t.thinking) -}}
+{{- end -}}
+{{- $r := dict -}}
+{{- if hasKey .pi "router" -}}
+{{-   $r = .pi.router -}}
+{{- end -}}
+{{- if get $r "enabled" -}}
+{{-   $rkey := printf "%s/%s" $r.provider $r.id -}}
+{{-   $s = set $s "defaultProvider" $r.provider -}}
+{{-   $s = set $s "defaultModel" $r.id -}}
+{{-   $s = set $s "defaultThinkingLevel" $r.thinking -}}
+{{-   $levels = set $levels $rkey $r.thinking -}}
+{{-   $cycle = prepend $cycle (printf "%s:%s" $rkey $r.thinking) -}}
 {{- end -}}
 {{- $s = set $s "modelThinkingLevels" $levels -}}
 {{- $s = set $s "enabledModels" $cycle -}}

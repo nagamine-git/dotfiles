@@ -30,3 +30,12 @@ pi:
       provider: anthropic
       id: claude-haiku-5-5
       thinking: high
+  # router: 既定の選択を仮想モデル jev/auto にする (dot_pi/agent/extensions/jev-router.ts)。
+  # 本人のメッセージごとに Jev 分類器 (TypeSafe) が上の 4 段から選ぶ。Fable (peak) も本人の指定なしで選んでよい
+  # (本人承認 2026-11-15)。thinking は振り分けの傾き: low は peak を使わない、high は通常、max は peak を選びやすい。
+  # enabled: false にすると従来どおり default 段で起動する。Ctrl+P の先頭が jev/auto、続けて 4 段。
+  router:
+    enabled: true
+    provider: jev
+    id: auto
+    thinking: high

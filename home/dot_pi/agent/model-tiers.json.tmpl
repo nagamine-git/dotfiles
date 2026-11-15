@@ -1,0 +1,2 @@
+{{- /* jev-router.ts が読む 4 段。正本は .chezmoidata/pi.yaml (model-radar が見直す) */ -}}
+{{ dict "default" .pi.models.default "strong" .pi.models.strong "peak" .pi.models.peak "light" .pi.models.light | toPrettyJson }}
