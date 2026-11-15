@@ -15,22 +15,24 @@
  *      asked  only when the message names a model: does the owner ask for it, or is it the topic?
  *    Measured on the owner's past messages (2026-11-15): four choices (light, standard, deep, continue)
  *    sent 30 of 120 to the peak model at its best effort; the five levels send 5 there.
- * 2. The effort follows Artificial Analysis's Intelligence Index per model and effort, as model-radar
- *    records it in docs/model-radar/_state.json (`scores` in the tier file). Each level needs a score, and
- *    the lowest effort of the model in use that reaches it is used (a higher effort costs more per task):
+ * 2. Artificial Analysis's Intelligence Index and cost per task, per model and effort. The daily
+ *    `model-radar update` (systemd user timer) writes them to ~/.pi/agent/model-scores.json from AA's API;
+ *    without it, the copy in the tier file (docs/model-radar/_state.json) is used. Each level needs a score:
  *      light     the score of the light tier at its configured effort
- *      standard  the score of the default tier at its configured effort (the owner's minimum bar)
+ *      standard  the score of the default tier at its configured effort (the owner's base: Opus 5.5 medium)
  *      hard      STEP more
- *      deep      more than the default model reaches at any effort: the peak model, its lowest such effort
+ *      deep      more than the default model reaches at any effort
  *      critical  the best score of the peak model
- *    New scores move the efforts with no change to this file. Without a score the tier's configured effort.
- * 3. The model changes as seldom as the level allows. A change of effort keeps the prompt cache; a change
- *    of model writes the whole conversation again (measured 2026-11-15: all six changes of model in the
- *    logs read nothing from the cache, four changes of effort read all of it). So:
+ *    For each model, the cheapest effort that reaches it. New scores move the choice with no code change.
+ * 3. Which model: the cheapest of the default and peak models that reaches the level, counting the cost of
+ *    changing model. A change of effort keeps the prompt cache; a change of model writes the whole
+ *    conversation again (measured 2026-11-15: all six changes of model in the logs read nothing from the
+ *    cache, four changes of effort read all of it), so a change costs the context times the new model's
+ *    cache-write price. Short conversations move to the cheaper model, long ones stay. Without costs, the
+ *    level's own tier (standard and hard: default; deep and critical: peak).
  *      - a light message goes to the light tier only where nothing is cached yet (the first message, or a
- *        session that is there already); later it stays on the model in use, at a lower effort
- *      - deep and critical go to the peak model at once: the default model does not reach them
- *      - the peak model is left after LEAVE_PEAK_AFTER messages in a row that do not need it
+ *        session that is there already); later it stays on the model in use, at its cheapest effort
+ *      - the peak model is left only after LEAVE_PEAK_AFTER messages in a row that would leave it
  * 4. A model the owner asks for by name (fable/ここぞ, opus, sol/gpt, haiku/軽量で) is used, and so is an
  *    effort written right after the name ("fable high", "Fable5.2medium"). Fable by name is at least deep.
  *    Without the classifier the name alone decides, and Fable by name is critical.
@@ -59,6 +61,7 @@ const HOME_DIR = os.homedir();
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(HOME_DIR, ".pi/agent");
 const TIERS_FILE = path.join(AGENT_DIR, "model-tiers.json");
 const LOG = path.join(AGENT_DIR, "jev-router.log.jsonl");
+const RUNTIME_SCORES = path.join(AGENT_DIR, "model-scores.json");
 const QUOTA_FILE = path.join(AGENT_DIR, "jev-claude-quota.json");
 const QUOTA_THRESHOLD = 0.95; // Owner's cutoff (2026-11-15), inclusive; not a classifier decision.
 const TYPESAFE_REF_FILE = path.join(HOME_DIR, ".config/agents/model-typesafe.env");
@@ -81,7 +84,7 @@ type Tier = "default" | "strong" | "peak" | "light";
 type Level = (typeof LEVELS)[number];
 type TierSpec = { provider: string; id: string; thinking: string };
 type Scores = Record<string, Record<string, number | null>>;
-type Data = Record<Tier, TierSpec> & { scores?: Scores };
+type Data = Record<Tier, TierSpec> & { scores?: Scores; costs?: Scores; cache_write?: Record<string, number> };
 type Plan = { tier: Tier; effort: string; level?: Level; below?: number };
 // Keep the intended Claude route while physically on Sol, so a go-ahead after recovery can resume Fable.
 type State = Plan & { claude?: Plan };
@@ -248,18 +251,68 @@ export function levelOf(score: number, selector: string): Level {
   return selector === "low" ? atMost(level, "hard") : level;
 }
 
-/** The tier for a level, given the tier in use and how many messages in a row did not need the peak model. */
-export function tierFor(level: Level, current: Tier | undefined, below: number): Tier {
-  const home = HOME[level];
-  if (!current || current === "light") return home; // nothing large is cached on another model
-  if (home === "peak") return "peak";
-  if (current === "peak" && below + 1 < LEAVE_PEAK_AFTER) return "peak";
-  return "default"; // a light message stays on the default model: only its effort goes down
+/** The model for a level, before the hysteresis for leaving the peak model: the cheapest of the default
+ * and peak models that reaches the level, counting the cost of changing model (`tokens` of context written
+ * again at the new model's cache-write price). Without costs, the level's own tier. */
+export function cheapest(data: Data, level: Level, current: Tier | undefined, tokens: number, allowPeak: boolean): Tier {
+  // A light message goes to the light tier only where nothing large is cached on another model.
+  if (level === "light" && (!current || current === "light")) return "light";
+  const n = need(data, level);
+  const options = (["default", "peak"] as Tier[]).filter((t) => t !== "peak" || allowPeak).map((tier) => {
+    const effort = effortFor(data, tier, level);
+    const score = scoreOf(data, data[tier].id, effort);
+    const cost = costOf(data, data[tier].id, effort);
+    const reaches = n !== undefined && score !== undefined && (n.above ? score > n.score : score >= n.score);
+    const change = current && current !== tier && current !== "light" ? (tokens / 1e6) * (data.cache_write?.[data[tier].id] ?? 0) : 0;
+    return { tier, score: score ?? -1, total: cost === undefined ? undefined : cost + change, reaches };
+  });
+  const home = allowPeak && level !== "light" ? HOME[level] : "default";
+  const reaching = options.filter((o) => o.reaches);
+  if (!reaching.length) {
+    // Nothing reaches (or no scores): the best score, or the level's own tier.
+    const scored = options.filter((o) => o.score >= 0).sort((a, b) => b.score - a.score);
+    return n && scored.length ? scored[0].tier : home;
+  }
+  if (reaching.some((o) => o.total === undefined)) return reaching.some((o) => o.tier === home) ? home : reaching[0].tier;
+  reaching.sort((a, b) => a.total! - b.total! || (a.tier === home ? -1 : 1));
+  return reaching[0].tier;
 }
 
 function scoreOf(data: Data, id: string, effort: string): number | undefined {
   const v = data.scores?.[id]?.[effort];
   return typeof v === "number" ? v : undefined;
+}
+
+function costOf(data: Data, id: string, effort: string): number | undefined {
+  const v = data.costs?.[id]?.[effort];
+  return typeof v === "number" && v >= 0 ? v : undefined;
+}
+
+let runtimeMtime = -1;
+/** Merge the daily AA snapshot (`model-radar update`) over the tier file's copy, when it changes. */
+function refreshScores(data: Data) {
+  let mtime: number;
+  try { mtime = fs.statSync(RUNTIME_SCORES).mtimeMs; } catch { return; }
+  if (mtime === runtimeMtime) return;
+  runtimeMtime = mtime;
+  try {
+    const d = JSON.parse(fs.readFileSync(RUNTIME_SCORES, "utf8"));
+    if (!d?.models || typeof d.models !== "object") return;
+    for (const [id, m] of Object.entries<any>(d.models)) {
+      const efforts = m?.efforts && typeof m.efforts === "object" ? m.efforts : {};
+      const scores: Record<string, number> = {};
+      const costs: Record<string, number> = {};
+      for (const e of EFFORTS) {
+        if (finite(efforts[e]?.score)) scores[e] = efforts[e].score;
+        if (finite(efforts[e]?.cost)) costs[e] = efforts[e].cost;
+      }
+      if (!Object.keys(scores).length) continue;
+      (data.scores ??= {})[id] = scores;
+      (data.costs ??= {})[id] = costs;
+      const write = m?.price?.cache_write ?? (finite(m?.price?.input) ? m.price.input * 1.25 : undefined);
+      if (finite(write)) (data.cache_write ??= {})[id] = write;
+    }
+  } catch { /* keep what was loaded */ }
 }
 
 function bestOf(data: Data, id: string): number | undefined {
@@ -287,7 +340,12 @@ export function effortFor(data: Data, tier: Tier, level: Level | undefined): str
   if (!n || !known.length) return spec.thinking;
   const score = (e: string) => scoreOf(data, spec.id, e) as number;
   const best = Math.max(...known.map(score));
-  return known.find((e) => (n.above ? score(e) > n.score : score(e) >= n.score)) ?? known.find((e) => score(e) === best)!;
+  const reaching = known.filter((e) => (n.above ? score(e) > n.score : score(e) >= n.score));
+  if (!reaching.length) return known.find((e) => score(e) === best)!;
+  // The cheapest that reaches; in effort order where a cost is missing.
+  const costs = reaching.map((e) => costOf(data, spec.id, e));
+  if (costs.some((c) => c === undefined)) return reaching[0];
+  return reaching[costs.indexOf(Math.min(...(costs as number[])))];
 }
 
 type QuotaWindow = { used: number; at: number; reset?: number };
@@ -478,6 +536,7 @@ export default function (pi: ExtensionAPI) {
     contextWindow: 1_000_000,
     maxTokens: 128_000,
     async route(request: any, ctx: any) {
+      refreshScores(data);
       const fallback = model(ctx, "default", data.default.thinking);
       if (!fallback) throw new Error(`jev/auto: ${data.default.provider}/${data.default.id} has no credentials`);
       if (request.reason === "direct") {
@@ -543,8 +602,13 @@ export default function (pi: ExtensionAPI) {
         source = "go-ahead";
       } else {
         level = levelOf(r.score, selector);
-        tier = tierFor(level, current, state?.below ?? 0);
-        below = tier === "peak" && HOME[level] !== "peak" ? (state?.below ?? 0) + 1 : 0;
+        const tokens = finite(ctx.getContextUsage?.()?.tokens) ? ctx.getContextUsage().tokens : 0;
+        tier = cheapest(data, level, current, tokens, selector !== "low");
+        // Hysteresis: leave the peak model only after LEAVE_PEAK_AFTER messages in a row that would leave it.
+        if (current === "peak" && tier !== "peak" && (state?.below ?? 0) + 1 < LEAVE_PEAK_AFTER && selector !== "low") {
+          tier = "peak";
+          below = (state?.below ?? 0) + 1;
+        }
         effort = effortFor(data, tier, level);
         source = "classifier";
       }

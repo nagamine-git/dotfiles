@@ -33,7 +33,7 @@
 
 - Claude Code: 実装・修正・テストは設定済みの `coder` に、調査と計画は対応する subagent に任せます。利用枠は推測せず `/usage` で確かめます。
 - Codex: `~/.codex/config.toml` の既定を使います。独立した調査や実装を分けると役立つときは、担当範囲をはっきりさせて subagent を使います。
-- Pi: 主な入口です。既定は `~/.pi/agent/settings.json` にあります。既定・強め・ここぞ・軽量の 4 段は `.chezmoidata/pi.yaml` (model-radar が調整) で決まります。起動時は仮想モデル `jev/auto` で、本人のメッセージごとに Jev 分類器が 4 段を、model-radar が記録した Artificial Analysis の点数が effort を選びます (`jev-router.ts`)。Ctrl+P で段を固定できます。subagent は `subagent` ツールで使います (定義は agents-sync が `~/.claude/agents` から作る)。Claude Code にしか無い接続や独立レビューは `delegate` で claude に、OS の隔離が要る作業は codex に任せます。
+- Pi: 主な入口です。既定は `~/.pi/agent/settings.json` にあります。既定・強め・ここぞ・軽量の 4 段は `.chezmoidata/pi.yaml` (model-radar が調整) で決まります。起動時は仮想モデル `jev/auto` で、本人のメッセージごとに Jev 分類器が要る深さを測り、model-radar が毎日取り込む Artificial Analysis の点数とコストから、届くいちばん安いモデルと effort を選びます (`jev-router.ts`、報告は `model-radar report --open`)。Ctrl+P で段を固定できます。subagent は `subagent` ツールで使います (定義は agents-sync が `~/.claude/agents` から作る)。Claude Code にしか無い接続や独立レビューは `delegate` で claude に、OS の隔離が要る作業は codex に任せます。
 
 ## メモリと共有設定
 

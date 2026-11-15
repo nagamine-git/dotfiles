@@ -7,14 +7,14 @@
 pi:
   models:
     # default: 普段の作業。Pi を起動したときのモデル
-    # 選び方 (本人が 2026-11-12 に決めた基準): Artificial Analysis の Intelligence Index (同じ版) で
-    # Opus 5.5 / high の点数 (v5 で 52) を最低水準とし、それ以上の候補で 1 タスクあたりのコストが最も安いもの。
+    # 選び方 (本人が 2026-11-15 に決めた基準): Opus 5.5 / medium の点数 (v5 で 48.2) を普段の知性の基準
+    # (jev/auto の standard) とする。2026-11-12 の基準 (Opus 5.5 / high の 52) から下げた。
     # model-radar がこの基準で見直す。2026-11-12 の実測 (難しい 4 課題、各 1 回) では Opus 5.5 high と
     # GPT-6.1 Sol max はどちらも全合格で、Sol は費用が約 2/3、時間が約 5 倍だった。
     default:
       provider: anthropic
       id: claude-opus-5-5
-      thinking: high
+      thinking: medium
     # strong: 一段上げたい時 (default で詰まった・独立した視点が欲しい)。peak より軽い
     strong:
       provider: openai
@@ -33,9 +33,10 @@ pi:
   # router: 既定の選択を仮想モデル jev/auto にする (dot_pi/agent/extensions/jev-router.ts)。
   # 本人のメッセージごとに Jev 分類器 (TypeSafe) が 5 段階 (light・standard・hard・deep・critical) で要る深さを測り、
   # 上の 4 段のモデルと effort を選ぶ。Fable (peak) も本人の指定なしで選んでよい (本人承認 2026-11-15)。
-  # effort は docs/model-radar/_state.json の Artificial Analysis の点数から、その段階が要る点数に届くいちばん低いものを選ぶ
-  # (light は light 段、standard は default 段の上の設定値の点数、hard は +5、deep は default のモデルが届かない点数、
-  # critical は peak の最高点)。上の各段の thinking は、点数が無いときと sol の名指しのときの値。
+  # 点数とコストは model-radar (毎日の systemd timer) が Artificial Analysis の API から ~/.pi/agent/model-scores.json に書く。
+  # 段階ごとに要る点数 (light は light 段、standard は default 段の上の設定値の点数 = 普段の知性の基準、hard は +5、
+  # deep は default のモデルが届かない点数、critical は peak の最高点) に届く、default と peak のうちいちばん安い
+  # モデルと effort を選ぶ (会話の途中はモデルを変える費用も足す)。上の各段の thinking は、点数が無いときの値。
   # モデルの切り替えはキャッシュを失うので少なくし、細かい上げ下げは effort で行う (詳細は docs/agents-unified.md)。
   # Claude の 5h / 7d 枠を Pi 自身の応答で 95% 以上と観測したら strong の Sol サブスクへ退避する (本人承認 2026-11-15)。
   # 全高使用率枠のリセットまたは新しい低使用率を確認したら、次の本人の発言から通常へ戻す。API キーへの退避はしない。

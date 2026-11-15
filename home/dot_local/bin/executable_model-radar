@@ -1,118 +1,376 @@
 #!/usr/bin/env python3
-"""model-radar — propose the tier-3 (heavy/frontier) model from Artificial
-Analysis intelligence + price. Proposes only; never rewrites live model config.
-Secrets come from the environment (op-agent injects them):
-  ARTIFICIAL_ANALYSIS_API_KEY  (free tier is enough; /free endpoint)
-  OPENROUTER_API_KEY           (optional; maps the pick to an executable id)
+"""model-radar — Artificial Analysis's scores for every Claude and GPT model and effort, for jev/auto.
+
+  model-radar update [--open]   fetch AA's API, write ~/.pi/agent/model-scores.json and the report
+  model-radar report [--open]   rewrite the report from the last snapshot
+  model-radar show              print the snapshot as JSON
+
+The snapshot holds, per Pi model id and effort, the Intelligence Index, the cost per task (USD at API
+prices) and the median seconds per answer, plus the token prices. jev-router.ts reads it on the next
+message and picks models and efforts from it, so a new measurement changes the routing with no edit.
+The report (~/.local/share/model-radar/index.html) shows what jev/auto picks for each level and how
+every Claude and GPT model compares. Changing which model fills a tier stays in .chezmoidata/pi.yaml.
+
+Needs ARTIFICIAL_ANALYSIS_API_KEY (free tier, /free endpoint): op-agent run --env-file
+~/.config/agents/model-radar.env -- model-radar update. Nothing else is sent anywhere.
 """
-import json, os, sys, urllib.request, datetime, argparse
+import argparse
+import datetime
+import html
+import json
+import math
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import urllib.request
+import webbrowser
 
-AA_KEY = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY")
-OR_KEY = os.environ.get("OPENROUTER_API_KEY")
-STATE = os.path.expanduser("~/.config/model-radar/proposal.json")
-AA_BASE = "https://artificialanalysis.ai/api/v2/language/models/free"
+HOME = os.path.expanduser("~")
+AGENT = os.environ.get("PI_CODING_AGENT_DIR") or os.path.join(HOME, ".pi/agent")
+SNAPSHOT = os.path.join(AGENT, "model-scores.json")
+TIERS = os.path.join(AGENT, "model-tiers.json")
+REPORT = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share"), "model-radar/index.html")
+AA_URL = "https://artificialanalysis.ai/api/v2/language/models/free"
+EFFORTS = ["low", "medium", "high", "xhigh", "max"]
+LEVELS = ["light", "standard", "hard", "deep", "critical"]
+LEVEL_JA = {"light": "軽い", "standard": "普通", "hard": "難しめ", "deep": "深い", "critical": "最重要"}
+STEP = 5  # jev-router.ts: hard needs this much more than standard
+# AA slug -> (provider, family). Only the newest version of each family is kept.
+FAMILIES = [
+    (re.compile(r"^claude-(opus|fable|sonnet|haiku)-(\d+(?:-\d+)*)$"), "anthropic"),
+    (re.compile(r"^gpt-(\d+(?:-\d+)*)-(sol|terra|luna|astra)$"), "openai"),
+]
 
-# Heavy-tier candidate families -> substrings matched against the AA slug.
-# Small/cheap models are excluded on purpose; tier-3 is the "break glass" model.
-HEAVY = ["claude-opus", "gpt-6", "gpt-5-2", "gpt-5-5", "gemini-3-pro", "gemini-4",
-         "grok-4", "deepseek-r", "deepseek-v3", "qwen3-max", "kimi-k2"]
 
-def get(url, headers):
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=25) as r:
-        return json.load(r)
-
-def aa_models():
-    """Return [{slug,name,intel,price_in,price_out,blended}] for models that
-    have an Artificial Analysis intelligence index. Needs AA_KEY."""
-    if not AA_KEY:
-        return [], "no-aa-key"
-    out, page = [], 1
-    while True:
-        try:
-            d = get(f"{AA_BASE}?page={page}", {"x-api-key": AA_KEY})
-        except Exception as e:
-            return out, f"aa-fetch-failed:{e}"
-        for r in d.get("data", []):
-            ev = r.get("evaluations") or {}
-            ii = ev.get("artificial_analysis_intelligence_index")
-            if ii is None:
-                continue
-            pr = r.get("pricing") or {}
-            pin = pr.get("price_1m_input_tokens") or 0
-            pout = pr.get("price_1m_output_tokens") or 0
-            out.append({"slug": r.get("slug"), "name": r.get("name"),
-                        "intel": float(ii), "price_in": pin, "price_out": pout,
-                        "blended": round((pin + 3 * pout) / 4, 3),
-                        "coding": ev.get("artificial_analysis_coding_index"),
-                        "agentic": ev.get("artificial_analysis_agentic_index")})
-        pg = d.get("pagination") or {}
-        if not pg.get("has_more"):
+def fetch(key):
+    rows, page = [], 1
+    while page < 100:
+        req = urllib.request.Request(f"{AA_URL}?page={page}", headers={"x-api-key": key})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.load(r)
+        rows += d.get("data") or []
+        if not (d.get("pagination") or {}).get("has_more"):
             break
         page += 1
-    return out, "ok"
+    return rows
 
-def or_ids():
-    if not OR_KEY:
-        return []
-    try:
-        return [m["id"] for m in get("https://openrouter.ai/api/v1/models",
-                {"Authorization": "Bearer " + OR_KEY})["data"]]
-    except Exception:
-        return []
 
-def or_match(slug, ids):
-    base = slug.rsplit("-", 1)[0] if slug else slug  # drop effort suffix
-    key = (slug or "").replace("-", "")
-    for i in ids:
-        tail = i.split("/")[-1].replace("-", "").replace(".", "")
-        if key[:14] and (key[:14] in tail or tail[:14] in key):
-            return i
+def parse(slug, name):
+    """AA slug and name -> (pi id, provider, family, version, effort) or None."""
+    m = re.match(r"^(.*?)(?:-(low|medium|high|xhigh))?$", slug or "")
+    base, effort = m[1], m[2]
+    paren = re.search(r"\(([^,)]+)", name or "")
+    label = (paren[1].strip().lower() if paren else "")
+    if effort is None:
+        if label != "max":
+            return None  # non-reasoning, special variants, or a model without effort levels
+        effort = "max"
+    elif label and label != effort:
+        return None
+    for pattern, provider in FAMILIES:
+        f = pattern.match(base)
+        if not f:
+            continue
+        if provider == "anthropic":
+            family, version = f[1], f[2]
+            pid = base
+        else:
+            version, family = f[1], f[2]
+            parts = version.split("-")
+            pid = "gpt-" + ".".join(parts) + "-" + family
+        return pid, provider, family, tuple(int(x) for x in version.split("-")), effort
     return None
 
+
+def catalog():
+    """Pi's model ids, to mark which ones Pi can call. None if Pi is not here."""
+    # systemd's PATH has only the system Node, which is too old for Pi: put mise's shims first.
+    env = dict(os.environ, PATH=os.pathsep.join([os.path.join(HOME, ".local/share/mise/shims"), os.environ.get("PATH", "/usr/bin:/bin")]))
+    for pi in (os.path.join(AGENT, "bin/pi"), "pi"):
+        try:
+            out = subprocess.run([pi, "--list-models"], capture_output=True, text=True, timeout=60, env=env).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        ids = {line.split()[1] for line in out.splitlines()[1:] if len(line.split()) > 1}
+        if ids:
+            return ids
+    return None
+
+
+def build(rows, now):
+    found = {}
+    for r in rows:
+        p = parse(r.get("slug"), r.get("name"))
+        ii = (r.get("evaluations") or {}).get("artificial_analysis_intelligence_index")
+        if not p or not isinstance(ii, (int, float)):
+            continue
+        pid, provider, family, version, effort = p
+        cost = ((r.get("artificial_analysis_intelligence_index_cost") or {}).get("cost_per_task") or {}).get("total_cost")
+        secs = (r.get("performance") or {}).get("median_end_to_end_response_time_seconds")
+        pr = r.get("pricing") or {}
+        m = found.setdefault(pid, {"provider": provider, "family": family, "version": version, "efforts": {},
+                                   "name": re.sub(r"\s*\(.*$", "", r.get("name") or pid), "release": r.get("release_date"),
+                                   "price": {"input": pr.get("price_1m_input_tokens"), "output": pr.get("price_1m_output_tokens"),
+                                             "cache_write": pr.get("price_1m_cache_write_tokens"),
+                                             "cache_read": pr.get("price_1m_cache_hit_tokens")}})
+        m["efforts"][effort] = {"score": round(float(ii), 1),
+                                "cost": round(float(cost), 4) if isinstance(cost, (int, float)) else None,
+                                "seconds": round(float(secs), 1) if isinstance(secs, (int, float)) else None}
+    newest = {}
+    for pid, m in found.items():
+        key = (m["provider"], m["family"])
+        if key not in newest or m["version"] > found[newest[key]]["version"]:
+            newest[key] = pid
+    ids = catalog()
+    models = {}
+    for pid in sorted(newest.values()):
+        m = dict(found[pid])
+        m.pop("version")
+        m["in_pi"] = None if ids is None else pid in ids
+        m["efforts"] = {e: m["efforts"][e] for e in EFFORTS if e in m["efforts"]}
+        models[pid] = m
+    return {"source": "Artificial Analysis API v2 (free): Intelligence Index, cost per task, median seconds",
+            "fetched_at": now, "models": models}
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".model-scores.")
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+# --- the same rules as jev-router.ts, at the start of a conversation (no change of model to pay for) ---
+
+def score(snap, mid, e):
+    return ((snap["models"].get(mid) or {}).get("efforts") or {}).get(e, {}).get("score")
+
+
+def cost(snap, mid, e):
+    return ((snap["models"].get(mid) or {}).get("efforts") or {}).get(e, {}).get("cost")
+
+
+def need(snap, tiers, level):
+    d, p, l = tiers["default"], tiers["peak"], tiers["light"]
+    std = score(snap, d["id"], d["thinking"])
+    best = lambda mid: max([v["score"] for v in (snap["models"].get(mid) or {}).get("efforts", {}).values()] or [None])
+    if level == "light":
+        return score(snap, l["id"], l["thinking"]), False
+    if level == "standard":
+        return std, False
+    if level == "hard":
+        return (None if std is None else std + STEP), False
+    if level == "deep":
+        return best(d["id"]), True
+    return best(p["id"]), False
+
+
+def reaches(s, n, above):
+    return s is not None and n is not None and (s > n if above else s >= n)
+
+
+def effort_for(snap, mid, n, above):
+    known = [e for e in EFFORTS if score(snap, mid, e) is not None]
+    if not known:
+        return None
+    ok = [e for e in known if reaches(score(snap, mid, e), n, above)]
+    if not ok:
+        return max(known, key=lambda e: score(snap, mid, e))
+    if any(cost(snap, mid, e) is None for e in ok):
+        return ok[0]
+    return min(ok, key=lambda e: cost(snap, mid, e))
+
+
+def jev_choice(snap, tiers, level):
+    n, above = need(snap, tiers, level)
+    if level == "light":
+        mid = tiers["light"]["id"]
+        return mid, effort_for(snap, mid, n, above)
+    options = []
+    for t in ("default", "peak"):
+        mid = tiers[t]["id"]
+        e = effort_for(snap, mid, n, above)
+        if e and reaches(score(snap, mid, e), n, above):
+            options.append((cost(snap, mid, e) if cost(snap, mid, e) is not None else math.inf, t != ("peak" if level in ("deep", "critical") else "default"), mid, e))
+    if not options:
+        mid = tiers["peak"]["id"]
+        return mid, effort_for(snap, mid, n, above)
+    options.sort()
+    return options[0][2], options[0][3]
+
+
+def cheapest_any(snap, n, above):
+    best = None
+    for mid, m in snap["models"].items():
+        for e, v in m["efforts"].items():
+            if reaches(v["score"], n, above) and v["cost"] is not None and (best is None or v["cost"] < best[2]):
+                best = (mid, e, v["cost"])
+    return best
+
+
+def dominated(snap):
+    """Pairs another pair beats or ties on score, cost and seconds at once."""
+    pairs = [(mid, e, v) for mid, m in snap["models"].items() for e, v in m["efforts"].items()
+             if v["cost"] is not None and v["seconds"] is not None]
+    out = set()
+    for mid, e, v in pairs:
+        for mid2, e2, w in pairs:
+            if (mid2, e2) != (mid, e) and w["score"] >= v["score"] and w["cost"] <= v["cost"] and w["seconds"] <= v["seconds"] \
+                    and (w["score"] > v["score"] or w["cost"] < v["cost"] or w["seconds"] < v["seconds"]):
+                out.add((mid, e))
+                break
+    return out
+
+
+# --- report ---
+
+def chart(snap, picks, needs):
+    W, H, L, R, T, B = 920, 520, 60, 150, 20, 50
+    xs = [v["cost"] for m in snap["models"].values() for v in m["efforts"].values() if v["cost"]]
+    lo, hi = math.log10(max(min(xs), 0.003)) - 0.1, math.log10(max(xs)) + 0.15
+    ymax = max(70, max(v["score"] for m in snap["models"].values() for v in m["efforts"].values()) + 5)
+    X = lambda c: L + (math.log10(c) - lo) / (hi - lo) * (W - L - R)
+    Y = lambda s: T + (1 - s / ymax) * (H - T - B)
+    g = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="点数とコストの散布図">']
+    for s in range(0, int(ymax) + 1, 10):
+        g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(s):.1f}" y2="{Y(s):.1f}" class="grid"/><text x="{L - 8}" y="{Y(s) + 4:.1f}" class="ax" text-anchor="end">{s}</text>')
+    for c in (0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30):
+        if lo <= math.log10(c) <= hi:
+            g.append(f'<line x1="{X(c):.1f}" x2="{X(c):.1f}" y1="{T}" y2="{H - B}" class="grid"/><text x="{X(c):.1f}" y="{H - B + 18}" class="ax" text-anchor="middle">${c:g}</text>')
+    g.append(f'<text x="{(L + W - R) / 2}" y="{H - 8}" class="ax" text-anchor="middle">1 タスクのコスト (API 単価, 対数)</text>')
+    g.append(f'<text x="14" y="{T + 10}" class="ax">点数</text>')
+    for label, (n, _) in needs.items():
+        if n is not None and label in ("standard", "hard", "deep"):
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(n):.1f}" y2="{Y(n):.1f}" class="need"/><text x="{W - R + 6}" y="{Y(n) + 4:.1f}" class="ax">{LEVEL_JA[label]} {n:g}</text>')
+    for mid, m in snap["models"].items():
+        pts = [(X(v["cost"]), Y(v["score"]), e) for e, v in m["efforts"].items() if v["cost"]]
+        if not pts:
+            continue
+        dash = ' stroke-dasharray="4 3"' if m["provider"] == "openai" else ""
+        g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)}" class="line"{dash}/>')
+        for x, y, e in pts:
+            on = (mid, e) in picks
+            g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{5 if on else 3}" class="{"pick" if on else "pt"}"><title>{html.escape(m["name"])} {e}</title></circle>')
+            if on:
+                g.append(f'<text x="{x + 8:.1f}" y="{y - 6:.1f}" class="picklabel">{"・".join(LEVEL_JA[l] for l in picks[(mid, e)])}</text>')
+        x, y, _ = pts[-1]
+        g.append(f'<text x="{x + 6:.1f}" y="{y + 14:.1f}" class="name">{html.escape(m["name"])}</text>')
+    g.append("</svg>")
+    return "\n".join(g)
+
+
+def report(snap, tiers):
+    needs = {lv: need(snap, tiers, lv) for lv in LEVELS}
+    picks = {}
+    rows_level = []
+    for lv in LEVELS:
+        mid, e = jev_choice(snap, tiers, lv)
+        picks.setdefault((mid, e), []).append(lv)
+        n, above = needs[lv]
+        any_ = cheapest_any(snap, n, above) if lv != "light" else None
+        v = snap["models"].get(mid, {}).get("efforts", {}).get(e, {})
+        rows_level.append((lv, n, above, mid, e, v, any_))
+    dom = dominated(snap)
+    name = lambda mid: html.escape(snap["models"].get(mid, {}).get("name", mid))
+    fmt_c = lambda c: "—" if c is None else f"${c:.2f}"
+    fmt_s = lambda s: "—" if s is None else f"{s:.0f} 秒"
+    t1 = []
+    for lv, n, above, mid, e, v, any_ in rows_level:
+        bar = "—" if n is None else (f"{n:g} 超" if above else f"{n:g} 以上")
+        alt = "—"
+        if any_:
+            w = snap["models"][any_[0]]["efforts"][any_[1]]
+            alt = f"{name(any_[0])} {any_[1]} ({w['score']:g} 点・{fmt_c(w['cost'])}・{fmt_s(w['seconds'])})"
+        t1.append(f"<tr><td>{LEVEL_JA[lv]}</td><td>{bar}</td><td class=pickc>{name(mid)} {e}</td><td>{v.get('score', '—')}</td>"
+                  f"<td>{fmt_c(v.get('cost'))}</td><td>{fmt_s(v.get('seconds'))}</td><td class=dim>{alt}</td></tr>")
+    t2 = []
+    for mid, m in sorted(snap["models"].items(), key=lambda kv: (kv[1]["provider"], -max(v["score"] for v in kv[1]["efforts"].values()))):
+        for e, v in m["efforts"].items():
+            use = "・".join(LEVEL_JA[l] for l in picks.get((mid, e), []))
+            cls = "pickrow" if use else ("dim" if (mid, e) in dom else "")
+            pi = {True: "○", False: "×", None: "?"}[m.get("in_pi")]
+            t2.append(f'<tr class="{cls}"><td>{html.escape(m["name"])}</td><td>{e}</td><td>{v["score"]:g}</td><td>{fmt_c(v["cost"])}</td>'
+                      f'<td>{fmt_s(v["seconds"])}</td><td>{pi}</td><td>{use or ("劣る" if (mid, e) in dom else "")}</td></tr>')
+    tier_line = " / ".join(f"{k}: {html.escape(tiers[k]['id'])} {tiers[k]['thinking']}" for k in ("default", "peak", "light", "strong"))
+    return f"""<!doctype html><html lang="ja"><meta charset="utf-8"><title>model-radar — jev/auto の選び方</title>
+<style>
+body{{background:#111;color:#ddd;font:15px/1.6 "IBM Plex Sans JP",system-ui,sans-serif;margin:32px auto;max-width:1000px;padding:0 20px}}
+h1{{font-size:22px;margin:0 0 4px}} h2{{font-size:17px;margin:36px 0 10px;border-bottom:1px solid #333;padding-bottom:6px}}
+.dim{{color:#777}} table{{border-collapse:collapse;width:100%;font-size:14px}} td,th{{padding:5px 8px;border-bottom:1px solid #222;text-align:left}}
+th{{color:#999;font-weight:500}} .pickc,.pickrow td{{color:#4da3ff}} tr.dim td{{color:#666}}
+svg{{width:100%;height:auto}} .grid{{stroke:#262626}} .ax{{fill:#888;font-size:11px}} .need{{stroke:#555;stroke-dasharray:3 4}}
+.line{{fill:none;stroke:#555;stroke-width:1.2}} .pt{{fill:#888}} .pick{{fill:#4da3ff}} .picklabel{{fill:#4da3ff;font-size:12px}} .name{{fill:#aaa;font-size:11px}}
+ul{{padding-left:20px}} li{{margin:4px 0}}
+</style>
+<h1>jev/auto の選び方</h1>
+<div class=dim>{html.escape(snap["source"])} ・ 取得 {html.escape(snap["fetched_at"])} ・ 段: {tier_line}</div>
+
+<h2>段階ごとに jev/auto が使うもの</h2>
+<p>基準は普通の段階の点数 (default 段の設定値の点数) です。各段階で、default と peak のモデルのうち基準に届くいちばん安い effort を比べ、安いほうを使います。会話の途中では、モデルを変えると会話全体をキャッシュに書き直すので、その費用を足して比べます (長い会話ほど今のモデルに残ります)。表は会話の最初の選択です。会話の途中の軽い依頼は、今のモデルのいちばん安い effort (Opus なら low) にします。右端は Claude と GPT の全モデルで同じ点数に届くいちばん安いもので、参考です。</p>
+<table><tr><th>段階</th><th>必要な点数</th><th>jev/auto</th><th>点数</th><th>$/タスク</th><th>時間</th><th>全モデルでの最安 (参考)</th></tr>
+{"".join(t1)}</table>
+
+<h2>点数とコスト (全モデル・全 effort)</h2>
+<p class=dim>実線は Claude、破線は GPT。点は low から max へ左から右に並びます。青は jev/auto が使う組み合わせ、横の点線は段階の基準です。</p>
+{chart(snap, picks, needs)}
+
+<h2>一覧</h2>
+<p class=dim>「劣る」は、点数・コスト・時間のすべてで別の組み合わせに並ばれるか負けているものです。時間は AA の測定の中央値で、Pi での体感とは違います。Pi 列は Pi のモデル一覧にあるか。</p>
+<table><tr><th>モデル</th><th>effort</th><th>点数</th><th>$/タスク</th><th>時間</th><th>Pi</th><th>用途</th></tr>
+{"".join(t2)}</table>
+
+<h2>読み方の注意</h2>
+<ul>
+<li>$ は AA が API 単価で測った 1 タスクの費用です。サブスクの利用枠の減り方はこれに比例すると仮定していますが、確かめていません。</li>
+<li>Fable は Max プランでも週の利用枠の 50% までしか使えません。Claude の枠が 95% を超えると jev/auto は Sol (ChatGPT のサブスク) へ退避します。</li>
+<li>GPT は通常の振り分けには入れていません (Claude との間でモデルを変えるとキャッシュも思考の続きも失うため)。退避先と名指しのときに使います。</li>
+<li>段に入れるモデルの入れ替えは .chezmoidata/pi.yaml で行います。effort と、default と peak の使い分けは、このデータから毎日自動で変わります。</li>
+</ul>
+</html>
+"""
+
+
+def load(path):
+    with open(path) as f:
+        return json.load(f)
+
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--json", action="store_true")
-    ap.add_argument("--top", type=int, default=10)
-    ap.add_argument("--by", choices=["intel", "coding", "agentic", "efficiency"], default="coding")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("command", choices=["update", "report", "show"])
+    ap.add_argument("--open", action="store_true", help="open the report in the browser")
     a = ap.parse_args()
+    if a.command == "update":
+        key = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY")
+        if not key:
+            sys.exit("model-radar: ARTIFICIAL_ANALYSIS_API_KEY is not set (op-agent run --env-file ~/.config/agents/model-radar.env -- model-radar update)")
+        snap = build(fetch(key), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
+        if not snap["models"]:
+            sys.exit("model-radar: no Claude or GPT model with scores in AA's answer; the snapshot is unchanged")
+        write_json(SNAPSHOT, snap)
+        print(f"model-radar: {len(snap['models'])} models -> {SNAPSHOT}")
+    try:
+        snap = load(SNAPSHOT)
+    except (OSError, ValueError):
+        sys.exit(f"model-radar: no snapshot at {SNAPSHOT}; run model-radar update")
+    if a.command == "show":
+        print(json.dumps(snap, ensure_ascii=False, indent=1))
+        return
+    try:
+        tiers = load(TIERS)
+    except (OSError, ValueError):
+        sys.exit(f"model-radar: no tier file at {TIERS}")
+    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+    with open(REPORT, "w") as f:
+        f.write(report(snap, tiers))
+    print(f"model-radar: report -> {REPORT}")
+    if a.open:
+        webbrowser.open("file://" + REPORT)
 
-    models, status = aa_models()
-    cands = [m for m in models if any(h in (m["slug"] or "") for h in HEAVY)]
-    ids = or_ids()
-    for m in cands:
-        score = m.get(a.by) if a.by != "efficiency" else (
-            round(m["intel"] / m["blended"], 2) if m["blended"] else None)
-        m["_score"] = score if score is not None else -1
-        m["openrouter_id"] = or_match(m["slug"], ids)
-    cands.sort(key=lambda m: (-m["_score"], m["blended"]))
-    chosen = cands[0] if cands else None
-
-    report = {
-        "generated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "aa_status": status,
-        "rank_by": a.by,
-        "recommended_tier3": chosen,
-        "candidates": [{k: m[k] for k in ("slug", "intel", "coding", "agentic",
-                        "blended", "openrouter_id")} for m in cands[:a.top]],
-        "note": "proposal only; does not change any live model config",
-    }
-    os.makedirs(os.path.dirname(STATE), exist_ok=True)
-    with open(STATE, "w") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-
-    if a.json:
-        print(json.dumps(report, ensure_ascii=False, indent=2)); return
-    if status != "ok":
-        print("model-radar: AA status:", status);
-    print("model-radar", report["generated"], "| rank by:", a.by)
-    for m in cands[:a.top]:
-        orid = m["openrouter_id"] or "-"
-        print(f"  {m['slug']:28s} intel={m['intel']:<5} code={m.get('coding')} "
-              f"${m['blended']}/Mtok  OR:{orid}")
-    print("-> recommend tier-3:", chosen["slug"] if chosen else "none",
-          "(OR:", (chosen or {}).get("openrouter_id"), ")")
-    print("written:", STATE)
 
 if __name__ == "__main__":
     main()

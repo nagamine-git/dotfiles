@@ -17,17 +17,25 @@ ROOT = Path(__file__).resolve().parents[1]
 EXTENSION = ROOT / "home/dot_pi/agent/extensions/jev-router.ts"
 NODE = shutil.which("node")
 TIERS = {
-    "default": {"provider": "anthropic", "id": "claude-opus-5-5", "thinking": "high"},
+    "default": {"provider": "anthropic", "id": "claude-opus-5-5", "thinking": "medium"},
     "strong": {"provider": "openai", "id": "gpt-6.1-sol", "thinking": "max"},
     "peak": {"provider": "anthropic", "id": "claude-fable-5-2", "thinking": "max"},
     "light": {"provider": "anthropic", "id": "claude-haiku-5-5", "thinking": "high"},
-    # Artificial Analysis Intelligence Index per effort (docs/model-radar/_state.json, 2026-11-15)
+    # Artificial Analysis Intelligence Index and cost per task (USD) per effort (AA API, 2026-11-15)
     "scores": {
-        "claude-opus-5-5": {"low": 35, "medium": 48, "high": 52, "xhigh": 57, "max": 59},
-        "claude-fable-5-2": {"low": 54, "medium": 56, "high": 62, "xhigh": 62, "max": 65},
-        "claude-haiku-5-5": {"low": 19, "medium": 25, "high": 30, "xhigh": 35, "max": 36},
-        "gpt-6.1-sol": {"low": 35, "medium": 46, "high": 50, "xhigh": 52, "max": 55},
+        "claude-opus-5-5": {"low": 34.8, "medium": 48.2, "high": 51.8, "xhigh": 57.4, "max": 59.1},
+        "claude-fable-5-2": {"low": 53.9, "medium": 56.4, "high": 61.8, "xhigh": 62.2, "max": 64.6},
+        "claude-haiku-5-5": {"low": 18.6, "medium": 24.6, "high": 29.9, "xhigh": 34.6, "max": 36.5},
+        "gpt-6.1-sol": {"low": 34.8, "medium": 46.3, "high": 50.3, "xhigh": 52.5, "max": 54.6},
     },
+    "costs": {
+        "claude-opus-5-5": {"low": 0.98, "medium": 2.45, "high": 3.46, "xhigh": 6.05, "max": 10.04},
+        "claude-fable-5-2": {"low": 3.10, "medium": 3.80, "high": 9.08, "xhigh": 14.83, "max": 26.54},
+        "claude-haiku-5-5": {"low": 0.04, "medium": 0.09, "high": 0.16, "xhigh": 0.25, "max": 0.41},
+        "gpt-6.1-sol": {"low": 0.16, "medium": 0.36, "high": 0.59, "xhigh": 0.76, "max": 1.27},
+    },
+    # USD per 1M tokens written to the prompt cache
+    "cache_write": {"claude-opus-5-5": 5, "claude-fable-5-2": 10, "claude-haiku-5-5": 0.125, "gpt-6.1-sol": 2},
 }
 SECRET_TEXT = "SYNTHETIC-PRIVATE-PROMPT"
 OPUS, FABLE, HAIKU, SOL = "claude-opus-5-5", "claude-fable-5-2", "claude-haiku-5-5", "gpt-6.1-sol"
@@ -41,6 +49,7 @@ let clock = s.now ?? 1_800_000_000_000;
 Date.now = () => clock;
 const ctx = {
   hasUI: true,
+  getContextUsage: () => (request?.tokens ?? s.tokens) === undefined ? undefined : {tokens: request?.tokens ?? s.tokens},
   ui: {notify: (m) => notices.push(m), setStatus: (k, v) => statuses.push([k, v])},
   modelRegistry: {
     find: (provider, id) => ({provider, id}),
@@ -68,6 +77,11 @@ let state, previous;
 for (const r of s.requests ?? []) {
   request = r;
   if (r.now !== undefined) clock = r.now;
+  if (r.scoresFile !== undefined) {
+    const fs = await import("node:fs");
+    fs.writeFileSync(process.env.PI_CODING_AGENT_DIR + "/model-scores.json", JSON.stringify(r.scoresFile));
+    fs.utimesSync(process.env.PI_CODING_AGENT_DIR + "/model-scores.json", new Date(), new Date(Date.now() + (r.mtime ?? 0)));
+  }
   for (const response of r.responses ?? []) {
     for (const fn of handlers.after_provider_response ?? []) await fn({status: response.status ?? 200, headers: response.headers}, ctx);
     if (response.stream !== false) {
@@ -136,10 +150,10 @@ class PiRouter(unittest.TestCase):
         cases = [(0.2, None, (HAIKU, "high")),        # light where nothing is cached: the light tier, 30
                  (0.2, on_default, (OPUS, "low")),    # light later: the model in use, the lowest effort over 30
                  (0.49, on_default, (OPUS, "low")),
-                 (0.5, on_default, (OPUS, "high")),   # standard: 52, the default bar
-                 (1.49, on_default, (OPUS, "high")),
-                 (1.5, on_default, (OPUS, "xhigh")),  # hard: 52 + 5
-                 (2.49, on_default, (OPUS, "xhigh")),
+                 (0.5, on_default, (OPUS, "medium")),   # standard: 48.2, the owner's base (Opus 5.5 medium)
+                 (1.49, on_default, (OPUS, "medium")),
+                 (1.5, on_default, (FABLE, "low")),   # hard: 48.2 + 5; Fable low (53.9, $3.10) < Opus xhigh ($6.05)
+                 (2.49, on_default, (FABLE, "low")),
                  (2.5, on_default, (FABLE, "high")),  # deep: more than Opus reaches at any effort (59)
                  (3.49, on_default, (FABLE, "high")),
                  (3.5, on_default, (FABLE, "max")),   # critical: the best of the peak model
@@ -155,13 +169,38 @@ class PiRouter(unittest.TestCase):
         self.assertEqual(self.routes(rating={"asked": 0.9}, requests=[{"level": "low", "user": "fable で"}]),
                          [(OPUS, "xhigh")])
         self.assertEqual(self.routes(rating={"score": 2.3}, requests=[{"level": "high"}, {"level": "max"}]),
-                         [(OPUS, "xhigh"), (FABLE, "high")])
+                         [(FABLE, "low"), (FABLE, "high")])
+
+    def test_a_long_conversation_stays_on_its_model_when_changing_costs_more_than_it_saves(self):
+        on_default = {"tier": "default", "effort": "medium", "level": "standard", "below": 0}
+        # hard: Fable low $3.10 vs Opus xhigh $6.05. Changing writes the context at Fable's $10/M.
+        for tokens, want in ((0, (FABLE, "low")), (250_000, (FABLE, "low")), (400_000, (OPUS, "xhigh"))):
+            with self.subTest(tokens=tokens):
+                self.assertEqual(self.routes(rating={"score": 2.0}, requests=[{"state": on_default, "tokens": tokens}]), [want])
+        # Fable to Opus for a standard message: $2.45 + context at $5/M vs staying on Fable low ($3.10)
+        on_peak = {"tier": "peak", "effort": "high", "level": "deep", "below": 1}
+        for tokens, want in ((50_000, (OPUS, "medium")), (300_000, (FABLE, "low"))):
+            with self.subTest(tokens=tokens):
+                self.assertEqual(self.routes(rating={"score": 1.0}, requests=[{"state": on_peak, "tokens": tokens}]), [want])
+
+    def test_the_daily_aa_snapshot_overrides_the_tier_file_and_is_reread_when_it_changes(self):
+        def snapshot(opus_xhigh_cost):
+            return {"source": "test", "models": {
+                OPUS: {"price": {"input": 4, "cache_write": 5}, "efforts": {
+                    "low": {"score": 34.8, "cost": 0.98}, "medium": {"score": 48.2, "cost": 2.45},
+                    "xhigh": {"score": 57.4, "cost": opus_xhigh_cost}}},
+                FABLE: {"price": {"input": 8}, "efforts": {"low": {"score": 53.9, "cost": 3.10}}}}}
+        on_default = {"tier": "default", "effort": "medium", "level": "standard", "below": 0}
+        self.assertEqual(self.routes(rating={"score": 2.0}, requests=[
+            {"state": on_default, "scoresFile": snapshot(2.0)},             # Opus xhigh now cheaper than Fable low
+            {"state": on_default, "scoresFile": snapshot(9.0), "mtime": 5000},  # changed file is read again
+        ]), [(OPUS, "xhigh"), (FABLE, "low")])
 
     def test_a_light_message_changes_the_model_only_where_nothing_is_cached(self):
         light = {"rating": {"score": 0.1}}
         # a session that starts light stays there, and goes up when the work needs it
         self.assertEqual(self.routes(chain=True, requests=[light, light, {"rating": {"score": 1.0}}, light]),
-                         [(HAIKU, "high"), (HAIKU, "high"), (OPUS, "high"), (OPUS, "low")])
+                         [(HAIKU, "high"), (HAIKU, "high"), (OPUS, "medium"), (OPUS, "low")])
         # a session that came to jev/auto from the default model has its cache there
         previous = {"model": {"provider": "anthropic", "id": OPUS}, "thinkingLevel": "high"}
         self.assertEqual(self.routes(requests=[dict(light, previous=previous)]), [(OPUS, "low")])
@@ -170,20 +209,20 @@ class PiRouter(unittest.TestCase):
         deep, small = {"rating": {"score": 3.0}}, {"rating": {"score": 1.0}}
         out = self.run_router(chain=True, requests=[deep, small, deep, small, small, small])["routes"]
         self.assertEqual([(r["id"], r["thinking"]) for r in out],
-                         [(FABLE, "high"), (FABLE, "low"), (FABLE, "high"), (FABLE, "low"), (OPUS, "high"), (OPUS, "high")])
+                         [(FABLE, "high"), (FABLE, "low"), (FABLE, "high"), (FABLE, "low"), (OPUS, "medium"), (OPUS, "medium")])
         self.assertEqual([r["state"] and r["state"]["below"] for r in out], [0, 1, 0, 1, 0, None])
 
     def test_a_go_ahead_goes_on_where_the_work_is(self):
         go = {"go": 0.9, "score": 0.1}
-        cases = [({"tier": "default", "effort": "high", "level": "standard", "below": 0}, (OPUS, "high"), None),
+        cases = [({"tier": "default", "effort": "medium", "level": "standard", "below": 0}, (OPUS, "medium"), None),
                  ({"tier": "default", "effort": "xhigh", "level": "hard", "below": 0}, (OPUS, "xhigh"), None),
-                 ({"tier": "default", "effort": "low", "level": "light", "below": 0}, (OPUS, "high"), "standard"),
+                 ({"tier": "default", "effort": "low", "level": "light", "below": 0}, (OPUS, "medium"), "standard"),
                  ({"tier": "light", "effort": "high", "level": "light", "below": 0}, (HAIKU, "high"), None),
                  ({"tier": "peak", "effort": "high", "level": "deep", "below": 0}, (FABLE, "high"), None),
                  ({"tier": "peak", "effort": "max", "level": "critical", "below": 0}, (FABLE, "high"), "deep"),
                  ({"tier": "peak", "effort": "low", "level": "standard", "below": 1}, (FABLE, "low"), None),
                  ({"tier": "strong", "effort": "max", "below": 0}, (SOL, "max"), None),
-                 (None, (OPUS, "high"), "standard")]
+                 (None, (OPUS, "medium"), "standard")]
         for state, want, level in cases:
             with self.subTest(state=state):
                 out = self.run_router(rating=go, requests=[{"user": "進めて", "state": state}])["routes"][0]
@@ -212,7 +251,7 @@ class PiRouter(unittest.TestCase):
     def test_a_model_that_is_only_the_topic_is_not_a_request(self):
         out = self.run_router(rating={"asked": 0.05, "score": 1.8},
                               requests=[{"user": "fableはmaxにする必要あるかな?", "state": {"tier": "default", "effort": "high"}}])
-        self.assertEqual((out["routes"][0]["id"], out["routes"][0]["thinking"]), (OPUS, "xhigh"))
+        self.assertEqual((out["routes"][0]["id"], out["routes"][0]["thinking"]), (FABLE, "low"))
         out = self.run_router(rating={"score": 1.0}, requests=[{"user": "状況は?"}])
         self.assertEqual(out["classified"][0]["questions"], ["level", "go"])  # asked only with a name
 
@@ -223,8 +262,8 @@ class PiRouter(unittest.TestCase):
                     {}, {"state": {"tier": "light", "effort": "high", "level": "light"}},
                     {"state": {"tier": "default", "effort": "xhigh", "level": "hard"}},
                     {"user": "fable で"}, {"user": "Fable5.2medium で"}, {"user": "opus で"}, {"user": "haiku で"}]),
-                    [(OPUS, "high"), (HAIKU, "high"), (OPUS, "xhigh"),
-                     (FABLE, "max"), (FABLE, "medium"), (OPUS, "high"), (HAIKU, "high")])
+                    [(OPUS, "medium"), (HAIKU, "high"), (OPUS, "xhigh"),
+                     (FABLE, "max"), (FABLE, "medium"), (OPUS, "medium"), (HAIKU, "high")])
 
     def test_a_hanging_classifier_times_out_instead_of_blocking_the_turn(self):
         self.assertEqual(self.routes(timeout=20, hang=True, requests=[{"state": {"tier": "peak", "effort": "max"}}]),
@@ -234,12 +273,12 @@ class PiRouter(unittest.TestCase):
         data = json.loads(json.dumps(TIERS))
         data["scores"][HAIKU]["medium"] = 31   # medium now reaches the light bar (30)
         data["scores"][FABLE]["high"] = 59     # no longer more than Opus's best (59): deep is xhigh (62)
-        data["scores"][OPUS]["xhigh"] = 52     # nothing below max reaches 57
+        data["scores"][OPUS]["xhigh"] = 52     # Opus reaches hard (53.2) only at max: Fable low is cheaper
         (self.agent / "model-tiers.json").write_text(json.dumps(data))
         on_default = {"tier": "default", "effort": "high", "level": "standard"}
         got = [self.routes(rating={"score": score}, requests=[{"state": state}])[0]
                for score, state in ((0.1, None), (3.0, on_default), (2.0, on_default))]
-        self.assertEqual(got, [(HAIKU, "medium"), (FABLE, "xhigh"), (OPUS, "max")])
+        self.assertEqual(got, [(HAIKU, "medium"), (FABLE, "xhigh"), (FABLE, "low")])
 
     def test_without_scores_a_tier_keeps_its_configured_effort(self):
         data = {k: v for k, v in TIERS.items() if k != "scores"}
@@ -247,7 +286,7 @@ class PiRouter(unittest.TestCase):
         on_default = {"tier": "default", "effort": "high", "level": "standard"}
         got = [self.routes(rating={"score": score}, requests=[{"state": state}])[0]
                for score, state in ((0.1, None), (0.1, on_default), (2.0, on_default), (3.0, on_default), (3.9, on_default))]
-        self.assertEqual(got, [(HAIKU, "high"), (OPUS, "high"), (OPUS, "high"), (FABLE, "max"), (FABLE, "max")])
+        self.assertEqual(got, [(HAIKU, "high"), (OPUS, "medium"), (OPUS, "medium"), (FABLE, "max"), (FABLE, "max")])
 
     def test_tool_follow_ups_and_retries_stay_on_the_model_of_the_turn(self):
         prev = {"model": {"provider": "anthropic", "id": FABLE}, "thinkingLevel": "max"}
@@ -259,7 +298,7 @@ class PiRouter(unittest.TestCase):
         self.assertEqual(out["classified"], [])
 
     def test_requests_outside_the_loop_use_the_default_tier(self):
-        self.assertEqual(self.routes(rating={"score": 4}, requests=[{"reason": "direct"}]), [(OPUS, "high")])
+        self.assertEqual(self.routes(rating={"score": 4}, requests=[{"reason": "direct"}]), [(OPUS, "medium")])
 
     def test_a_peak_tier_without_credentials_is_the_best_of_the_default_model(self):
         self.assertEqual(self.routes(rating={"score": 3.0}, noAuth=[FABLE], requests=[{}]), [(OPUS, "max")])
@@ -283,7 +322,7 @@ class PiRouter(unittest.TestCase):
                 with self.subTest(window=window, used=used):
                     (self.agent / "jev-claude-quota.json").unlink(missing_ok=True)
                     self.assertEqual(self.routes(requests=[{"responses": [self.quota(used, window)]}]),
-                                     [(expected, "xhigh" if expected == SOL else "high")])
+                                     [(expected, "high" if expected == SOL else "medium")])
 
     def test_quota_keeps_task_depth_and_restores_fable_after_reset_on_a_new_user_message(self):
         out = self.run_router(chain=True, requests=[
@@ -304,23 +343,23 @@ class PiRouter(unittest.TestCase):
             {"now": 1_800_001_000_000, "responses": [{"headers": {}}]},  # more than five minutes, not recovery
             {"now": 1_800_003_601_000},  # 5h reset, 7d still high
             {"now": 1_800_007_201_000},
-        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high")])
+        ]), [(SOL, "high"), (SOL, "high"), (SOL, "high"), (OPUS, "medium")])
 
     def test_new_low_headers_replace_only_the_window_they_report(self):
         self.assertEqual(self.routes(chain=True, requests=[
             {"responses": [self.quota(window="5h"), self.quota(window="7d")]},
             {"now": 1_800_000_001_000, "responses": [self.quota(0.2, "5h")]},
             {"now": 1_800_000_002_000, "responses": [self.quota(0.3, "7d")]},
-        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high")])
+        ]), [(SOL, "high"), (SOL, "high"), (OPUS, "medium")])
 
     def test_quota_survives_restart_and_never_stores_raw_headers(self):
         q = self.quota()
         q["headers"]["authorization"] = SECRET_TEXT
-        self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(SOL, "xhigh")])
+        self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(SOL, "high")])
         cache = (self.agent / "jev-claude-quota.json").read_text()
         self.assertNotIn(SECRET_TEXT, cache)
         self.assertNotIn(SECRET_TEXT, (self.agent / "jev-router.log.jsonl").read_text())
-        self.assertEqual(self.routes(requests=[{}]), [(SOL, "xhigh")])
+        self.assertEqual(self.routes(requests=[{}]), [(SOL, "high")])
 
     def test_only_confirmed_pi_anthropic_subscription_responses_are_quota_evidence(self):
         for scenario, response in [({}, dict(self.quota(), provider="openai", model=SOL)),
@@ -328,7 +367,7 @@ class PiRouter(unittest.TestCase):
                                    ({"apiKeyProviders": ["anthropic"]}, self.quota()),
                                    ({"notSubscription": True}, self.quota())]:
             with self.subTest(scenario=scenario, response=response):
-                self.assertEqual(self.routes(**scenario, requests=[{"responses": [response]}]), [(OPUS, "high")])
+                self.assertEqual(self.routes(**scenario, requests=[{"responses": [response]}]), [(OPUS, "medium")])
         self.assertFalse((self.agent / "jev-claude-quota.json").exists())
 
     def test_invalid_usage_values_are_not_evidence(self):
@@ -336,7 +375,7 @@ class PiRouter(unittest.TestCase):
             with self.subTest(value=value):
                 q = self.quota()
                 q["headers"]["anthropic-ratelimit-unified-5h-utilization"] = value
-                self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(OPUS, "high")])
+                self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(OPUS, "medium")])
         self.assertFalse((self.agent / "jev-claude-quota.json").exists())
 
     def test_a_detour_never_uses_api_keys_or_falls_back_to_claude_if_sol_is_unavailable(self):
@@ -348,7 +387,7 @@ class PiRouter(unittest.TestCase):
     def test_an_unknown_reset_stays_on_sol_and_a_lost_cache_is_not_recovery(self):
         self.assertEqual(self.routes(chain=True, requests=[
             {"responses": [self.quota(reset=None)]}, {"now": 1_900_000_000_000},
-        ]), [(SOL, "xhigh"), (SOL, "xhigh")])
+        ]), [(SOL, "high"), (SOL, "high")])
         (self.agent / "jev-claude-quota.json").unlink()
         state = {"tier": "strong", "effort": "max", "level": "deep",
                  "claude": {"tier": "peak", "effort": "high", "level": "deep", "below": 0}}
@@ -366,7 +405,7 @@ class PiRouter(unittest.TestCase):
                          json.dumps({"source": "pi-anthropic-subscription-v1", "windows": {"5h": {"used": 1, "at": 1_800_000_001_000}}})):
             with self.subTest(contents=contents):
                 cache.write_text(contents)
-                self.assertEqual(self.routes(requests=[{}]), [(OPUS, "high")])
+                self.assertEqual(self.routes(requests=[{}]), [(OPUS, "medium")])
 
     def test_quota_overrides_claude_names_and_still_works_without_the_classifier(self):
         self.assertEqual(self.routes(noClassifier=True, requests=[{"user": "fable max で", "responses": [self.quota()]}]),
@@ -379,7 +418,7 @@ class PiRouter(unittest.TestCase):
             {"reason": "continuation", "previous": prev},
             {"reason": "retry", "failed": dict(prev, message={"stopReason": "error", "errorMessage": "401 unauthorized"})},
             {"reason": "retry", "failed": dict(prev, message={"stopReason": "error", "errorMessage": "overloaded"})},
-        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high"), (OPUS, "high")])
+        ]), [(SOL, "high"), (SOL, "high"), (OPUS, "high"), (OPUS, "high")])  # failed retries keep their model
 
     def test_a_confirmed_subscription_limit_can_divert_a_native_retry_but_generic_429_cannot(self):
         def failed(message):
@@ -388,7 +427,7 @@ class PiRouter(unittest.TestCase):
         self.assertEqual(self.routes(requests=[
             {"reason": "retry", "failed": failed("429 rate_limit_error: too many requests")},
             {"reason": "retry", "failed": failed("429 usage limit reached. Try again later.")},
-        ]), [(OPUS, "high"), (SOL, "xhigh")])
+        ]), [(OPUS, "high"), (SOL, "high")])
         for message in ("401 unauthorized: usage limit reached", "billing: usage limit reached", "permission denied",
                         "Safety policy denied", "cancelled", "overloaded", "429 rate_limit_error"):
             with self.subTest(message=message):
@@ -409,7 +448,68 @@ class PiRouter(unittest.TestCase):
         self.assertNotIn(SECRET_TEXT, log)
         entry = json.loads(log.splitlines()[-1])
         self.assertEqual((entry["tier"], entry["effort"], entry["level"], entry["from"], entry["source"], entry["score"]),
-                         ("default", "high", "standard", "light", "classifier", 1.0))
+                         ("default", "medium", "standard", "light", "classifier", 1.0))
+
+
+def load_radar():
+    import importlib.machinery, importlib.util
+    path = str(ROOT / "home/dot_local/bin/executable_model-radar")
+    loader = importlib.machinery.SourceFileLoader("model_radar", path)
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader("model_radar", loader))
+    loader.exec_module(module)
+    module.catalog = lambda: {"claude-opus-5-5", "gpt-6.1-sol"}  # never start Pi from a test
+    return module
+
+
+def aa_row(slug, name, score, cost=1.0, seconds=10.0):
+    return {"slug": slug, "name": name, "release_date": "2026-09-22",
+            "evaluations": {"artificial_analysis_intelligence_index": score},
+            "artificial_analysis_intelligence_index_cost": {"cost_per_task": {"total_cost": cost}},
+            "performance": {"median_end_to_end_response_time_seconds": seconds},
+            "pricing": {"price_1m_input_tokens": 4, "price_1m_output_tokens": 20, "price_1m_cache_write_tokens": 5}}
+
+
+class ModelRadar(unittest.TestCase):
+    """model-radar turns AA's answer into the snapshot jev-router.ts reads, with no network in the test."""
+
+    def test_aa_slugs_become_pi_ids_and_efforts_and_only_the_newest_version_stays(self):
+        radar = load_radar()
+        snap = radar.build([
+            aa_row("claude-opus-5-5-medium", "Claude Opus 5.5 (Medium, Default Fallback)", 48.2, 2.45),
+            aa_row("claude-opus-5-5", "Claude Opus 5.5 (Max, Default Fallback)", 59.1, 10.04),
+            aa_row("claude-opus-5", "Claude Opus 5 (Max)", 50.0),
+            aa_row("gpt-6-1-sol-xhigh", "GPT-6.1 Sol (Xhigh)", 52.5, 0.76),
+            aa_row("gpt-6-1-terra-non-reasoning", "GPT-6.1 Terra (Non-reasoning)", 30.5),
+            aa_row("gpt-6-sol-daybreak-blue", "GPT-6 Sol (Daybreak Blue, max)", 40.0),
+            aa_row("gemini-4-carbon", "Gemini 4 Carbon (High)", 60.0),
+        ], "2026-11-15T00:00:00+00:00")
+        self.assertEqual(sorted(snap["models"]), ["claude-opus-5-5", "gpt-6.1-sol"])
+        self.assertEqual(snap["models"]["claude-opus-5-5"]["efforts"],
+                         {"medium": {"score": 48.2, "cost": 2.45, "seconds": 10.0}, "max": {"score": 59.1, "cost": 10.04, "seconds": 10.0}})
+        self.assertEqual(snap["models"]["gpt-6.1-sol"]["in_pi"], True)
+        self.assertEqual(snap["models"]["claude-opus-5-5"]["price"]["cache_write"], 5)
+
+    def test_the_report_names_what_jev_auto_picks_and_matches_the_router(self):
+        radar = load_radar()
+        snap = {"source": "test", "fetched_at": "2026-11-15", "models": {
+            mid: {"name": mid, "provider": "openai" if mid.startswith("gpt") else "anthropic", "in_pi": True,
+                  "efforts": {e: {"score": TIERS["scores"][mid][e], "cost": TIERS["costs"][mid][e], "seconds": 10}
+                              for e in TIERS["scores"][mid]}} for mid in TIERS["scores"]}}
+        picks = {lv: radar.jev_choice(snap, TIERS, lv) for lv in radar.LEVELS}
+        self.assertEqual(picks, {"light": (HAIKU, "high"), "standard": (OPUS, "medium"), "hard": (FABLE, "low"),
+                                 "deep": (FABLE, "high"), "critical": (FABLE, "max")})
+        page = radar.report(snap, TIERS)
+        self.assertIn("jev/auto の選び方", page)
+        self.assertIn("<svg", page)
+        # The router, at the start of a conversation, picks the same (scores 0.2, 1, 2, 3, 3.9 are the five levels).
+        with tempfile.TemporaryDirectory() as tmp:
+            case = PiRouter("test_registers_jev_auto_only_with_tier_data")
+            case.setUp()
+            try:
+                got = [case.routes(rating={"score": sc}, requests=[{}])[0] for sc in (0.2, 1.0, 2.0, 3.0, 3.9)]
+            finally:
+                case.doCleanups()
+        self.assertEqual(got, [picks[lv] for lv in radar.LEVELS])
 
 
 @unittest.skipUnless(shutil.which("chezmoi") or os.environ.get("CI"), "chezmoi が必要")
