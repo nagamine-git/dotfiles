@@ -36,8 +36,15 @@
  *    Without the classifier the name alone decides, and Fable by name is critical.
  * 5. No classifier (no key, timeout, error): the tier and effort in use, or default.
  *
- * Tool follow-ups and retries stay on the model that handled the turn (prompt cache, thinking signatures),
- * and a retry never moves to another model. Requests outside the loop (compaction) use default.
+ * 6. Claude quota (owner-approved 2026-11-15): at >=95% in either observed 5h/7d window, divert Claude
+ *    to Sol's subscription. Observe only this Pi's confirmed Anthropic subscription response headers;
+ *    never substitute Claude Code/Codex CLI quota or enable paid API auth. Keep the task's intended level
+ *    for effort selection and recovery. Missing headers or elapsed cache age do not end a detour: every
+ *    high window must reset or report a newer low value. Resume normal routing on a new user turn.
+ *
+ * Tool follow-ups and retries normally stay on the model that handled the turn (cache, thinking signatures).
+ * Quota may divert a tool follow-up or an explicit subscription-cap retry, never an arbitrary failure,
+ * auth/safety stop, cancellation or a Sol failure. No custom retry loop. Compaction also respects quota.
  * The virtual thinking level is a bias: low never uses the peak model, max lowers every cut by MAX_SHIFT.
  * Decisions (tier, effort, level, source, score, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
  * The TypeSafe key is read with op-agent only for a classifier call and never enters process.env.
@@ -52,6 +59,8 @@ const HOME_DIR = os.homedir();
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(HOME_DIR, ".pi/agent");
 const TIERS_FILE = path.join(AGENT_DIR, "model-tiers.json");
 const LOG = path.join(AGENT_DIR, "jev-router.log.jsonl");
+const QUOTA_FILE = path.join(AGENT_DIR, "jev-claude-quota.json");
+const QUOTA_THRESHOLD = 0.95; // Owner's cutoff (2026-11-15), inclusive; not a classifier decision.
 const TYPESAFE_REF_FILE = path.join(HOME_DIR, ".config/agents/model-typesafe.env");
 const TYPESAFE_REF = /^TYPESAFE_API_KEY=(?:"(op:\/\/[^"]+)"|(op:\/\/\S+))\s*$/m;
 const OP_AGENT = path.join(HOME_DIR, ".local/bin/op-agent");
@@ -73,7 +82,9 @@ type Level = (typeof LEVELS)[number];
 type TierSpec = { provider: string; id: string; thinking: string };
 type Scores = Record<string, Record<string, number | null>>;
 type Data = Record<Tier, TierSpec> & { scores?: Scores };
-type State = { tier: Tier; effort: string; level?: Level; below?: number };
+type Plan = { tier: Tier; effort: string; level?: Level; below?: number };
+// Keep the intended Claude route while physically on Sol, so a go-ahead after recovery can resume Fable.
+type State = Plan & { claude?: Plan };
 const TIER_NAMES: Tier[] = ["default", "strong", "peak", "light"];
 const NAMES: Record<Tier, string> = { default: "既定", strong: "強め", peak: "ここぞ", light: "軽量" };
 /** The tier a level belongs to. */
@@ -279,6 +290,104 @@ export function effortFor(data: Data, tier: Tier, level: Level | undefined): str
   return known.find((e) => (n.above ? score(e) > n.score : score(e) >= n.score)) ?? known.find((e) => score(e) === best)!;
 }
 
+type QuotaWindow = { used: number; at: number; reset?: number };
+type Windows = Record<string, QuotaWindow>;
+const QUOTA_WINDOWS = ["5h", "7d"];
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** Consult the registry's effective auth, not auth.json or a CLI's unrelated quota cache. */
+function subscription(ctx: any, m: any): boolean {
+  return Boolean(m && ctx.modelRegistry.isUsingOAuth?.(m) === true
+    && ctx.modelRegistry.getProvider?.(m.provider)?.auth?.oauth?.isSubscription === true);
+}
+
+/** Only explicit subscription-cap errors qualify. A 429, overload, auth/billing/safety error never does. */
+function usageLimit(message: any): boolean {
+  const error = message?.errorMessage;
+  return message?.stopReason === "error" && typeof error === "string"
+    && !/auth|credential|billing|budget|payment|permission|forbidden|safety|policy|cancel|abort/i.test(error)
+    && /(?:usage|weekly|monthly) limit (?:reached|exceeded)|you['’]ve (?:hit|reached) your (?:usage |weekly )?limit/i.test(error);
+}
+
+/** Only this Pi's confirmed Anthropic subscription responses may update this cache. Missing windows
+ * never mean zero. A high observation stays latched until its announced reset or a newer low reading;
+ * age alone is not recovery. A cap without a reset stays latched until both windows report low again.
+ * No probes, timers, auth files, raw headers, messages or credentials are stored. */
+class ClaudeQuota {
+  private windows: Windows = {};
+
+  private read() {
+    try {
+      if (fs.statSync(QUOTA_FILE).size > 16_384) return;
+      const d = JSON.parse(fs.readFileSync(QUOTA_FILE, "utf8"));
+      if (d?.source !== "pi-anthropic-subscription-v1" || !d.windows || typeof d.windows !== "object") return;
+      for (const key of [...QUOTA_WINDOWS, "limit"]) {
+        const w = d.windows[key];
+        if (!w || !finite(w.used) || w.used < 0 || w.used > 1 || !finite(w.at) || w.at <= 0 || w.at > Date.now()
+          || (w.reset !== undefined && (!finite(w.reset) || w.reset <= 0))) continue;
+        if (!this.windows[key] || w.at >= this.windows[key].at) {
+          this.windows[key] = { used: w.used, at: w.at, ...(w.reset !== undefined ? { reset: w.reset } : {}) };
+        }
+      }
+    } catch { /* unavailable cache: do not erase an in-memory high observation */ }
+  }
+
+  private save() {
+    const tmp = `${QUOTA_FILE}.${process.pid}.${Date.now()}.tmp`;
+    try {
+      fs.writeFileSync(tmp, JSON.stringify({ source: "pi-anthropic-subscription-v1", windows: this.windows }) + "\n", { mode: 0o600 });
+      fs.renameSync(tmp, QUOTA_FILE);
+    } catch { /* routing still uses the in-memory observation */ }
+    finally { try { fs.unlinkSync(tmp); } catch { /* already renamed or never created */ } }
+  }
+
+  parse(headers: Record<string, string>): Windows {
+    const windows: Windows = {};
+    for (const key of QUOTA_WINDOWS) {
+      const prefix = `anthropic-ratelimit-unified-${key}-`;
+      const value = headers[prefix + "utilization"];
+      if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/.test(value)) continue;
+      const used = Number(value);
+      if (!finite(used) || used < 0 || used > 1) continue;
+      const rawReset = headers[prefix + "reset"];
+      const reset = typeof rawReset === "string" && /^\d+$/.test(rawReset) ? Number(rawReset) : undefined;
+      windows[key] = { used, at: Date.now(), ...(finite(reset) && reset > 0 ? { reset } : {}) };
+    }
+    return windows;
+  }
+
+  observe(windows: Windows) {
+    if (!Object.keys(windows).length) return;
+    this.read();
+    for (const [key, w] of Object.entries(windows)) {
+      if (!this.windows[key] || w.at >= this.windows[key].at) this.windows[key] = w;
+    }
+    if (this.windows.limit && QUOTA_WINDOWS.every((key) => windows[key] && windows[key].used < QUOTA_THRESHOLD
+      && windows[key].at >= this.windows.limit.at)) {
+      // A dated tombstone also clears an older cap held by another Pi process.
+      this.windows.limit = { used: 0, at: Date.now() };
+    }
+    this.save();
+  }
+
+  limit() {
+    this.read();
+    // An existing high window already tells us when to resume. Do not replace it with an indefinite cap.
+    if (!this.blocked().length) {
+      this.windows.limit = { used: 1, at: Date.now() };
+      this.save();
+    }
+  }
+
+  blocked(wasAway = false): string[] {
+    this.read();
+    const high = Object.entries(this.windows).filter(([, w]) => w.used >= QUOTA_THRESHOLD
+      && (w.reset === undefined || Date.now() < w.reset * 1000)).map(([key]) => key);
+    // A lost cache on resume is not proof that a detour can end.
+    return high.length ? high : wasAway && !Object.keys(this.windows).length ? ["unknown"] : [];
+  }
+}
+
 export default function (pi: ExtensionAPI) {
   const data = loadTiers();
   if (!data) return; // No tier data on this host: jev/auto is not offered.
@@ -292,6 +401,75 @@ export default function (pi: ExtensionAPI) {
   const tierOf = (m: any): Tier | undefined =>
     TIER_NAMES.find((t) => m && data[t].provider === m.provider && data[t].id === m.id);
 
+  const quota = new ClaudeQuota();
+  let pending: Windows | undefined;
+  pi.on("after_provider_response", (event) => {
+    // This event has no physical-model field. Stage ONLY parsed quota data, then confirm its provider.
+    pending = event.status >= 200 && event.status < 300 ? quota.parse(event.headers) : undefined;
+  });
+  pi.on("provider_stream_event", (event, ctx) => {
+    const windows = pending;
+    pending = undefined;
+    if (event.provider === "anthropic" && windows
+      && subscription(ctx, ctx.modelRegistry.find(event.provider, event.model))) quota.observe(windows);
+  });
+  pi.on("message_end", (event, ctx) => {
+    const m = event.message as any;
+    if (m.role !== "assistant") return;
+    pending = undefined;
+    if (m.provider === "anthropic" && usageLimit(m)
+      && subscription(ctx, ctx.modelRegistry.find(m.provider, m.model))) quota.limit();
+  });
+
+  const claude = TIER_NAMES.map((t) => data[t]).find((t) => t.provider === "anthropic");
+  const blocked = (ctx: any, state?: State) => claude && subscription(ctx, ctx.modelRegistry.find(claude.provider, claude.id))
+    ? quota.blocked(Boolean(state?.claude)) : [];
+  const same = (a: Plan | undefined, b: Plan | undefined): boolean => a === b || Boolean(a && b
+    && a.tier === b.tier && a.effort === b.effort && a.level === b.level && (a.below ?? 0) === (b.below ?? 0));
+
+  function finish(request: any, ctx: any, plan: Plan, source: string, rating: Record<string, unknown> = {}) {
+    const old = request.state as State | undefined;
+    const quotaHigh = blocked(ctx, old);
+    const high = data![plan.tier].provider === "anthropic" ? quotaHigh : [];
+    if (quotaHigh.length && plan.tier === "strong" && !subscription(ctx, model(ctx, "strong", plan.effort)?.model)) {
+      throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no API or Claude fallback)");
+    }
+    let state: State = plan;
+    if (high.length) {
+      const sol = model(ctx, "strong", effortFor(data!, "strong", plan.level ?? "standard"));
+      if (!sol || sol.model.provider !== "openai" || !/^gpt-.*sol$/i.test(sol.model.id) || !subscription(ctx, sol.model)) {
+        // In particular, never turn a missing subscription into an API bill, or bounce back to Claude.
+        throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no API or Claude fallback)");
+      }
+      state = { tier: "strong", effort: sol.thinkingLevel, level: plan.level, below: 0, claude: plan };
+      source += " (Claude quota)";
+    }
+    let route = model(ctx, state.tier, state.effort);
+    if (!route) {
+      if (quotaHigh.length) throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no Claude fallback)");
+      source += ` (${state.tier} unavailable)`;
+      state = { tier: "default", effort: effortFor(data!, "default", plan.level ?? "standard"), level: plan.level, below: 0 };
+      route = model(ctx, state.tier, state.effort);
+      if (!route) throw new Error("jev/auto: default model has no credentials");
+    }
+    log({ tier: state.tier, effort: state.effort, level: state.level ?? null, from: old?.tier ?? null,
+      source, ...rating, selector: request.thinkingLevel, reason: request.reason,
+      ...(high.length ? { quota: high, intended: plan.tier } : {}) });
+    if (ctx.hasUI && (old?.tier !== state.tier || old?.effort !== state.effort || Boolean(old?.claude) !== Boolean(state.claude))) {
+      ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[state.tier]} ${state.effort}${state.claude ? " (Claude枠退避)" : ""}`);
+      if (state.claude && !old?.claude) {
+        const quality = state.level && rank(state.level) >= rank("deep") ? " 深い判断は Fable 復帰後の再確認を推奨します。" : "";
+        ctx.ui?.notify?.(`jev/auto: Claude の利用枠 (${high.join(", ")}) により ${data!.strong.id} へ退避します。${quality}`, "warning");
+      } else if (old?.claude && !state.claude) {
+        ctx.ui?.notify?.("jev/auto: Claude のリセット時刻または新しい利用率を確認し、通常の振り分けに戻ります。", "info");
+      } else if (state.tier === "peak" && old?.tier !== "peak") {
+        ctx.ui?.notify?.(`jev/auto: ${data!.peak.id} (${state.effort}) に上げます (${source})`, "info");
+      }
+    }
+    if (request.reason === "direct") return route;
+    return same(old, state) && same(old?.claude, state.claude) ? route : { ...route, state };
+  }
+
   pi.registerVirtualModel<State>({
     provider: "jev",
     id: "auto",
@@ -302,11 +480,26 @@ export default function (pi: ExtensionAPI) {
     async route(request: any, ctx: any) {
       const fallback = model(ctx, "default", data.default.thinking);
       if (!fallback) throw new Error(`jev/auto: ${data.default.provider}/${data.default.id} has no credentials`);
-      if (request.reason === "direct") return fallback;
+      if (request.reason === "direct") {
+        return blocked(ctx).length ? finish(request, ctx, { tier: "default", effort: data.default.thinking, level: "standard" }, "direct") : fallback;
+      }
       const sticky = request.reason === "retry" ? request.failed ?? request.previous : request.previous;
-      if (request.reason !== "user" && sticky) return { model: sticky.model, thinkingLevel: sticky.thinkingLevel };
+      if (request.reason !== "user" && sticky) {
+        const cap = request.reason === "retry" && sticky.model.provider === "anthropic"
+          && subscription(ctx, sticky.model) && usageLimit(sticky.message);
+        if (cap) quota.limit();
+        // Arbitrary failed retries (including auth/safety/cancellation) NEVER change provider.
+        // Sol continuations also stay on Sol, even after a reset; return to Claude on a new user turn.
+        if (!request.signal?.aborted && (request.reason !== "retry" || cap)
+          && sticky.model.provider === "anthropic" && blocked(ctx, request.state).length) {
+          const plan = request.state?.claude ?? request.state ?? { tier: tierOf(sticky.model) ?? "default",
+            effort: sticky.thinkingLevel, level: "standard", below: 0 };
+          return finish(request, ctx, plan, cap ? "subscription limit" : "continuation");
+        }
+        return { model: sticky.model, thinkingLevel: sticky.thinkingLevel };
+      }
 
-      const state = request.state as State | undefined;
+      const state = (request.state?.claude ?? request.state) as Plan | undefined;
       // A session that came to jev/auto from a tier's model has its cache there.
       const current = state?.tier ?? tierOf(request.previous?.model);
       const selector = request.thinkingLevel;
@@ -361,25 +554,8 @@ export default function (pi: ExtensionAPI) {
         effort = effortFor(data, tier, level);
         below = 0;
       }
-      let route = model(ctx, tier, effort);
-      if (!route) {
-        source += ` (${tier} unavailable)`;
-        tier = "default";
-        effort = effortFor(data, tier, level ?? "standard");
-        below = 0;
-        route = model(ctx, tier, effort)!;
-      }
       const rating = "why" in r ? {} : { score: r.score, go: r.go, asked: name ? r.asked : undefined, ms: r.ms };
-      log({ tier, effort, level: level ?? null, from: state?.tier ?? null, source, ...rating, selector });
-      const changed = !state || state.tier !== tier || state.effort !== effort || state.level !== level
-        || (state.below ?? 0) !== below;
-      if (ctx.hasUI && (state?.tier !== tier || state?.effort !== effort)) {
-        ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[tier]} ${effort}`);
-        if (tier === "peak" && state?.tier !== "peak") {
-          ctx.ui?.notify?.(`jev/auto: ${data.peak.id} (${effort}) に上げます (${source})`, "info");
-        }
-      }
-      return changed ? { ...route, state: { tier, effort, ...(level ? { level } : {}), below } } : route;
+      return finish(request, ctx, { tier, effort, ...(level ? { level } : {}), below }, source, rating);
     },
   });
 }

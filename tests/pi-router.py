@@ -33,15 +33,21 @@ SECRET_TEXT = "SYNTHETIC-PRIVATE-PROMPT"
 OPUS, FABLE, HAIKU, SOL = "claude-opus-5-5", "claude-fable-5-2", "claude-haiku-5-5", "gpt-6.1-sol"
 HARNESS = r'''
 const s = JSON.parse(process.argv[2]);
-const virtual = [], notices = [], statuses = [], classified = [];
-const pi = { registerVirtualModel: (d) => virtual.push(d) };
+const virtual = [], notices = [], statuses = [], classified = [], handlers = {};
+const pi = { registerVirtualModel: (d) => virtual.push(d),
+  on: (name, fn) => { (handlers[name] ??= []).push(fn); } };
 let request;
+let clock = s.now ?? 1_800_000_000_000;
+Date.now = () => clock;
 const ctx = {
   hasUI: true,
   ui: {notify: (m) => notices.push(m), setStatus: (k, v) => statuses.push([k, v])},
   modelRegistry: {
     find: (provider, id) => ({provider, id}),
     hasConfiguredAuth: (m) => !(s.noAuth ?? []).includes(m.id),
+    isUsingOAuth: (m) => !(s.apiKeyProviders ?? []).includes(m.provider),
+    getProvider: (provider) => ({auth: {oauth: {isSubscription: !s.notSubscription
+      && !(s.notSubscriptionProviders ?? []).includes(provider)}}}),
     findOfType: s.noClassifier ? undefined : () => ({id: "jev-latest"}),
     classify: async (model, input, options) => {
       classified.push({state: input.state, questions: Object.keys(input.questions),
@@ -61,6 +67,14 @@ const out = {registered: virtual.map((v) => `${v.provider}/${v.id}`), notices, s
 let state, previous;
 for (const r of s.requests ?? []) {
   request = r;
+  if (r.now !== undefined) clock = r.now;
+  for (const response of r.responses ?? []) {
+    for (const fn of handlers.after_provider_response ?? []) await fn({status: response.status ?? 200, headers: response.headers}, ctx);
+    if (response.stream !== false) {
+      for (const fn of handlers.provider_stream_event ?? []) await fn({provider: response.provider ?? "anthropic",
+        model: response.model ?? "claude-opus-5-5"}, ctx);
+    }
+  }
   const messages = [{role: "user", content: [{type: "text", text: "hi"}]},
                     {role: "assistant", content: [{type: "text", text: r.assistant ?? "previous answer"}]},
                     {role: "user", content: [{type: "text", text: r.user ?? "hi"}]}];
@@ -257,6 +271,131 @@ class PiRouter(unittest.TestCase):
         self.assertEqual(out["routes"][0], {"id": FABLE, "thinking": "max",
                                             "state": {"tier": "peak", "effort": "max", "level": "critical", "below": 0}})
         self.assertTrue(any(FABLE in n for n in out["notices"]))
+
+    @staticmethod
+    def quota(used=0.95, window="5h", reset=1_800_003_600):
+        return {"headers": {f"anthropic-ratelimit-unified-{window}-utilization": str(used),
+                            f"anthropic-ratelimit-unified-{window}-reset": str(reset)}}
+
+    def test_95_percent_in_either_claude_window_diverts_to_subscription_sol(self):
+        for window in ("5h", "7d"):
+            for used, expected in ((0.94999, OPUS), (0.95, SOL), (1.0, SOL)):
+                with self.subTest(window=window, used=used):
+                    (self.agent / "jev-claude-quota.json").unlink(missing_ok=True)
+                    self.assertEqual(self.routes(requests=[{"responses": [self.quota(used, window)]}]),
+                                     [(expected, "xhigh" if expected == SOL else "high")])
+
+    def test_quota_keeps_task_depth_and_restores_fable_after_reset_on_a_new_user_message(self):
+        out = self.run_router(chain=True, requests=[
+            {"rating": {"score": 3.9}, "responses": [self.quota()]},
+            {"rating": {"score": 3.0}},
+            {"reason": "continuation", "now": 1_800_003_601_000},
+            {"user": "進めて", "rating": {"go": 0.9}},
+        ])["routes"]
+        self.assertEqual([(r["id"], r["thinking"]) for r in out],
+                         [(SOL, "max"), (SOL, "max"), (SOL, "max"), (FABLE, "high")])
+        self.assertEqual(out[0]["state"]["claude"]["tier"], "peak")
+        self.assertEqual(out[0]["state"]["level"], "critical")
+        self.assertNotIn("claude", out[-1]["state"])
+
+    def test_missing_or_old_headers_do_not_end_a_detour_and_all_high_windows_must_reset(self):
+        self.assertEqual(self.routes(chain=True, requests=[
+            {"responses": [self.quota(window="5h"), self.quota(window="7d", reset=1_800_007_200)]},
+            {"now": 1_800_001_000_000, "responses": [{"headers": {}}]},  # more than five minutes, not recovery
+            {"now": 1_800_003_601_000},  # 5h reset, 7d still high
+            {"now": 1_800_007_201_000},
+        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high")])
+
+    def test_new_low_headers_replace_only_the_window_they_report(self):
+        self.assertEqual(self.routes(chain=True, requests=[
+            {"responses": [self.quota(window="5h"), self.quota(window="7d")]},
+            {"now": 1_800_000_001_000, "responses": [self.quota(0.2, "5h")]},
+            {"now": 1_800_000_002_000, "responses": [self.quota(0.3, "7d")]},
+        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high")])
+
+    def test_quota_survives_restart_and_never_stores_raw_headers(self):
+        q = self.quota()
+        q["headers"]["authorization"] = SECRET_TEXT
+        self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(SOL, "xhigh")])
+        cache = (self.agent / "jev-claude-quota.json").read_text()
+        self.assertNotIn(SECRET_TEXT, cache)
+        self.assertNotIn(SECRET_TEXT, (self.agent / "jev-router.log.jsonl").read_text())
+        self.assertEqual(self.routes(requests=[{}]), [(SOL, "xhigh")])
+
+    def test_only_confirmed_pi_anthropic_subscription_responses_are_quota_evidence(self):
+        for scenario, response in [({}, dict(self.quota(), provider="openai", model=SOL)),
+                                   ({}, dict(self.quota(), stream=False)),
+                                   ({"apiKeyProviders": ["anthropic"]}, self.quota()),
+                                   ({"notSubscription": True}, self.quota())]:
+            with self.subTest(scenario=scenario, response=response):
+                self.assertEqual(self.routes(**scenario, requests=[{"responses": [response]}]), [(OPUS, "high")])
+        self.assertFalse((self.agent / "jev-claude-quota.json").exists())
+
+    def test_invalid_usage_values_are_not_evidence(self):
+        for value in ("", " ", "NaN", "Infinity", "95", "-0.1", "1.01", "0x1"):
+            with self.subTest(value=value):
+                q = self.quota()
+                q["headers"]["anthropic-ratelimit-unified-5h-utilization"] = value
+                self.assertEqual(self.routes(requests=[{"responses": [q]}]), [(OPUS, "high")])
+        self.assertFalse((self.agent / "jev-claude-quota.json").exists())
+
+    def test_a_detour_never_uses_api_keys_or_falls_back_to_claude_if_sol_is_unavailable(self):
+        for scenario in ({"apiKeyProviders": ["openai"]}, {"noAuth": [SOL]}, {"notSubscriptionProviders": ["openai"]}):
+            with self.subTest(**scenario):
+                route = self.run_router(**scenario, requests=[{"responses": [self.quota()]}])["routes"][0]
+                self.assertIn("Sol subscription", route["error"])
+
+    def test_an_unknown_reset_stays_on_sol_and_a_lost_cache_is_not_recovery(self):
+        self.assertEqual(self.routes(chain=True, requests=[
+            {"responses": [self.quota(reset=None)]}, {"now": 1_900_000_000_000},
+        ]), [(SOL, "xhigh"), (SOL, "xhigh")])
+        (self.agent / "jev-claude-quota.json").unlink()
+        state = {"tier": "strong", "effort": "max", "level": "deep",
+                 "claude": {"tier": "peak", "effort": "high", "level": "deep", "below": 0}}
+        self.assertEqual(self.routes(noClassifier=True, requests=[{"state": state}]), [(SOL, "max")])
+
+    def test_a_named_sol_cannot_turn_a_quota_detour_into_paid_api_usage(self):
+        route = self.run_router(apiKeyProviders=["openai"], requests=[
+            {"user": "sol で", "responses": [self.quota()]},
+        ])["routes"][0]
+        self.assertIn("Sol subscription", route["error"])
+
+    def test_unknown_or_future_cache_is_not_a_measured_quota(self):
+        cache = self.agent / "jev-claude-quota.json"
+        for contents in ("not JSON", json.dumps({"source": "claude-code", "windows": {"5h": {"used": 1, "at": 1_800_000_000_000}}}),
+                         json.dumps({"source": "pi-anthropic-subscription-v1", "windows": {"5h": {"used": 1, "at": 1_800_000_001_000}}})):
+            with self.subTest(contents=contents):
+                cache.write_text(contents)
+                self.assertEqual(self.routes(requests=[{}]), [(OPUS, "high")])
+
+    def test_quota_overrides_claude_names_and_still_works_without_the_classifier(self):
+        self.assertEqual(self.routes(noClassifier=True, requests=[{"user": "fable max で", "responses": [self.quota()]}]),
+                         [(SOL, "max")])
+
+    def test_quota_diverts_compaction_and_tool_follow_ups_but_not_arbitrary_failed_retries(self):
+        prev = {"model": {"provider": "anthropic", "id": OPUS}, "thinkingLevel": "high"}
+        self.assertEqual(self.routes(requests=[
+            {"reason": "direct", "responses": [self.quota()]},
+            {"reason": "continuation", "previous": prev},
+            {"reason": "retry", "failed": dict(prev, message={"stopReason": "error", "errorMessage": "401 unauthorized"})},
+            {"reason": "retry", "failed": dict(prev, message={"stopReason": "error", "errorMessage": "overloaded"})},
+        ]), [(SOL, "xhigh"), (SOL, "xhigh"), (OPUS, "high"), (OPUS, "high")])
+
+    def test_a_confirmed_subscription_limit_can_divert_a_native_retry_but_generic_429_cannot(self):
+        def failed(message):
+            return {"model": {"provider": "anthropic", "id": OPUS}, "thinkingLevel": "high",
+                    "message": {"stopReason": "error", "errorMessage": message}}
+        self.assertEqual(self.routes(requests=[
+            {"reason": "retry", "failed": failed("429 rate_limit_error: too many requests")},
+            {"reason": "retry", "failed": failed("429 usage limit reached. Try again later.")},
+        ]), [(OPUS, "high"), (SOL, "xhigh")])
+        for message in ("401 unauthorized: usage limit reached", "billing: usage limit reached", "permission denied",
+                        "Safety policy denied", "cancelled", "overloaded", "429 rate_limit_error"):
+            with self.subTest(message=message):
+                self.assertEqual(self.routes(requests=[{"reason": "retry", "failed": failed(message)}]), [(OPUS, "high")])
+        self.assertEqual(self.routes(requests=[{"reason": "retry", "failed": {
+            "model": {"provider": "openai", "id": SOL}, "thinkingLevel": "max",
+            "message": {"stopReason": "error", "errorMessage": "usage limit reached"}}}]), [(SOL, "max")])
 
     def test_classifier_sees_bounded_text_and_the_log_never_holds_it(self):
         long_text = SECRET_TEXT + "x" * 20_000
