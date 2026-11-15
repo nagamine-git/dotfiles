@@ -141,15 +141,23 @@ class PiLoop(unittest.TestCase):
 
     def test_abort_approval_tool_error_and_session_changes_stop(self):
         cases = [("agent_settled", {"aborted": True}), ("ui_prompt_start", {}),
-                 ("tool_execution_end", {"isError": True}), ("session_tree", {}),
-                 ("session_shutdown", {"reason": "reload"}), ("model_select", {}),
-                 ("thinking_level_select", {})]
+                 ("session_tree", {}), ("session_shutdown", {"reason": "reload"})]
         for event, data in cases:
             with self.subTest(event=event):
                 seen = self.probe([{"command": "start"}, {"event": event, "data": data},
                                    {"event": "agent_settled", "data": {"aborted": False}}, {"fire": True}])
                 self.assertEqual(seen["messages"], [])
                 self.assertEqual(seen["states"][-1]["timers"], 0)
+
+    def test_model_switch_and_tool_errors_keep_the_loop_running(self):
+        # Pi's auto router switches the model on each owner message, and a failed grep is an error:
+        # neither may silently end the owner's loop.
+        for event, data in (("model_select", {}), ("thinking_level_select", {}),
+                            ("tool_execution_end", {"isError": True})):
+            with self.subTest(event=event):
+                seen = self.probe([{"command": "start"}, {"fire": True}, {"event": event, "data": data},
+                                   {"event": "agent_settled", "data": {"aborted": False}}])
+                self.assertEqual(seen["states"][-1]["delays"], [600000])
 
     def test_provider_error_aborts_and_never_resends(self):
         seen = self.probe([{"command": "start"}, {"event": "message_end", "data": {

@@ -181,12 +181,9 @@ export default function (pi: ExtensionAPI) {
       void ctx.abort(); // Cancel core retry/backoff too; no model or harness fallback.
     }
   });
-  pi.on("tool_execution_end", (event, ctx) => {
-    if (active && event.isError) stop(ctx, "tool failed or was denied; review before restarting");
-  });
+  // Tool errors (a failed grep, a denied call) are reported by the model in its turn; they do not end the loop.
   pi.on("ui_prompt_start", (_event, ctx) => stop(ctx, "owner interaction required"));
   pi.on("session_tree", (_event, ctx) => stop(ctx, "branch changed"));
-  pi.on("model_select", (_event, ctx) => stop(ctx, "model changed"));
-  pi.on("thinking_level_select", (_event, ctx) => stop(ctx, "thinking level changed"));
+  // Pi's auto router changes the model on each owner message: the loop keeps running with the current model.
   pi.on("session_shutdown", (_event, ctx) => stop(ctx, "session closed or reloaded"));
 }
