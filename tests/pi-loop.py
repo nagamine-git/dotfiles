@@ -159,12 +159,30 @@ class PiLoop(unittest.TestCase):
                                    {"event": "agent_settled", "data": {"aborted": False}}])
                 self.assertEqual(seen["states"][-1]["delays"], [600000])
 
-    def test_provider_error_aborts_and_never_resends(self):
-        seen = self.probe([{"command": "start"}, {"event": "message_end", "data": {
-            "message": {"role": "assistant", "stopReason": "error"}}},
-            {"event": "agent_settled", "data": {"aborted": False}}, {"fire": True}])
-        self.assertEqual(seen["aborts"], 1)
-        self.assertEqual(seen["messages"], [])
+    def test_a_hard_stop_aborts_and_never_resends(self):
+        for message in ("429 usage limit reached", "Failed to authenticate: login expired", "Safety policy denied",
+                        "billing: quota exceeded"):
+            with self.subTest(message=message):
+                seen = self.probe([{"command": "start"}, {"event": "message_end", "data": {
+                    "message": {"role": "assistant", "stopReason": "error", "errorMessage": message}}},
+                    {"event": "agent_settled", "data": {"aborted": False}}, {"fire": True}])
+                self.assertEqual(seen["aborts"], 1)
+                self.assertEqual(seen["messages"], [])
+        seen = self.probe([{"command": "start"}, {"event": "message_end", "data": {"message": {"role": "assistant", "stopReason": "aborted"}}},
+                           {"fire": True}])
+        self.assertEqual((seen["aborts"], seen["messages"]), (1, []))
+
+    def test_a_soft_error_keeps_the_loop_for_the_next_tick_twice_in_a_row(self):
+        soft = {"event": "message_end", "data": {"message": {"role": "assistant", "stopReason": "error",
+                                                             "errorMessage": "jev/auto: openai/gpt-6.1-sol is not available"}}}
+        settle = {"event": "agent_settled", "data": {"aborted": False}}
+        ok = {"event": "message_end", "data": {"message": {"role": "assistant", "stopReason": "stop"}}}
+        seen = self.probe([{"command": "start"}, soft, settle, {"fire": True}, soft, settle, {"fire": True}])
+        self.assertEqual((seen["aborts"], len(seen["messages"])), (0, 2))
+        seen = self.probe([{"command": "start"}, soft, settle, soft, settle, soft, settle, {"fire": True}])
+        self.assertEqual((seen["aborts"], seen["messages"]), (1, []))  # the third in a row stops it
+        seen = self.probe([{"command": "start"}, soft, settle, soft, ok, settle, soft, settle, {"fire": True}])
+        self.assertEqual((seen["aborts"], len(seen["messages"])), (0, 1))  # a good answer resets the count
 
     def test_readonly_tool_can_only_stop_not_start(self):
         seen = self.probe([{"command": "start"}, {"tool": "stop"}, {"fire": True}])

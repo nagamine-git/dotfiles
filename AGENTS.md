@@ -11,4 +11,4 @@ chezmoi で Linux (`am5-itx` / `fp7-e14`) と macOS の設定を管理する。`
 - デスクトップの動作を変えたら変更前後を確認し、必要なスクリーンショットを添える。差分のレビューは [REVIEW.md](REVIEW.md) に従う。
 - `private_*` は命名・権限管理であり、秘密の保管庫ではない。秘密値をコミットせず、`op://` 参照かローカルの認証を使う。
 
-コミットは Conventional Commits。PR には目的・対象パス・OS/ホスト・実行した検証を記す。
+コミットは Conventional Commits。main への commit は、`tests/*.py` を全部実行して通ったら、そのまま `git push` する (force push はしない。本人の承認 2026-11-16: クラウドの定期処理がリモートの main を読むため)。通らなければ push せずに直す。PR には目的・対象パス・OS/ホスト・実行した検証を記す。

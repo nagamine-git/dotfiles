@@ -83,6 +83,15 @@ Claude Code の Claude in Chrome と Codex の Computer Use にあたるもの�
 
 裏で Pi を走らせるときは `--no-session` を付けず、`--session-dir` で記録を残す (成果の集計に入らなくなるため)。
 
+### Pi を止めずに回す仕組み (2026-11-16)
+
+- **auto-reload** (`extensions/auto-reload.ts`): 拡張機能 (`~/.pi/agent/extensions` の 1 段下まで)・`mcp.json`・`model-tiers.json`・`AGENTS.md` が、セッションを読み込んだあとに変わっていれば、対話画面で手が空いたとき (agent_settled) に `/reload` と同じ読み込み直しをする。`settings.json` は Pi 自身が書くので見ない。`pi -p` などの非対話の実行はそのまま終わる。古いセッションが古いルーターのまま利用枠の記録を上書きしていたため。テストは `tests/pi-auto-reload.py`。
+- **/loop の一時的な失敗**: 利用上限・認証・課金・権限・安全上の停止・本人の Escape では今までどおり止める。それ以外 (ルーターや道具の不具合、通信・過負荷) は止めずに次の周期で続け、連続 3 回目で止める。テストは `tests/pi-loop.py`。
+- **agent-claude** (`dot_local/bin`): Pi の delegate が起動する Claude Code。`~/.config/agents/claude-code.env` の参照 (Agents vault の `claude-code-oauth`、`claude setup-token` の長期トークン) が解決できれば `CLAUDE_CODE_OAUTH_TOKEN` を渡し、対話のログインの期限切れで落ちないようにする。無ければ素の `claude`。テストは `tests/agent-wrappers.py`。
+- **Web 検索の予備**: 検索の道具が上限や障害のときは、ログイン済みの Chrome で検索する (Pi の AGENTS.md)。Radius の検索は従量課金なので本人の明示なしに使わない。
+- **自動 push**: このリポジトリの main への commit は、`tests/*.py` が全部通ったら push する (リポジトリの AGENTS.md)。
+- **tower を Pi で**: tower の実装エンジンを `--engine pi` で Pi (jev/auto) に替えられるようにする作業を、別ブランチ (`feat/pi-engine`) で進めている。
+
 ### Pi は委譲前に利用枠を確認する
 
 `extensions/usage-aware.ts` の `usage_status` は、Claude と Codex の利用枠の参考情報を読み取る。任意の `delegate`・`subagent` の追加や並列化の前に確認するよう、Pi に指示を渡す。`/usage` でも同じ情報と、その時点の autocompact 設定を表示できる。フッターの状態は取得時点のもので、アイドル中には更新しない。

@@ -1,6 +1,7 @@
 /**
  * delegate — hand one task from Pi to Claude Code or Codex and return its final answer.
- *   claude  `claude -p <task> --output-format json`: model, effort and permission mode are Claude Code's own settings.
+ *   claude  `claude -p <task> --output-format json` through agent-claude (the long-lived token when it is in the vault, so an
+ *           expired interactive login does not fail the run): model, effort and permission mode are Claude Code's own.
  *           chrome: true adds `--chrome` (Claude in Chrome, the owner's logged-in Chrome; the child works in its own tab
  *           group and window). Off by default, so a task that does not need the browser never opens it.
  *   codex   `codex exec -s workspace-write -C <cwd> -o <file> <task>`: Codex's OS sandbox, no approval prompt
@@ -129,7 +130,7 @@ export default function (pi: ExtensionAPI) {
       try {
         const last = tmp && path.join(tmp, "last-message.md");
         const r = params.harness === "claude"
-          ? await run("claude", ["-p", prompt, "--output-format", "json", ...(params.chrome ? ["--chrome"] : [])], cwd, signal ?? ctx.signal)
+          ? await run("agent-claude", ["-p", prompt, "--output-format", "json", ...(params.chrome ? ["--chrome"] : [])], cwd, signal ?? ctx.signal)
           : await run("codex", ["exec", "-s", "workspace-write", "-C", cwd, "-o", last!, prompt], cwd, signal ?? ctx.signal);
         if (r.error?.code === "ENOENT") return fail(`delegate: ${params.harness} is not on PATH, so it cannot run here`);
         if (r.error) return fail(`delegate: could not start ${params.harness} (${r.error.message})`);

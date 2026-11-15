@@ -39,7 +39,7 @@ console.log(JSON.stringify({ result, ms: Date.now() - started, tool: { ...tools.
 # Records how it was started, then answers like the real CLI would for FAKE_MODE.
 FAKE = '''#!/usr/bin/env python3
 import json, os, sys, time
-name = os.path.basename(sys.argv[0])
+name = os.path.basename(sys.argv[0]).replace("agent-", "")  # agent-claude is the launcher delegate starts
 env = {k: v for k, v in os.environ.items() if k.startswith("HERDR_") or k in ("CLAUDE_NOTIFY_PHONE", "KEEP_ME")}
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps({"name": name, "argv": sys.argv[1:], "cwd": os.getcwd(), "env": env, "pid": os.getpid()}) + "\\n")
@@ -94,7 +94,7 @@ class Delegate(unittest.TestCase):
         shutil.copyfile(EXTENSION, self.work / "delegate.ts")
         (self.work / "run.mjs").write_text(HARNESS)
         self.bin.mkdir()
-        for name in ("claude", "codex"):
+        for name in ("agent-claude", "codex"):
             (self.bin / name).write_text(FAKE)
             (self.bin / name).chmod(0o755)
         (self.cwd / "sub").mkdir(parents=True)
@@ -170,7 +170,7 @@ class Delegate(unittest.TestCase):
         self.assertIn("not json", self.text(out))
 
     def test_missing_harness_or_directory_is_explained(self):
-        (self.bin / "claude").unlink()
+        (self.bin / "agent-claude").unlink()
         out = self.delegate("claude")
         self.assertTrue(out["result"]["isError"])
         self.assertIn("claude is not on PATH", self.text(out))

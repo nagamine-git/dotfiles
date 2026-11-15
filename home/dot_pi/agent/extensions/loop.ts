@@ -1,4 +1,7 @@
-/** Session-local /loop. No subprocesses, gate changes, model routing, or automatic restart. */
+/** Session-local /loop. No subprocesses, gate changes or model routing.
+ * An assistant error stops it when it is a hard stop (a used-up quota, auth, billing, permission, safety, or the
+ * owner's Escape). Any other error (a router or tool-side fault, a network or overload failure) leaves the loop
+ * running: the next tick comes after the interval, at most MAX_SOFT_ERRORS in a row (owner, 2026-11-16). */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -7,6 +10,8 @@ import { Type } from "typebox";
 
 const DEFAULT_INTERVAL = 10 * 60_000;
 const DEFAULT_TASK = "Continue the user's already approved task, following current repository instructions. Make concrete progress and report what changed, verification, and blockers. Do not treat this extension-authored tick as fresh owner approval.";
+const MAX_SOFT_ERRORS = 2;
+const HARD_STOP = /usage[ _]limit|quota|limit (?:reached|exceeded)|auth|credential|login|billing|payment|budget|permission|forbidden|safety|policy|refus/i;
 const MAX_INTERVAL = 2_147_483_647; // Node's setTimeout upper bound; larger values become 1 ms.
 type Request = {
   version: 1;
@@ -36,6 +41,7 @@ export default function (pi: ExtensionAPI) {
   let ticks = 0;
   let nextAt: string | undefined;
   let reason = "not started";
+  let softErrors = 0;
 
   const state = () => ({ active, intervalMs, ticks, nextAt, reason });
   const show = (ctx: ExtensionContext) => {
@@ -176,10 +182,19 @@ export default function (pi: ExtensionAPI) {
   });
   pi.on("message_end", (event, ctx) => {
     if (!active || event.message.role !== "assistant") return;
-    if (["error", "aborted", "length"].includes(event.message.stopReason)) {
-      stop(ctx, `assistant ${event.message.stopReason}; no automatic resend`);
-      void ctx.abort(); // Cancel core retry/backoff too; no model or harness fallback.
+    const m = event.message as any;
+    if (!["error", "aborted", "length"].includes(m.stopReason)) {
+      softErrors = 0;
+      return;
     }
+    const hard = m.stopReason === "aborted" || HARD_STOP.test(String(m.errorMessage ?? ""));
+    if (hard || ++softErrors > MAX_SOFT_ERRORS) {
+      stop(ctx, `assistant ${m.stopReason}${hard ? "" : ` ${softErrors} times in a row`}; no automatic resend`);
+      void ctx.abort(); // Cancel core retry/backoff too; no model or harness fallback.
+      return;
+    }
+    reason = `assistant ${m.stopReason}; the next tick tries again (${softErrors}/${MAX_SOFT_ERRORS})`;
+    show(ctx);
   });
   // Tool errors (a failed grep, a denied call) are reported by the model in its turn; they do not end the loop.
   pi.on("ui_prompt_start", (_event, ctx) => stop(ctx, "owner interaction required"));

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Claude Code for unattended callers (Pi's delegate): with the long-lived token from `claude setup-token`
+# (Agents vault, referenced in ~/.config/agents/claude-code.env) the run does not depend on the interactive login,
+# which expires ("this login reached its time limit", seen 2026-11-14). Without the token: plain `claude`.
+# The token is resolved by op-agent for this process only and never written here, to arguments or to logs.
+set -eu
+env_file="$HOME/.config/agents/claude-code.env"
+if [[ -r "$env_file" ]] && op-agent run --env-file "$env_file" -- true >/dev/null 2>&1; then
+  exec op-agent run --env-file "$env_file" -- env -u OP_SERVICE_ACCOUNT_TOKEN claude "$@"
+fi
+exec claude "$@"
