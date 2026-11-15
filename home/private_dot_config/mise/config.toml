@@ -7,6 +7,8 @@ python = 'latest'
 bun = "latest"
 # エージェントの変更を `hunk diff --watch` で追う差分ビューア (https://hunk.dev)
 hunk = "latest"
+# 編集中のファイル差分をリアルタイム表示 (f でファイル全体表示を切替)
+"github:SoCkEt7/Livediff" = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
