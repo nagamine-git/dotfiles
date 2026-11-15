@@ -15,8 +15,21 @@
  * Tool follow-ups and retries stay on the model that handled the turn (prompt cache, thinking signatures),
  * and a retry never moves to another model. Requests outside the loop (compaction) use default.
  *
+ * Effort (approved by the owner on 2026-11-15) follows Artificial Analysis's Intelligence Index per
+ * model and effort, as model-radar records it in docs/model-radar/_state.json (copied into the tier file
+ * as `scores`). Each kind of message needs a score, and the lowest effort of the chosen model that
+ * reaches it is used (a higher effort costs more per task):
+ *   light     the score of the light tier at its configured effort
+ *   standard  the score of the default tier at its configured effort (the owner's minimum bar);
+ *             STEP more when the classifier gives deep at least HARDER_MIN without reaching peak
+ *   deep      the best score of the peak model (ties: the lower effort)
+ *   continue  the effort already in use
+ * A named tier counts as its kind (peak deep, default standard, light light; strong keeps its effort).
+ * Without a score for the model, the tier's configured effort is used. New scores move the efforts
+ * with no change to this file.
+ *
  * The virtual thinking level is a bias: low never picks peak, max picks peak more readily.
- * Decisions (tier, source, probabilities, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
+ * Decisions (tier, effort, source, probabilities, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
  * The TypeSafe key is read with op-agent only for a classifier call and never enters process.env.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -37,10 +50,16 @@ const USER_MAX = 6_000;
 const CONTEXT_MAX = 1_500;
 const DOWN_MIN = 0.6;
 const PEAK_MIN: Record<string, number> = { high: 0.5, max: 0.35 };
+const HARDER_MIN = 0.25;
+const STEP = 5;
+const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
 type Tier = "default" | "strong" | "peak" | "light";
+type Kind = "light" | "standard" | "harder" | "deep";
 type TierSpec = { provider: string; id: string; thinking: string };
-type State = { tier: Tier };
+type Scores = Record<string, Record<string, number | null>>;
+type Data = Record<Tier, TierSpec> & { scores?: Scores };
+type State = { tier: Tier; effort?: string };
 const TIER_NAMES: Tier[] = ["default", "strong", "peak", "light"];
 const NAMES: Record<Tier, string> = { default: "既定", strong: "強め", peak: "ここぞ", light: "軽量" };
 
@@ -52,7 +71,7 @@ const OVERRIDES: [Tier, RegExp][] = [
   ["light", /\bhaiku\b|軽量(?:モデル)?で/i],
 ];
 
-function loadTiers(): Record<Tier, TierSpec> | undefined {
+function loadTiers(): Data | undefined {
   try {
     const data = JSON.parse(fs.readFileSync(TIERS_FILE, "utf8"));
     return TIER_NAMES.every((t) => data?.[t]?.provider && data?.[t]?.id && data?.[t]?.thinking) ? data : undefined;
@@ -151,16 +170,39 @@ async function rate(ctx: any, userText: string, assistantText: string, current: 
   }
 }
 
-/** Tier for a rating: going up needs PEAK_MIN, going down needs DOWN_MIN; otherwise default (or stay). */
-export function pick(p: Record<string, number>, current: Tier | undefined, level: string): Tier {
+/** Tier and kind for a rating: going up needs PEAK_MIN, going down needs DOWN_MIN; otherwise default.
+ * No kind means "keep going as before" (continue, or an answer with no known choice). */
+export function pick(p: Record<string, number>, current: Tier | undefined, level: string): { tier: Tier; kind?: Kind } {
   const top = Object.entries(p).sort((a, b) => b[1] - a[1])[0]?.[0];
-  if (top === "continue") return current ?? "default";
+  if (top === "continue") return { tier: current ?? "default" };
   const peakMin = PEAK_MIN[level];
-  if (peakMin !== undefined && (p.deep ?? 0) >= peakMin) return "peak";
-  if (top === "light" && (p.light ?? 0) >= DOWN_MIN) return "light";
-  if (top === "light" || top === "standard" || top === "deep") return "default";
-  return current ?? "default";
+  if (peakMin !== undefined && (p.deep ?? 0) >= peakMin) return { tier: "peak", kind: "deep" };
+  if (top === "light" && (p.light ?? 0) >= DOWN_MIN) return { tier: "light", kind: "light" };
+  if (top === "light" || top === "standard" || top === "deep") {
+    return { tier: "default", kind: (p.deep ?? 0) >= HARDER_MIN ? "harder" : "standard" };
+  }
+  return { tier: current ?? "default" };
 }
+
+/** The lowest effort of the tier's model that reaches the kind's score; see the header. */
+export function effortFor(data: Data, tier: Tier, kind: Kind | undefined): string {
+  const spec = data[tier];
+  const own = data.scores?.[spec.id];
+  const known = EFFORTS.filter((e) => typeof own?.[e] === "number");
+  if (!kind || !own || !known.length) return spec.thinking;
+  const score = (e: string) => own[e] as number;
+  if (kind === "deep") {
+    const best = Math.max(...known.map(score));
+    return known.find((e) => score(e) === best)!;
+  }
+  const bar = kind === "light" ? data.light : data.default;
+  const base = data.scores?.[bar.id]?.[bar.thinking];
+  if (typeof base !== "number") return spec.thinking;
+  const need = base + (kind === "harder" ? STEP : 0);
+  return known.find((e) => score(e) >= need) ?? known.reduce((a, b) => (score(b) > score(a) ? b : a));
+}
+
+const KIND_OF: Partial<Record<Tier, Kind>> = { peak: "deep", default: "standard", light: "light" };
 
 export default function (pi: ExtensionAPI) {
   const tiers = loadTiers();
@@ -190,31 +232,35 @@ export default function (pi: ExtensionAPI) {
       const current = request.state?.tier as Tier | undefined;
       const userText = lastText(request.messages, "user");
       let tier: Tier | undefined;
+      let kind: Kind | undefined;
       let source = "override";
       let probabilities: Record<string, number> | undefined;
       let ms: number | undefined;
-      for (const [t, re] of OVERRIDES) if (re.test(userText)) { tier = t; break; }
+      for (const [t, re] of OVERRIDES) if (re.test(userText)) { tier = t; kind = KIND_OF[t]; break; }
       if (!tier) {
         const r = await rate(ctx, userText, lastText(request.messages, "assistant"), current, request.signal);
         if ("why" in r) {
           tier = current ?? "default";
           source = r.why;
         } else {
-          tier = pick(r.probabilities, current, request.thinkingLevel);
+          ({ tier, kind } = pick(r.probabilities, current, request.thinkingLevel));
           source = "classifier";
           probabilities = r.probabilities;
           ms = r.ms;
         }
       }
-      if (tier === "peak" && request.thinkingLevel === "low") tier = "default";
+      if (tier === "peak" && request.thinkingLevel === "low") { tier = "default"; kind = "standard"; }
       let route = model(ctx, tier);
-      if (!route) { source += ` (${tier} unavailable)`; tier = "default"; route = fallback; }
-      log({ tier, from: current ?? null, source, probabilities, ms, level: request.thinkingLevel });
-      if (tier !== current && ctx.hasUI) {
-        ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[tier]}`);
-        if (tier === "peak") ctx.ui?.notify?.(`jev/auto: ${tiers.peak.id} に上げます (${source})`, "info");
+      if (!route) { source += ` (${tier} unavailable)`; tier = "default"; kind ??= "standard"; route = fallback; }
+      // Going on as before keeps the effort in use on the same tier.
+      const effort = !kind && tier === current && request.state?.effort ? request.state.effort : effortFor(tiers, tier, kind);
+      log({ tier, effort, kind: kind ?? null, from: current ?? null, source, probabilities, ms, level: request.thinkingLevel });
+      if ((tier !== current || effort !== request.state?.effort) && ctx.hasUI) {
+        ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[tier]} ${effort}`);
+        if (tier === "peak" && tier !== current) ctx.ui?.notify?.(`jev/auto: ${tiers.peak.id} (${effort}) に上げます (${source})`, "info");
       }
-      return tier === current ? route : { ...route, state: { tier } };
+      const changed = tier !== current || effort !== request.state?.effort;
+      return { ...route, thinkingLevel: effort, ...(changed ? { state: { tier, effort } } : {}) };
     },
   });
 }

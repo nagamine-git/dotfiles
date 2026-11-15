@@ -1,2 +1,23 @@
-{{- /* jev-router.ts が読む 4 段。正本は .chezmoidata/pi.yaml (model-radar が見直す) */ -}}
-{{ dict "default" .pi.models.default "strong" .pi.models.strong "peak" .pi.models.peak "light" .pi.models.light | toPrettyJson }}
+{{- /* jev-router.ts が読む 4 段と、Artificial Analysis の effort 別の点数。
+     段の正本は .chezmoidata/pi.yaml、点数の正本は docs/model-radar/_state.json (どちらも model-radar が見直す)。
+     点数が更新されると、jev/auto が選ぶ effort も変わる。 */ -}}
+{{- $m := .pi.models -}}
+{{- $out := dict "default" $m.default "strong" $m.strong "peak" $m.peak "light" $m.light -}}
+{{- $path := joinPath .chezmoi.sourceDir "../docs/model-radar/_state.json" -}}
+{{- if stat $path -}}
+{{-   $state := include $path | fromJson -}}
+{{-   $intel := $state.intelligence -}}
+{{-   $scores := dict -}}
+{{-   range $t := list "default" "strong" "peak" "light" -}}
+{{-     $id := (index $m $t).id -}}
+{{-     if hasKey $intel $id -}}
+{{-       $e := dict -}}
+{{-       range $k, $v := index $intel $id -}}
+{{-         $e = set $e $k $v.score -}}
+{{-       end -}}
+{{-       $scores = set $scores $id $e -}}
+{{-     end -}}
+{{-   end -}}
+{{-   $out = set (set $out "scores" $scores) "scores_as_of" $state.last_run -}}
+{{- end -}}
+{{ $out | toPrettyJson }}

@@ -21,6 +21,13 @@ TIERS = {
     "strong": {"provider": "openai", "id": "gpt-6.1-sol", "thinking": "max"},
     "peak": {"provider": "anthropic", "id": "claude-fable-5-2", "thinking": "max"},
     "light": {"provider": "anthropic", "id": "claude-haiku-5-5", "thinking": "high"},
+    # Artificial Analysis Intelligence Index per effort (docs/model-radar/_state.json, 2026-11-15)
+    "scores": {
+        "claude-opus-5-5": {"low": 35, "medium": 48, "high": 52, "xhigh": 57, "max": 59},
+        "claude-fable-5-2": {"low": 54, "medium": 56, "high": 62, "xhigh": 62, "max": 65},
+        "claude-haiku-5-5": {"low": 19, "medium": 25, "high": 30, "xhigh": 35, "max": 36},
+        "gpt-6.1-sol": {"low": 35, "medium": 46, "high": 50, "xhigh": 52, "max": 55},
+    },
 }
 SECRET_TEXT = "SYNTHETIC-PRIVATE-PROMPT"
 HARNESS = r'''
@@ -122,14 +129,58 @@ class PiRouter(unittest.TestCase):
 
     def test_peak_keeps_its_thinking_level_and_records_the_tier(self):
         out = self.run_router(p={"deep": 0.9}, requests=[{}])
-        self.assertEqual(out["routes"][0], {"id": "claude-fable-5-2", "thinking": "max", "state": {"tier": "peak"}})
+        self.assertEqual(out["routes"][0], {"id": "claude-fable-5-2", "thinking": "max", "state": {"tier": "peak", "effort": "max"}})
         self.assertTrue(any("claude-fable-5-2" in n for n in out["notices"]))
 
-    def test_a_go_ahead_stays_on_the_current_tier_without_new_state(self):
-        out = self.run_router(p={"continue": 0.9, "light": 0.1}, requests=[{"user": "OK", "state": {"tier": "peak"}}])
-        self.assertEqual(out["routes"][0], {"id": "claude-fable-5-2", "thinking": "max", "state": None})
+    def test_a_go_ahead_stays_on_the_current_tier_and_effort_without_new_state(self):
+        out = self.run_router(p={"continue": 0.9, "light": 0.1},
+                              requests=[{"user": "OK", "state": {"tier": "default", "effort": "xhigh"}}])
+        self.assertEqual(out["routes"][0], {"id": "claude-opus-5-5", "thinking": "xhigh", "state": None})
         out = self.run_router(p={"continue": 0.9}, requests=[{"user": "進めて"}])
         self.assertEqual(out["routes"][0]["id"], "claude-opus-5-5")
+
+    def test_effort_is_the_lowest_that_reaches_the_score_the_kind_needs(self):
+        cases = [({"standard": 0.9, "deep": 0.1}, ("claude-opus-5-5", "high")),     # 52 = the default bar
+                 ({"standard": 0.6, "deep": 0.3}, ("claude-opus-5-5", "xhigh")),    # 52 + 5 -> 57
+                 ({"deep": 0.8, "standard": 0.2}, ("claude-fable-5-2", "max")),     # best score 65
+                 ({"light": 0.9, "standard": 0.1}, ("claude-haiku-5-5", "high"))]   # 30 = the light bar
+        for p, want in cases:
+            with self.subTest(p=p):
+                r = self.run_router(p=p, requests=[{}])["routes"][0]
+                self.assertEqual((r["id"], r["thinking"]), want)
+                self.assertEqual(r["state"]["effort"], want[1])
+
+    def test_new_scores_move_the_effort_without_a_code_change(self):
+        TIERS["scores"]["claude-haiku-5-5"]["medium"] = 31
+        TIERS["scores"]["claude-fable-5-2"]["max"] = 62
+        TIERS["scores"]["claude-opus-5-5"]["xhigh"] = 52
+        try:
+            (self.agent / "model-tiers.json").write_text(json.dumps(TIERS))
+            got = [(r["id"], r["thinking"]) for r in self.run_router(p={"light": 1}, requests=[{}])["routes"]]
+            got += [(r["id"], r["thinking"]) for r in self.run_router(p={"deep": 1}, requests=[{}])["routes"]]
+            got += [(r["id"], r["thinking"]) for r in self.run_router(p={"standard": 0.7, "deep": 0.3},
+                                                                     requests=[{}])["routes"]]
+        finally:
+            TIERS["scores"]["claude-haiku-5-5"]["medium"] = 25
+            TIERS["scores"]["claude-fable-5-2"]["max"] = 65
+            TIERS["scores"]["claude-opus-5-5"]["xhigh"] = 57
+        # medium now reaches 30; high ties max at 62; nothing below max reaches 57, so max (59)
+        self.assertEqual(got, [("claude-haiku-5-5", "medium"), ("claude-fable-5-2", "high"),
+                               ("claude-opus-5-5", "max")])
+
+    def test_without_scores_the_tier_keeps_its_configured_effort(self):
+        data = {k: v for k, v in TIERS.items() if k != "scores"}
+        (self.agent / "model-tiers.json").write_text(json.dumps(data))
+        for p, want in (({"light": 1}, "high"), ({"deep": 1}, "max"), ({"standard": 0.6, "deep": 0.3}, "high")):
+            with self.subTest(p=p):
+                self.assertEqual(self.run_router(p=p, requests=[{}])["routes"][0]["thinking"], want)
+
+    def test_a_named_tier_uses_the_effort_of_its_kind(self):
+        for text, want in (("fable で", ("claude-fable-5-2", "max")), ("opus で", ("claude-opus-5-5", "high")),
+                           ("haiku で", ("claude-haiku-5-5", "high")), ("sol に", ("gpt-6.1-sol", "max"))):
+            with self.subTest(text=text):
+                r = self.run_router(p={"light": 1}, requests=[{"user": text}])["routes"][0]
+                self.assertEqual((r["id"], r["thinking"]), want)
 
     def test_tool_follow_ups_and_retries_stay_on_the_model_of_the_turn(self):
         prev = {"model": {"provider": "anthropic", "id": "claude-fable-5-2"}, "thinkingLevel": "max"}
@@ -168,7 +219,28 @@ class PiRouter(unittest.TestCase):
         log = (self.agent / "jev-router.log.jsonl").read_text()
         self.assertNotIn(SECRET_TEXT, log)
         entry = json.loads(log.splitlines()[-1])
-        self.assertEqual((entry["tier"], entry["from"], entry["source"]), ("default", "light", "classifier"))
+        self.assertEqual((entry["tier"], entry["effort"], entry["from"], entry["source"]),
+                         ("default", "high", "light", "classifier"))
+
+
+@unittest.skipUnless(shutil.which("chezmoi") or os.environ.get("CI"), "chezmoi が必要")
+class TierFile(unittest.TestCase):
+    def test_the_tier_file_carries_model_radar_s_scores_for_the_four_tier_models(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "c.toml").write_text("")
+            proc = subprocess.run([shutil.which("chezmoi"), "--source", str(ROOT / "home"), "--config", str(Path(tmp) / "c.toml"),
+                                   "--persistent-state", str(Path(tmp) / "s.db"), "execute-template", "--file",
+                                   str(ROOT / "home/dot_pi/agent/model-tiers.json.tmpl")],
+                                  capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        data = json.loads(proc.stdout)
+        state = json.loads((ROOT / "docs/model-radar/_state.json").read_text())
+        self.assertEqual(data["scores_as_of"], state["last_run"])
+        for tier in ("default", "strong", "peak", "light"):
+            model = data[tier]["id"]
+            with self.subTest(tier=tier):
+                self.assertEqual(data["scores"][model],
+                                 {e: v.get("score") for e, v in state["intelligence"][model].items()})
 
 
 if __name__ == "__main__":
