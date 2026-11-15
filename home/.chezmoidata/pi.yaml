@@ -31,19 +31,28 @@ pi:
       id: claude-haiku-5-5
       thinking: high
   # router: 既定の選択を仮想モデル jev/auto にする (dot_pi/agent/extensions/jev-router.ts)。
-  # 本人のメッセージごとに Jev 分類器 (TypeSafe) が 5 段階 (light・standard・hard・deep・critical) で要る深さを測り、
-  # 上の 4 段のモデルと effort を選ぶ。Fable (peak) も本人の指定なしで選んでよい (本人承認 2026-11-15)。
-  # 点数とコストは model-radar (毎日の systemd timer) が Artificial Analysis の API から ~/.pi/agent/model-scores.json に書く。
-  # 段階ごとに要る点数 (light は light 段、standard は default 段の上の設定値の点数 = 普段の知性の基準、hard は +5、
-  # deep は default のモデルが届かない点数、critical は peak の最高点) に届く、default と peak のうちいちばん安い
-  # モデルと effort を選ぶ (会話の途中はモデルを変える費用も足す)。上の各段の thinking は、点数が無いときの値。
-  # モデルの切り替えはキャッシュを失うので少なくし、細かい上げ下げは effort で行う (詳細は docs/agents-unified.md)。
-  # Claude の 5h / 7d 枠を Pi 自身の応答で 95% 以上と観測したら strong の Sol サブスクへ退避する (本人承認 2026-11-15)。
-  # 全高使用率枠のリセットまたは新しい低使用率を確認したら、次の本人の発言から通常へ戻す。API キーへの退避はしない。
-  # thinking は振り分けの傾き: low は peak を使わない、high は通常、max は上がりやすい。
+  # 本人のメッセージごとに Jev 分類器 (TypeSafe) が 5 段階 (light・standard・hard・deep・critical) で要る深さを測る。
+  # 段階ごとの基準の点数 (light は light 段、standard は default 段の上の設定値の点数 = 普段の知性の基準、hard は +5、
+  # deep は default のモデルが届かない点数、critical は peak の最高点) に届く Claude と GPT の全モデル・全 effort から、
+  # 総合点 = 知性^intelligence × 安さ^cost × 速さ^speed (下の weights、本人が 2026-11-15 に決めた式) が最も高いものを選ぶ。
+  # 点数・コスト・時間は model-radar (systemd の timer) が Artificial Analysis と Pi での実測から ~/.pi/agent/model-scores.json に書く。
+  # 総合点が近い 2 つはセッションごとに黙って片方を割り当て、本人の次の発言から成果 (失敗・確認・実際に使った) を判定して係数にする。
+  # モデルの切り替えはキャッシュを失うので、書き直し費用を足しても 2 倍以上よいときだけ。サブスクが尽きたプロバイダーは外す
+  # (従量課金の API には切り替えない)。上の 4 段は、基準・名指し (fable/opus/sol/haiku)・データが無いときの値に使う。
+  # thinking は振り分けの傾き: low は hard まで、high は通常、max は上がりやすい。
   # enabled: false にすると従来どおり default 段で起動する。Ctrl+P の先頭が jev/auto、続けて 4 段。
   router:
     enabled: true
     provider: jev
     id: auto
     thinking: high
+    weights:
+      intelligence: 6
+      cost: 2
+      speed: 1
+    # scarce: 節約したいモデル (本人 2026-11-15「fable 使いすぎ、max は使わないように」)。Fable は週の枠の 50% まで。
+    # cost_factor: 総合点でコストを何倍に数えるか。max_effort: 自動で選ぶ effort の上限 (名指しで effort を書けば超えられる)。
+    scarce:
+      claude-fable-5-2:
+        cost_factor: 2
+        max_effort: high

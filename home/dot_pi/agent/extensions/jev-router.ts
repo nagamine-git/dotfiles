@@ -1,54 +1,61 @@
 /**
- * jev-router — the virtual model `jev/auto`: for each message the owner writes it picks one of the four
- * tiers in .chezmoidata/pi.yaml and an effort. ~/.pi/agent/model-tiers.json carries the tiers and
- * Artificial Analysis's scores. Approved by the owner on 2026-11-15: Fable may be chosen without asking.
- * Pi's own mechanism (docs/virtual-models.md, examples/extensions/jev-router.ts), with Pi's tiers.
+ * jev-router — the virtual model `jev/auto`: for each message the owner writes it picks a model and an
+ * effort among every Claude and GPT model Pi can call with a subscription.
+ * Pi's own mechanism (docs/virtual-models.md, examples/extensions/jev-router.ts). Owner decisions,
+ * 2026-11-15: Fable may be chosen without asking; the base is Opus 5.5 medium; Claude and GPT are treated
+ * alike; the total score is intelligence^6 x cheapness^2 x speed^1; near ties are settled by silent A/B
+ * tests judged by outcomes.
  *
  * 1. What the message needs. One call to the Jev classifier (TypeSafe) reads the message and the tail of
  *    the last answer:
- *      level  a score on five ordered levels: light (lookups, status), standard (ordinary work), hard (the
- *             approach is not obvious), deep (system-wide design, analysis) and critical (the highest
- *             stakes, going in circles). The score is the expected level, and CUTS make it one level.
- *      go     is the message only a go-ahead ("OK", "進めて", "反映して")? Then the work goes on where it
- *             is: on the light tier as it was; elsewhere at least at standard, and one rung down from
- *             critical, since the decision is made.
- *      asked  only when the message names a model: does the owner ask for it, or is it the topic?
- *    Measured on the owner's past messages (2026-11-15): four choices (light, standard, deep, continue)
- *    sent 30 of 120 to the peak model at its best effort; the five levels send 5 there.
- * 2. Artificial Analysis's Intelligence Index and cost per task, per model and effort. The daily
- *    `model-radar update` (systemd user timer) writes them to ~/.pi/agent/model-scores.json from AA's API;
- *    without it, the copy in the tier file (docs/model-radar/_state.json) is used. Each level needs a score:
+ *      level   a score on five ordered levels: light (lookups, status), standard (ordinary work), hard (the
+ *              approach is not obvious), deep (system-wide design, analysis) and critical (the highest
+ *              stakes, going in circles). The score is the expected level, and CUTS make it one level.
+ *      go      is the message only a go-ahead ("OK", "進めて", "反映して")? Then the work goes on where it
+ *              is, at the level it had (critical goes one rung down: the decision is made). After a light
+ *              exchange it is routed like any message.
+ *      asked   only when the message names a model: does the owner ask for it, or is it the topic?
+ *      failed, done, shipped   the outcome of the previous answer, see 5.
+ * 2. The data. `model-radar` (systemd timer) writes ~/.pi/agent/model-scores.json: for each model and
+ *    effort Artificial Analysis's Intelligence Index, cost per task and seconds per answer, the cost and
+ *    seconds corrected by a benchmark run in Pi where one was needed, and the owner's factor per level.
+ *    Each level needs a score (the floor), from the tiers in .chezmoidata/pi.yaml:
  *      light     the score of the light tier at its configured effort
- *      standard  the score of the default tier at its configured effort (the owner's base: Opus 5.5 medium)
+ *      standard  the score of the default tier at its configured effort (the owner's base)
  *      hard      STEP more
  *      deep      more than the default model reaches at any effort
  *      critical  the best score of the peak model
- *    For each model, the cheapest effort that reaches it. New scores move the choice with no code change.
- * 3. Which model: the cheapest of the default and peak models that reaches the level, counting the cost of
- *    changing model. A change of effort keeps the prompt cache; a change of model writes the whole
- *    conversation again (measured 2026-11-15: all six changes of model in the logs read nothing from the
- *    cache, four changes of effort read all of it), so a change costs the context times the new model's
- *    cache-write price. Short conversations move to the cheaper model, long ones stay. Without costs, the
- *    level's own tier (standard and hard: default; deep and critical: peak).
- *      - a light message goes to the light tier only where nothing is cached yet (the first message, or a
- *        session that is there already); later it stays on the model in use, at its cheapest effort
- *      - the peak model is left only after LEAVE_PEAK_AFTER messages in a row that would leave it
- * 4. A model the owner asks for by name (fable/ここぞ, opus, sol/gpt, haiku/軽量で) is used, and so is an
+ *    `scarce` in the tier file spares a model with a capped quota (Fable): its cost counts double and no
+ *    effort above high is chosen, so critical is Fable high unless the owner writes "fable max".
+ * 3. The choice. Among all models and efforts whose score reaches the floor, the highest
+ *      (score x owner's factor)^6 / (cost^2 x seconds)          (weights from the tier file)
+ *    A change of effort keeps the prompt cache; a change of model writes the whole conversation again
+ *    (measured 2026-11-15: six changes of model read nothing from the cache, four changes of effort read
+ *    all of it). So the model in use is left only when the other is SWITCH_MARGIN times better after the
+ *    cost of writing the context there and back is added to its cost. A model whose context window is too
+ *    small for the conversation is not a candidate (Pi would compact it).
+ * 4. Silent A/B tests. Where the two best for a level are within AB_RATIO (what the owner's factor can
+ *    turn around) and one of them has fewer than AB_ENOUGH judged answers, a session is given one of the
+ *    two at random for that level, and keeps it. Nothing is announced.
+ * 5. Outcomes. The owner's next message tells what the previous answer produced: `failed` (wrong, not
+ *    working, redo), `done` (confirmed, accepted, built upon), `shipped` (merged, applied, published,
+ *    adopted: a result in use). They are logged with the model, effort and level that answered, never with
+ *    text. model-radar turns them into the owner's factor: results in use count double, failures count
+ *    double against.
+ * 6. A model the owner asks for by name (fable/ここぞ, opus, sol/gpt, haiku/軽量で) is used, and so is an
  *    effort written right after the name ("fable high", "Fable5.2medium"). Fable by name is at least deep.
- *    Without the classifier the name alone decides, and Fable by name is critical.
- * 5. No classifier (no key, timeout, error): the tier and effort in use, or default.
+ * 7. Quota. A provider is left out while its subscription is used up: Claude at >=95% of either 5h/7d
+ *    window as this Pi's own Anthropic subscription responses report it (never another CLI's cache), or an
+ *    explicit subscription-cap error from either provider (for CAP_RETRY_MS: the error carries no reset).
+ *    Missing headers or age do not end it: every high window must reset or report a newer low value. Only
+ *    subscription models stand in; never a paid API key. With nothing left the request fails.
+ * 8. No classifier (no key, timeout, error): the model and effort in use, or default; a name still decides.
+ *    No score data: the level's own tier at its configured effort.
  *
- * 6. Claude quota (owner-approved 2026-11-15): at >=95% in either observed 5h/7d window, divert Claude
- *    to Sol's subscription. Observe only this Pi's confirmed Anthropic subscription response headers;
- *    never substitute Claude Code/Codex CLI quota or enable paid API auth. Keep the task's intended level
- *    for effort selection and recovery. Missing headers or elapsed cache age do not end a detour: every
- *    high window must reset or report a newer low value. Resume normal routing on a new user turn.
- *
- * Tool follow-ups and retries normally stay on the model that handled the turn (cache, thinking signatures).
- * Quota may divert a tool follow-up or an explicit subscription-cap retry, never an arbitrary failure,
- * auth/safety stop, cancellation or a Sol failure. No custom retry loop. Compaction also respects quota.
- * The virtual thinking level is a bias: low never uses the peak model, max lowers every cut by MAX_SHIFT.
- * Decisions (tier, effort, level, source, score, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
+ * Tool follow-ups and retries stay on the model that handled the turn (cache, thinking signatures). Only a
+ * used-up subscription moves them: never an arbitrary failure, auth or safety stop, or cancellation.
+ * Requests outside the loop (compaction) use default. The virtual thinking level is a bias: low stops at
+ * hard, max lowers every cut by MAX_SHIFT. Decisions and outcomes go to ~/.pi/agent/jev-router.log.jsonl.
  * The TypeSafe key is read with op-agent only for a classifier call and never enters process.env.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -60,10 +67,12 @@ import * as path from "node:path";
 const HOME_DIR = os.homedir();
 const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(HOME_DIR, ".pi/agent");
 const TIERS_FILE = path.join(AGENT_DIR, "model-tiers.json");
+const SCORES_FILE = path.join(AGENT_DIR, "model-scores.json");
 const LOG = path.join(AGENT_DIR, "jev-router.log.jsonl");
-const RUNTIME_SCORES = path.join(AGENT_DIR, "model-scores.json");
 const QUOTA_FILE = path.join(AGENT_DIR, "jev-claude-quota.json");
 const QUOTA_THRESHOLD = 0.95; // Owner's cutoff (2026-11-15), inclusive; not a classifier decision.
+// After an explicit cap error with no reset time, a provider is tried again after this long.
+const CAP_RETRY_MS = 60 * 60_000;
 const TYPESAFE_REF_FILE = path.join(HOME_DIR, ".config/agents/model-typesafe.env");
 const TYPESAFE_REF = /^TYPESAFE_API_KEY=(?:"(op:\/\/[^"]+)"|(op:\/\/\S+))\s*$/m;
 const OP_AGENT = path.join(HOME_DIR, ".local/bin/op-agent");
@@ -76,22 +85,35 @@ const MAX_SHIFT = 0.25;
 const GO_MIN = 0.5;
 const ASKED_MIN = 0.6;
 const STEP = 5;
-const LEAVE_PEAK_AFTER = 2;
+// The owner's formula (2026-11-15). The tier file's `weights` replace it.
+const WEIGHTS = { intelligence: 6, cost: 2, speed: 1 };
+// The owner's factor stays within 0.9..1.1 (model-radar), so it can turn a ratio of (1.1/0.9)^6 around:
+// that is where a test can change the choice, and where one is run.
+const AB_RATIO = (1.1 / 0.9) ** 6;
+const AB_ENOUGH = 30;
+const SWITCH_MARGIN = 2;
+const WINDOW_SHARE = 0.8;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 const LEVELS = ["light", "standard", "hard", "deep", "critical"] as const;
 
 type Tier = "default" | "strong" | "peak" | "light";
 type Level = (typeof LEVELS)[number];
 type TierSpec = { provider: string; id: string; thinking: string };
-type Scores = Record<string, Record<string, number | null>>;
-type Data = Record<Tier, TierSpec> & { scores?: Scores; costs?: Scores; cache_write?: Record<string, number> };
-type Plan = { tier: Tier; effort: string; level?: Level; below?: number };
-// Keep the intended Claude route while physically on Sol, so a go-ahead after recovery can resume Fable.
-type State = Plan & { claude?: Plan };
+/** A model the owner wants spared (a capped weekly quota): its cost counts `cost_factor` times, and no effort
+ * above `max_effort` is chosen unless the owner writes it after the model's name. */
+type Scarce = Record<string, { cost_factor?: number; max_effort?: string }>;
+type Data = Record<Tier, TierSpec> & { weights?: Partial<typeof WEIGHTS>; scarce?: Scarce };
+/** A model at an effort, with what is known about it. `write`: USD per 1M tokens written to the cache. */
+type Arm = { key: string; provider: string; id: string; effort: string; score: number; cost: number; seconds: number;
+  write: number; owner?: Record<string, { f?: number; n?: number }> };
+/** `ab`: the arm ("provider/id:effort") this session was given for a level. `detour`: a provider is left out. */
+type State = { model: string; effort: string; level?: Level; ab?: Record<string, string>; detour?: true };
 const TIER_NAMES: Tier[] = ["default", "strong", "peak", "light"];
-const NAMES: Record<Tier, string> = { default: "既定", strong: "強め", peak: "ここぞ", light: "軽量" };
-/** The tier a level belongs to. */
+/** The tier a level belongs to, where there is no score data. */
 const HOME: Record<Level, Tier> = { light: "light", standard: "default", hard: "default", deep: "peak", critical: "peak" };
+const key = (m: { provider: string; id: string }) => `${m.provider}/${m.id}`;
+const armId = (a: { key: string; effort: string }) => `${a.key}:${a.effort}`;
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 // A model the owner names. Checked in this order, so "fable と opus" is peak.
 const NAMED: [Tier, RegExp][] = [
@@ -131,6 +153,30 @@ function loadTiers(): Data | undefined {
   }
 }
 
+let armsCache: { mtime: number; arms: Arm[] } = { mtime: -1, arms: [] };
+/** Every model and effort in model-radar's file that has a score, a cost and seconds. Read again when it changes. */
+function loadArms(): Arm[] {
+  let mtime: number;
+  try { mtime = fs.statSync(SCORES_FILE).mtimeMs; } catch { return []; }
+  if (mtime === armsCache.mtime) return armsCache.arms;
+  const arms: Arm[] = [];
+  try {
+    const d = JSON.parse(fs.readFileSync(SCORES_FILE, "utf8"));
+    for (const [id, m] of Object.entries<any>(d?.models ?? {})) {
+      if (typeof m?.provider !== "string" || m.in_pi === false) continue;
+      const write = finite(m.price?.cache_write) ? m.price.cache_write : finite(m.price?.input) ? m.price.input * 1.25 : 0;
+      for (const effort of EFFORTS) {
+        const e = m.efforts?.[effort];
+        if (!e || e.excluded || !finite(e.score) || !finite(e.cost) || !finite(e.seconds) || e.cost <= 0 || e.seconds <= 0) continue;
+        arms.push({ key: `${m.provider}/${id}`, provider: m.provider, id, effort, score: e.score, cost: e.cost,
+          seconds: e.seconds, write, owner: e.owner && typeof e.owner === "object" ? e.owner : undefined });
+      }
+    }
+  } catch { /* an unreadable file is no data */ }
+  armsCache = { mtime, arms };
+  return arms;
+}
+
 function text(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
@@ -168,10 +214,11 @@ function resolveTypesafeKey(): Promise<string | undefined> {
   return typesafeKey;
 }
 
-type Rating = { score: number; go: number; asked: number; ms: number } | { why: string };
+type Outcome = { failed: number; done: number; shipped: number };
+type Rating = { score: number; go: number; asked: number; outcome?: Outcome; ms: number } | { why: string };
 
 /** The classifier's answers, or why there are none. Never throws and never waits past the timeout. */
-async function rate(ctx: any, userText: string, assistantText: string, withName: boolean,
+async function rate(ctx: any, userText: string, assistantText: string, withName: boolean, withOutcome: boolean,
   signal?: AbortSignal): Promise<Rating> {
   const jev = ctx.modelRegistry.findOfType?.("classifier", "typesafe", "jev-latest");
   if (!jev) return { why: "classifier unavailable" };
@@ -211,6 +258,41 @@ async function rate(ctx: any, userText: string, assistantText: string, withName:
       },
     };
   }
+  if (withOutcome) {
+    const about = WHO + "`previous_answer_tail` is the end of the agent's last answer. ";
+    questions.failed = {
+      type: "bool",
+      instructions: about + "Does `owner_message` report that the agent's previous answer or the work it did FAILED?",
+      criteria: {
+        true: "The owner says the result is wrong, broken, not working, still failing, not what was asked, or must be " +
+          "redone or reverted; reports an error or a bug in what the agent just did; repeats the same request because " +
+          "it was not done; or shows frustration with the agent (for example: 違う, 動かない, 直ってない, そうじゃない, " +
+          "まだ止まる, やり直して, 戻して)",
+        false: "Anything else: approval, a go-ahead, a follow-up or additional request, a request for more detail or " +
+          "another format, a question, a new topic, or a change of mind by the owner that is not the agent's failure",
+      },
+    };
+    questions.done = {
+      type: "bool",
+      instructions: about + "Does `owner_message` confirm that the previous work produced a usable result?",
+      criteria: {
+        true: "The owner confirms the result works or is good, thanks the agent for it, accepts or adopts it, tells it " +
+          "to ship, merge, apply, commit or publish it, or builds the next step directly on it (for example: " +
+          "うまくいった, できた, いいね, ありがとう, OK, 反映して, マージして, それで進めて)",
+        false: "No confirmation: a complaint or correction, a question that doubts the answer, or an unrelated new request",
+      },
+    };
+    questions.shipped = {
+      type: "bool",
+      instructions: about + "Does `owner_message` put the result of the previous work to real use?",
+      criteria: {
+        true: "The owner tells the agent to merge, commit, push, deploy, apply, publish, release or send the result, " +
+          "adopts it as the decision, or says it is now in use or has produced a business result such as a customer, " +
+          "revenue or a release (for example: マージして, 反映して, 公開して, 送って, これで決定, リリースした)",
+        false: "The result is not yet put to use: discussion, questions, more changes, a complaint, or a new topic",
+      },
+    };
+  }
   try {
     const apiKey = await Promise.race([resolveTypesafeKey(), ended]);
     if (!apiKey && !process.env.TYPESAFE_API_KEY) return { why: "classifier unavailable" };
@@ -222,7 +304,10 @@ async function rate(ctx: any, userText: string, assistantText: string, withName:
     if (result?.stopReason !== "stop" || a?.level?.type !== "score" || typeof a.level.score !== "number"
       || a?.go?.type !== "bool" || typeof a.go.probability !== "number") return { why: "classifier unavailable" };
     const asked = a.asked?.type === "bool" && typeof a.asked.probability === "number" ? a.asked.probability : 1;
-    return { score: a.level.score, go: a.go.probability, asked, ms: Date.now() - started };
+    const p = (k: string) => (a[k]?.type === "bool" && typeof a[k].probability === "number" ? a[k].probability : undefined);
+    const [failed, done, shipped] = [p("failed"), p("done"), p("shipped")];
+    const outcome = failed !== undefined && done !== undefined && shipped !== undefined ? { failed, done, shipped } : undefined;
+    return { score: a.level.score, go: a.go.probability, asked, outcome, ms: Date.now() - started };
   } catch {
     return { why: controller.signal.aborted ? "classifier timed out or was canceled" : "classifier unavailable" };
   } finally {
@@ -244,114 +329,40 @@ export function named(message: string): { tier: Tier; effort?: string } | undefi
   return undefined;
 }
 
-/** The level for the classifier's score. The selector low stops at hard (no peak model); max leans up. */
+/** The level for the classifier's score. The selector low stops at hard; max leans up. */
 export function levelOf(score: number, selector: string): Level {
   const s = score + (selector === "max" ? MAX_SHIFT : 0);
   const level = LEVELS[CUTS.filter((cut) => s >= cut).length];
   return selector === "low" ? atMost(level, "hard") : level;
 }
 
-/** The model for a level, before the hysteresis for leaving the peak model: the cheapest of the default
- * and peak models that reaches the level, counting the cost of changing model (`tokens` of context written
- * again at the new model's cache-write price). Without costs, the level's own tier. */
-export function cheapest(data: Data, level: Level, current: Tier | undefined, tokens: number, allowPeak: boolean): Tier {
-  // A light message goes to the light tier only where nothing large is cached on another model.
-  if (level === "light" && (!current || current === "light")) return "light";
-  const n = need(data, level);
-  const options = (["default", "peak"] as Tier[]).filter((t) => t !== "peak" || allowPeak).map((tier) => {
-    const effort = effortFor(data, tier, level);
-    const score = scoreOf(data, data[tier].id, effort);
-    const cost = costOf(data, data[tier].id, effort);
-    const reaches = n !== undefined && score !== undefined && (n.above ? score > n.score : score >= n.score);
-    const change = current && current !== tier && current !== "light" ? (tokens / 1e6) * (data.cache_write?.[data[tier].id] ?? 0) : 0;
-    return { tier, score: score ?? -1, total: cost === undefined ? undefined : cost + change, reaches };
-  });
-  const home = allowPeak && level !== "light" ? HOME[level] : "default";
-  const reaching = options.filter((o) => o.reaches);
-  if (!reaching.length) {
-    // Nothing reaches (or no scores): the best score, or the level's own tier.
-    const scored = options.filter((o) => o.score >= 0).sort((a, b) => b.score - a.score);
-    return n && scored.length ? scored[0].tier : home;
-  }
-  if (reaching.some((o) => o.total === undefined)) return reaching.some((o) => o.tier === home) ? home : reaching[0].tier;
-  reaching.sort((a, b) => a.total! - b.total! || (a.tier === home ? -1 : 1));
-  return reaching[0].tier;
-}
-
-function scoreOf(data: Data, id: string, effort: string): number | undefined {
-  const v = data.scores?.[id]?.[effort];
-  return typeof v === "number" ? v : undefined;
-}
-
-function costOf(data: Data, id: string, effort: string): number | undefined {
-  const v = data.costs?.[id]?.[effort];
-  return typeof v === "number" && v >= 0 ? v : undefined;
-}
-
-let runtimeMtime = -1;
-/** Merge the daily AA snapshot (`model-radar update`) over the tier file's copy, when it changes. */
-function refreshScores(data: Data) {
-  let mtime: number;
-  try { mtime = fs.statSync(RUNTIME_SCORES).mtimeMs; } catch { return; }
-  if (mtime === runtimeMtime) return;
-  runtimeMtime = mtime;
-  try {
-    const d = JSON.parse(fs.readFileSync(RUNTIME_SCORES, "utf8"));
-    if (!d?.models || typeof d.models !== "object") return;
-    for (const [id, m] of Object.entries<any>(d.models)) {
-      const efforts = m?.efforts && typeof m.efforts === "object" ? m.efforts : {};
-      const scores: Record<string, number> = {};
-      const costs: Record<string, number> = {};
-      for (const e of EFFORTS) {
-        if (finite(efforts[e]?.score)) scores[e] = efforts[e].score;
-        if (finite(efforts[e]?.cost)) costs[e] = efforts[e].cost;
-      }
-      if (!Object.keys(scores).length) continue;
-      (data.scores ??= {})[id] = scores;
-      (data.costs ??= {})[id] = costs;
-      const write = m?.price?.cache_write ?? (finite(m?.price?.input) ? m.price.input * 1.25 : undefined);
-      if (finite(write)) (data.cache_write ??= {})[id] = write;
-    }
-  } catch { /* keep what was loaded */ }
-}
-
-function bestOf(data: Data, id: string): number | undefined {
-  const all = EFFORTS.flatMap((e) => scoreOf(data, id, e) ?? []);
-  return all.length ? Math.max(...all) : undefined;
-}
-
+type Floor = { score: number; above?: boolean };
 /** The score a level needs; `above` where it has to be passed, not only reached. */
-function need(data: Data, level: Level): { score: number; above?: boolean } | undefined {
+function need(data: Data, arms: Arm[], level: Level): Floor | undefined {
+  const at = (t: Tier) => arms.find((a) => a.key === key(data[t]) && a.effort === data[t].thinking)?.score;
+  const best = (t: Tier) => {
+    const scores = arms.filter((a) => a.key === key(data[t])).map((a) => a.score);
+    return scores.length ? Math.max(...scores) : undefined;
+  };
   const of = (score: number | undefined, above?: boolean) => (score === undefined ? undefined : { score, above });
-  const standard = scoreOf(data, data.default.id, data.default.thinking);
-  if (level === "light") return of(scoreOf(data, data.light.id, data.light.thinking));
-  if (level === "standard") return of(standard);
-  if (level === "hard") return of(standard === undefined ? undefined : standard + STEP);
-  if (level === "deep") return of(bestOf(data, data.default.id), true);
-  return of(bestOf(data, data.peak.id));
+  if (level === "light") return of(at("light"));
+  if (level === "standard") return of(at("default"));
+  if (level === "hard") return of(at("default") === undefined ? undefined : at("default")! + STEP);
+  if (level === "deep") return of(best("default"), true);
+  return of(best("peak"));
 }
+const reaches = (a: Arm, f: Floor) => (f.above ? a.score > f.score : a.score >= f.score);
 
-/** The lowest effort of the tier's model that reaches what the level needs: its best where none does,
- * the tier's configured effort where a score is missing or there is no level. */
-export function effortFor(data: Data, tier: Tier, level: Level | undefined): string {
-  const spec = data[tier];
-  const known = EFFORTS.filter((e) => scoreOf(data, spec.id, e) !== undefined);
-  const n = level && need(data, level);
-  if (!n || !known.length) return spec.thinking;
-  const score = (e: string) => scoreOf(data, spec.id, e) as number;
-  const best = Math.max(...known.map(score));
-  const reaching = known.filter((e) => (n.above ? score(e) > n.score : score(e) >= n.score));
-  if (!reaching.length) return known.find((e) => score(e) === best)!;
-  // The cheapest that reaches; in effort order where a cost is missing.
-  const costs = reaching.map((e) => costOf(data, spec.id, e));
-  if (costs.some((c) => c === undefined)) return reaching[0];
-  return reaching[costs.indexOf(Math.min(...(costs as number[])))];
+/** The total score: (score x owner's factor)^6 / (cost^2 x seconds). `extra`: USD added to the cost. */
+export function total(data: Data, a: Arm, level: Level, extra = 0): number {
+  const w = { ...WEIGHTS, ...data.weights };
+  const f = a.owner?.[level]?.f;
+  return (a.score * (finite(f) && f > 0 ? f : 1)) ** w.intelligence / ((a.cost + extra) ** w.cost * a.seconds ** w.speed);
 }
 
 type QuotaWindow = { used: number; at: number; reset?: number };
 type Windows = Record<string, QuotaWindow>;
 const QUOTA_WINDOWS = ["5h", "7d"];
-const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /** Consult the registry's effective auth, not auth.json or a CLI's unrelated quota cache. */
 function subscription(ctx: any, m: any): boolean {
@@ -364,14 +375,15 @@ function usageLimit(message: any): boolean {
   const error = message?.errorMessage;
   return message?.stopReason === "error" && typeof error === "string"
     && !/auth|credential|billing|budget|payment|permission|forbidden|safety|policy|cancel|abort/i.test(error)
-    && /(?:usage|weekly|monthly) limit (?:reached|exceeded)|you['’]ve (?:hit|reached) your (?:usage |weekly )?limit/i.test(error);
+    && /(?:usage|weekly|monthly)[ _]limit[ _](?:reached|exceeded)|you['’]ve (?:hit|reached) your (?:usage |weekly )?limit/i.test(error);
 }
 
-/** Only this Pi's confirmed Anthropic subscription responses may update this cache. Missing windows
+/** Only this Pi's confirmed Anthropic subscription responses may update the Claude windows. Missing windows
  * never mean zero. A high observation stays latched until its announced reset or a newer low reading;
- * age alone is not recovery. A cap without a reset stays latched until both windows report low again.
+ * age alone is not recovery. An explicit cap error carries no reset: the provider is left out for
+ * CAP_RETRY_MS and then tried again (a provider that is left out sends no headers to watch).
  * No probes, timers, auth files, raw headers, messages or credentials are stored. */
-class ClaudeQuota {
+class Quota {
   private windows: Windows = {};
 
   private read() {
@@ -379,7 +391,7 @@ class ClaudeQuota {
       if (fs.statSync(QUOTA_FILE).size > 16_384) return;
       const d = JSON.parse(fs.readFileSync(QUOTA_FILE, "utf8"));
       if (d?.source !== "pi-anthropic-subscription-v1" || !d.windows || typeof d.windows !== "object") return;
-      for (const key of [...QUOTA_WINDOWS, "limit"]) {
+      for (const key of [...QUOTA_WINDOWS, "limit", "openai"]) {
         const w = d.windows[key];
         if (!w || !finite(w.used) || w.used < 0 || w.used > 1 || !finite(w.at) || w.at <= 0 || w.at > Date.now()
           || (w.reset !== undefined && (!finite(w.reset) || w.reset <= 0))) continue;
@@ -428,38 +440,50 @@ class ClaudeQuota {
     this.save();
   }
 
-  limit() {
+  /** An explicit subscription-cap error from a provider. */
+  limit(provider: string) {
     this.read();
-    // An existing high window already tells us when to resume. Do not replace it with an indefinite cap.
-    if (!this.blocked().length) {
-      this.windows.limit = { used: 1, at: Date.now() };
-      this.save();
-    }
+    const retry = { used: 1, at: Date.now(), reset: Math.ceil((Date.now() + CAP_RETRY_MS) / 1000) };
+    if (provider === "openai") this.windows.openai = retry;
+    // An existing high Claude window already tells when to resume: keep it.
+    else if (provider === "anthropic" && !this.high().some((k) => k !== "openai")) this.windows.limit = retry;
+    else return;
+    this.save();
   }
 
-  blocked(wasAway = false): string[] {
+  private high(): string[] {
+    return Object.entries(this.windows).filter(([, w]) => w.used >= QUOTA_THRESHOLD
+      && (w.reset === undefined || Date.now() < w.reset * 1000)).map(([k]) => k);
+  }
+
+  /** The windows that keep each provider out. `wasAway`: a lost cache on resume is not proof a detour can end. */
+  blocked(wasAway = false): { anthropic: string[]; openai: string[] } {
     this.read();
-    const high = Object.entries(this.windows).filter(([, w]) => w.used >= QUOTA_THRESHOLD
-      && (w.reset === undefined || Date.now() < w.reset * 1000)).map(([key]) => key);
-    // A lost cache on resume is not proof that a detour can end.
-    return high.length ? high : wasAway && !Object.keys(this.windows).length ? ["unknown"] : [];
+    const high = this.high();
+    const anthropic = high.filter((k) => k !== "openai");
+    return { anthropic: anthropic.length ? anthropic : wasAway && !Object.keys(this.windows).length ? ["unknown"] : [],
+      openai: high.filter((k) => k === "openai") };
   }
 }
+
+type Env = { ctx: any; arms: Arm[]; tokens: number; out: Set<string>; why: string[] };
+type Choice = { key: string; effort: string; ab?: [string, string]; assigned?: string };
 
 export default function (pi: ExtensionAPI) {
   const data = loadTiers();
   if (!data) return; // No tier data on this host: jev/auto is not offered.
 
-  const model = (ctx: any, tier: Tier, effort: string) => {
-    const t = data[tier];
-    const m = ctx.modelRegistry.find(t.provider, t.id);
-    if (!m || (ctx.modelRegistry.hasConfiguredAuth && !ctx.modelRegistry.hasConfiguredAuth(m))) return undefined;
-    return { model: m, thinkingLevel: effort };
+  const find = (ctx: any, k: string) => {
+    const i = k.indexOf("/");
+    const m = ctx.modelRegistry.find(k.slice(0, i), k.slice(i + 1));
+    return m && (!ctx.modelRegistry.hasConfiguredAuth || ctx.modelRegistry.hasConfiguredAuth(m)) ? m : undefined;
   };
-  const tierOf = (m: any): Tier | undefined =>
-    TIER_NAMES.find((t) => m && data[t].provider === m.provider && data[t].id === m.id);
+  const tierOf = (k: string | undefined): Tier | undefined => TIER_NAMES.find((t) => key(data[t]) === k);
+  /** States written before 2026-11-15 named a tier. */
+  const norm = (s: any): State | undefined => (!s ? undefined : typeof s.model === "string" ? s
+    : data[s.tier as Tier] ? { model: key(data[s.tier as Tier]), effort: s.effort, ...(s.level ? { level: s.level } : {}) } : undefined);
 
-  const quota = new ClaudeQuota();
+  const quota = new Quota();
   let pending: Windows | undefined;
   pi.on("after_provider_response", (event) => {
     // This event has no physical-model field. Stage ONLY parsed quota data, then confirm its provider.
@@ -475,57 +499,113 @@ export default function (pi: ExtensionAPI) {
     const m = event.message as any;
     if (m.role !== "assistant") return;
     pending = undefined;
-    if (m.provider === "anthropic" && usageLimit(m)
-      && subscription(ctx, ctx.modelRegistry.find(m.provider, m.model))) quota.limit();
+    if ((m.provider === "anthropic" || m.provider === "openai") && usageLimit(m)
+      && subscription(ctx, ctx.modelRegistry.find(m.provider, m.model))) quota.limit(m.provider);
   });
 
-  const claude = TIER_NAMES.map((t) => data[t]).find((t) => t.provider === "anthropic");
-  const blocked = (ctx: any, state?: State) => claude && subscription(ctx, ctx.modelRegistry.find(claude.provider, claude.id))
-    ? quota.blocked(Boolean(state?.claude)) : [];
-  const same = (a: Plan | undefined, b: Plan | undefined): boolean => a === b || Boolean(a && b
-    && a.tier === b.tier && a.effort === b.effort && a.level === b.level && (a.below ?? 0) === (b.below ?? 0));
+  /** What a decision is made on: the data, the size of the conversation, and the providers that are used up. */
+  const env = (ctx: any, state?: State): Env => {
+    const b = quota.blocked(Boolean(state?.detour));
+    const out = new Set<string>();
+    const why: string[] = [];
+    for (const provider of ["anthropic", "openai"] as const) {
+      const t = TIER_NAMES.map((n) => data[n]).find((n) => n.provider === provider);
+      if (b[provider].length && t && subscription(ctx, ctx.modelRegistry.find(t.provider, t.id))) {
+        out.add(provider);
+        why.push(...b[provider]);
+      }
+    }
+    const tokens = ctx.getContextUsage?.()?.tokens;
+    const arms = loadArms().flatMap((a) => {
+      const s = data.scarce?.[a.id];
+      if (!s) return [a];
+      if (EFFORTS.includes(s.max_effort ?? "") && EFFORTS.indexOf(a.effort) > EFFORTS.indexOf(s.max_effort!)) return [];
+      return [{ ...a, cost: a.cost * (finite(s.cost_factor) && s.cost_factor > 0 ? s.cost_factor : 1) }];
+    });
+    return { ctx, arms, tokens: finite(tokens) ? tokens : 0, out, why };
+  };
 
-  function finish(request: any, ctx: any, plan: Plan, source: string, rating: Record<string, unknown> = {}) {
-    const old = request.state as State | undefined;
-    const quotaHigh = blocked(ctx, old);
-    const high = data![plan.tier].provider === "anthropic" ? quotaHigh : [];
-    if (quotaHigh.length && plan.tier === "strong" && !subscription(ctx, model(ctx, "strong", plan.effort)?.model)) {
-      throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no API or Claude fallback)");
+  /** Never a paid API key in place of a subscription: other providers than the default's only with one. */
+  const eligible = (e: Env, a: { key: string; provider: string }) => {
+    if (e.out.has(a.provider)) return false;
+    const m = find(e.ctx, a.key);
+    if (!m || !(subscription(e.ctx, m) || (!e.out.size && a.provider === data.default.provider))) return false;
+    return !(finite(m.contextWindow) && m.contextWindow > 0 && e.tokens > m.contextWindow * WINDOW_SHARE);
+  };
+
+  /** No score data: the level's own tier at its configured effort. */
+  const byTier = (e: Env, level: Level, current?: string): Choice => {
+    let home = HOME[level];
+    if (home === "light" && current && current !== key(data.light)) home = "default"; // something is cached elsewhere
+    for (const t of [home, "default", "strong"] as Tier[]) {
+      if (eligible(e, { key: key(data[t]), provider: data[t].provider })) return { key: key(data[t]), effort: data[t].thinking };
     }
-    let state: State = plan;
-    if (high.length) {
-      const sol = model(ctx, "strong", effortFor(data!, "strong", plan.level ?? "standard"));
-      if (!sol || sol.model.provider !== "openai" || !/^gpt-.*sol$/i.test(sol.model.id) || !subscription(ctx, sol.model)) {
-        // In particular, never turn a missing subscription into an API bill, or bounce back to Claude.
-        throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no API or Claude fallback)");
+    throw new Error(e.out.size ? "jev/auto: the subscription is used up and no other subscription model is available (no API fallback)"
+      : `jev/auto: ${key(data.default)} has no credentials`);
+  };
+
+  /** The best effort of one model for a level: the best total among those that reach it, else its best score. */
+  const onModel = (e: Env, k: string, level: Level): Arm | undefined => {
+    const own = e.arms.filter((a) => a.key === k);
+    const floor = need(data, e.arms, level);
+    const ok = floor ? own.filter((a) => reaches(a, floor)) : [];
+    const top = (list: Arm[], f: (a: Arm) => number) => list.reduce<Arm | undefined>((b, a) => (!b || f(a) > f(b) ? a : b), undefined);
+    return ok.length ? top(ok, (a) => total(data, a, level)) : top(own, (a) => a.score);
+  };
+
+  /** The model and effort for a level. `current`: the model in use. `assigned`: this session's A/B arm for the level. */
+  const choose = (e: Env, level: Level, current?: string, assigned?: string): Choice => {
+    const pool = e.arms.filter((a) => eligible(e, a));
+    const floor = need(data, e.arms, level);
+    if (!pool.length || !floor) return byTier(e, level, current);
+    const t = (a: Arm, extra = 0) => total(data, a, level, extra);
+    const ok = pool.filter((a) => reaches(a, floor)).sort((a, b) => t(b) - t(a));
+    if (!ok.length) { // nothing reaches the level: the best score there is
+      const best = pool.reduce((b, a) => (a.score > b.score || (a.score === b.score && t(a) > t(b)) ? a : b));
+      return { key: best.key, effort: best.effort };
+    }
+    let pick = ok[0];
+    let ab: [string, string] | undefined;
+    const mine = assigned ? ok.find((a) => armId(a) === assigned) : undefined;
+    const judged = (a: Arm) => a.owner?.[level]?.n ?? 0;
+    if (mine) pick = mine;
+    else if (ok[1] && t(ok[1]) * AB_RATIO >= t(ok[0]) && Math.min(judged(ok[0]), judged(ok[1])) < AB_ENOUGH) {
+      ab = [armId(ok[0]), armId(ok[1])];
+      pick = ok[Math.random() < 0.5 ? 0 : 1];
+    }
+    const given = mine || ab ? armId(pick) : undefined;
+    const stay = current && pick.key !== current ? ok.find((a) => a.key === current) : undefined; // its best effort: ok is sorted
+    // Leaving a model writes the conversation to the other's cache, and again on the way back.
+    if (stay && !(t(pick, (e.tokens / 1e6) * (pick.write + stay.write)) > SWITCH_MARGIN * t(stay))) pick = stay;
+    return { key: pick.key, effort: pick.effort, ab, assigned: given };
+  };
+
+  const canon = (s: State | undefined) => (s ? JSON.stringify([s.model, s.effort, s.level ?? null,
+    Object.entries(s.ab ?? {}).sort(), s.detour ?? null]) : "");
+  const short = (k: string) => k.slice(k.indexOf("/") + 1).replace(/^claude-/, "");
+
+  function finish(request: any, ctx: any, e: Env, c: Choice, level: Level | undefined, source: string,
+    extra: Record<string, unknown> = {}) {
+    const m = find(ctx, c.key);
+    if (!m) throw new Error(`jev/auto: ${c.key} is not available`);
+    const old = norm(request.state);
+    const ab = c.assigned && level ? { ...old?.ab, [level]: c.assigned } : old?.ab;
+    const state: State = { model: c.key, effort: c.effort, ...(level ? { level } : {}),
+      ...(ab && Object.keys(ab).length ? { ab } : {}), ...(e.out.size ? { detour: true as const } : {}) };
+    log({ model: c.key, effort: c.effort, level: level ?? null, from: old?.model ?? null, source, ...extra,
+      selector: request.thinkingLevel, reason: request.reason, ...(e.tokens ? { tokens: e.tokens } : {}),
+      ...(c.ab ? { ab: c.ab } : {}), ...(e.out.size ? { quota: e.why } : {}) });
+    if (ctx.hasUI && (old?.model !== state.model || old?.effort !== state.effort || old?.detour !== state.detour)) {
+      ctx.ui?.setStatus?.("jev-router", `auto→${short(c.key)} ${c.effort}${state.detour ? " (枠退避)" : ""}`);
+      if (state.detour && !old?.detour) {
+        ctx.ui?.notify?.(`jev/auto: 利用枠 (${e.why.join(", ")}) に達したので、${[...e.out].join("・")} を外して振り分けます。`, "warning");
+      } else if (old?.detour && !state.detour) {
+        ctx.ui?.notify?.("jev/auto: 利用枠の回復を確認したので、通常の振り分けに戻ります。", "info");
       }
-      state = { tier: "strong", effort: sol.thinkingLevel, level: plan.level, below: 0, claude: plan };
-      source += " (Claude quota)";
     }
-    let route = model(ctx, state.tier, state.effort);
-    if (!route) {
-      if (quotaHigh.length) throw new Error("jev/auto: Claude quota >=95%; Sol subscription unavailable (no Claude fallback)");
-      source += ` (${state.tier} unavailable)`;
-      state = { tier: "default", effort: effortFor(data!, "default", plan.level ?? "standard"), level: plan.level, below: 0 };
-      route = model(ctx, state.tier, state.effort);
-      if (!route) throw new Error("jev/auto: default model has no credentials");
-    }
-    log({ tier: state.tier, effort: state.effort, level: state.level ?? null, from: old?.tier ?? null,
-      source, ...rating, selector: request.thinkingLevel, reason: request.reason,
-      ...(high.length ? { quota: high, intended: plan.tier } : {}) });
-    if (ctx.hasUI && (old?.tier !== state.tier || old?.effort !== state.effort || Boolean(old?.claude) !== Boolean(state.claude))) {
-      ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[state.tier]} ${state.effort}${state.claude ? " (Claude枠退避)" : ""}`);
-      if (state.claude && !old?.claude) {
-        const quality = state.level && rank(state.level) >= rank("deep") ? " 深い判断は Fable 復帰後の再確認を推奨します。" : "";
-        ctx.ui?.notify?.(`jev/auto: Claude の利用枠 (${high.join(", ")}) により ${data!.strong.id} へ退避します。${quality}`, "warning");
-      } else if (old?.claude && !state.claude) {
-        ctx.ui?.notify?.("jev/auto: Claude のリセット時刻または新しい利用率を確認し、通常の振り分けに戻ります。", "info");
-      } else if (state.tier === "peak" && old?.tier !== "peak") {
-        ctx.ui?.notify?.(`jev/auto: ${data!.peak.id} (${state.effort}) に上げます (${source})`, "info");
-      }
-    }
+    const route = { model: m, thinkingLevel: c.effort };
     if (request.reason === "direct") return route;
-    return same(old, state) && same(old?.claude, state.claude) ? route : { ...route, state };
+    return typeof request.state?.model === "string" && canon(old) === canon(state) ? route : { ...route, state };
   }
 
   pi.registerVirtualModel<State>({
@@ -536,90 +616,90 @@ export default function (pi: ExtensionAPI) {
     contextWindow: 1_000_000,
     maxTokens: 128_000,
     async route(request: any, ctx: any) {
-      refreshScores(data);
-      const fallback = model(ctx, "default", data.default.thinking);
-      if (!fallback) throw new Error(`jev/auto: ${data.default.provider}/${data.default.id} has no credentials`);
+      const fallback = find(ctx, key(data.default));
+      if (!fallback) throw new Error(`jev/auto: ${key(data.default)} has no credentials`);
+      const old = norm(request.state);
+      const e = env(ctx, old);
       if (request.reason === "direct") {
-        return blocked(ctx).length ? finish(request, ctx, { tier: "default", effort: data.default.thinking, level: "standard" }, "direct") : fallback;
+        if (!e.out.has(data.default.provider)) return { model: fallback, thinkingLevel: data.default.thinking };
+        return finish(request, ctx, e, choose(e, "standard"), "standard", "direct");
       }
       const sticky = request.reason === "retry" ? request.failed ?? request.previous : request.previous;
       if (request.reason !== "user" && sticky) {
-        const cap = request.reason === "retry" && sticky.model.provider === "anthropic"
-          && subscription(ctx, sticky.model) && usageLimit(sticky.message);
-        if (cap) quota.limit();
-        // Arbitrary failed retries (including auth/safety/cancellation) NEVER change provider.
-        // Sol continuations also stay on Sol, even after a reset; return to Claude on a new user turn.
-        if (!request.signal?.aborted && (request.reason !== "retry" || cap)
-          && sticky.model.provider === "anthropic" && blocked(ctx, request.state).length) {
-          const plan = request.state?.claude ?? request.state ?? { tier: tierOf(sticky.model) ?? "default",
-            effort: sticky.thinkingLevel, level: "standard", below: 0 };
-          return finish(request, ctx, plan, cap ? "subscription limit" : "continuation");
+        const provider = sticky.model.provider;
+        const cap = request.reason === "retry" && subscription(ctx, sticky.model) && usageLimit(sticky.message);
+        if (cap) quota.limit(provider);
+        const now = cap ? env(ctx, old) : e;
+        // Only a used-up subscription moves a turn. Arbitrary failures (auth, safety, cancellation) never do.
+        if (!request.signal?.aborted && (request.reason !== "retry" || cap) && now.out.has(provider)) {
+          const level = old?.level ?? "standard";
+          return finish(request, ctx, now, choose(now, level, undefined, old?.ab?.[level]), level,
+            cap ? "subscription limit" : "continuation");
         }
         return { model: sticky.model, thinkingLevel: sticky.thinkingLevel };
       }
 
-      const state = (request.state?.claude ?? request.state) as Plan | undefined;
-      // A session that came to jev/auto from a tier's model has its cache there.
-      const current = state?.tier ?? tierOf(request.previous?.model);
+      // A session that came to jev/auto from another model has its cache there.
+      const current = old?.model ?? (request.previous?.model ? key(request.previous.model) : undefined);
       const selector = request.thinkingLevel;
       const userText = lastText(request.messages, "user");
       const name = named(userText);
-      const r = await rate(ctx, userText, lastText(request.messages, "assistant"), Boolean(name), request.signal);
+      const answered = old?.level ? old : undefined; // the answer before this message was routed here
+      const r = await rate(ctx, userText, lastText(request.messages, "assistant"), Boolean(name), Boolean(answered), request.signal);
+      if (!("why" in r) && r.outcome && answered) {
+        log({ kind: "outcome", model: answered.model, effort: answered.effort, level: answered.level, ...r.outcome,
+          ab: answered.ab?.[answered.level!] === armId({ key: answered.model, effort: answered.effort }) });
+      }
 
-      let tier: Tier;
+      /** A tier's model at the effort written after its name, else its best for the level. */
+      const tierChoice = (tier: Tier, lv: Level | undefined, effort?: string): Choice => {
+        const k = key(data[tier]);
+        if (!eligible(e, { key: k, provider: data[tier].provider })) return choose(e, lv ?? "standard", undefined, lv && old?.ab?.[lv]);
+        return { key: k, effort: effort ?? (lv && onModel(e, k, lv)?.effort) ?? data[tier].thinking };
+      };
+      const usable = (k: string) => eligible(e, { key: k, provider: k.slice(0, k.indexOf("/")) });
+
+      let c: Choice;
       let level: Level | undefined;
-      let effort: string;
-      let below = 0;
       let source: string;
       if ("why" in r) {
         source = r.why;
         if (name) {
-          tier = name.tier;
-          level = tier === "peak" ? "critical" : tier === "default" ? "standard" : tier === "light" ? "light" : undefined;
-          effort = name.effort ?? effortFor(data, tier, level);
+          level = name.tier === "peak" ? "critical" : name.tier === "default" ? "standard" : name.tier === "light" ? "light" : undefined;
+          c = tierChoice(name.tier, level, name.effort);
           source = `named (${r.why})`;
+        } else if (current && usable(current)) {
+          level = old?.level;
+          const t = tierOf(current);
+          c = { key: current, effort: old?.model === current ? old.effort : t ? data[t].thinking : request.previous?.thinkingLevel ?? "medium" };
         } else {
-          tier = current ?? "default";
-          level = state?.level;
-          effort = state?.tier === tier ? state.effort : data[tier].thinking;
-          below = state?.below ?? 0;
+          level = old?.level ?? "standard";
+          c = e.out.size ? choose(e, level) : { key: key(data.default), effort: data.default.thinking };
         }
       } else if (name && r.asked >= ASKED_MIN) {
         const rated = levelOf(r.score, selector);
-        tier = name.tier;
-        level = tier === "peak" ? atLeast(rated, "deep") : tier === "default" ? atMost(rated, "hard")
-          : tier === "light" ? "light" : undefined;
-        effort = name.effort ?? effortFor(data, tier, level);
+        level = name.tier === "peak" ? atLeast(rated, "deep") : name.tier === "default" ? atMost(rated, "hard")
+          : name.tier === "light" ? "light" : rated;
+        if (selector === "low") level = atMost(level, "hard");
+        c = tierChoice(name.tier, level, name.effort);
         source = "named";
-      } else if (r.go >= GO_MIN) {
-        // The work goes on where it is: on the light tier as it was (a thanks there is no reason to move),
-        // elsewhere at least at standard, and one rung down from critical.
-        level = current === "light" ? "light"
-          : state?.level ? atMost(atLeast(state.level, "standard"), "deep") : state ? undefined : "standard";
-        tier = current ?? HOME[level ?? "standard"];
-        effort = level ? effortFor(data, tier, level) : state?.tier === tier ? state.effort : data[tier].thinking;
-        below = state?.below ?? 0;
+      } else if (r.go >= GO_MIN && current && old?.level && rank(old.level) >= rank("standard")) {
+        // The work goes on where it is, at the level it had: one rung down from critical (the decision is made).
+        level = atMost(old.level, selector === "low" ? "hard" : "deep");
+        const floor = need(data, e.arms, level);
+        const here = e.arms.filter((a) => a.key === current && floor && reaches(a, floor) && eligible(e, a))
+          .sort((a, b) => total(data, b, level!) - total(data, a, level!))[0];
+        if (here) c = { key: here.key, effort: here.effort };
+        else if (usable(current) && !e.arms.some((a) => a.key === current)) c = { key: current, effort: old.effort }; // no data on it
+        else c = choose(e, level, current, old.ab?.[level]); // it does not reach the level, or is used up
         source = "go-ahead";
       } else {
         level = levelOf(r.score, selector);
-        const tokens = finite(ctx.getContextUsage?.()?.tokens) ? ctx.getContextUsage().tokens : 0;
-        tier = cheapest(data, level, current, tokens, selector !== "low");
-        // Hysteresis: leave the peak model only after LEAVE_PEAK_AFTER messages in a row that would leave it.
-        if (current === "peak" && tier !== "peak" && (state?.below ?? 0) + 1 < LEAVE_PEAK_AFTER && selector !== "low") {
-          tier = "peak";
-          below = (state?.below ?? 0) + 1;
-        }
-        effort = effortFor(data, tier, level);
+        c = choose(e, level, current, old?.ab?.[level]);
         source = "classifier";
       }
-      if (selector === "low" && tier === "peak") {
-        tier = "default";
-        level = level ? atMost(level, "hard") : "standard";
-        effort = effortFor(data, tier, level);
-        below = 0;
-      }
       const rating = "why" in r ? {} : { score: r.score, go: r.go, asked: name ? r.asked : undefined, ms: r.ms };
-      return finish(request, ctx, { tier, effort, ...(level ? { level } : {}), below }, source, rating);
+      return finish(request, ctx, e, c, level, source, rating);
     },
   });
 }

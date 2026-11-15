@@ -124,7 +124,9 @@ class PiSettings(unittest.TestCase):
 
     def test_router_is_the_default_selection_and_first_in_the_cycle(self):
         router = self.router()
-        self.assertEqual(router, {"enabled": True, "provider": "jev", "id": "auto", "thinking": "high"})
+        self.assertEqual(router, {"enabled": True, "provider": "jev", "id": "auto", "thinking": "high",
+                                  "weights": {"intelligence": 6, "cost": 2, "speed": 1},
+                                  "scarce": {"claude-fable-5-2": {"cost_factor": 2, "max_effort": "high"}}})  # the owner's formula (2026-11-15)
         out = json.loads(self.render(json.dumps(PI_SETTINGS)))
         self.assertEqual((out["defaultProvider"], out["defaultModel"]), ("jev", "auto"))
         self.assertEqual(out["enabledModels"][0], "jev/auto:high")
