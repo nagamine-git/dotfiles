@@ -1,35 +1,45 @@
 /**
- * jev-router — the virtual model `jev/auto`: picks one of the four tiers in .chezmoidata/pi.yaml
- * (copied to ~/.pi/agent/model-tiers.json) for each message the owner writes. Approved by the owner
- * on 2026-11-15: Fable may be chosen without asking.
+ * jev-router — the virtual model `jev/auto`: for each message the owner writes it picks one of the four
+ * tiers in .chezmoidata/pi.yaml and an effort. ~/.pi/agent/model-tiers.json carries the tiers and
+ * Artificial Analysis's scores. Approved by the owner on 2026-11-15: Fable may be chosen without asking.
+ * Pi's own mechanism (docs/virtual-models.md, examples/extensions/jev-router.ts), with Pi's tiers.
  *
- * Pi's own mechanism (docs/virtual-models.md, examples/extensions/jev-router.ts), with Pi's tiers:
- *   1. The owner names a model in the message (fable/ここぞ, opus, sol/gpt, haiku/軽量で): that tier.
- *   2. Otherwise the Jev classifier (TypeSafe) rates the message, with the tail of the last answer
- *      for context: light (lookups, status, trivial edits), standard (ordinary work), deep (strategy,
- *      architecture, system-wide design, hard debugging, security policy, or the owner says the work is
- *      going in circles) or continue (a short go-ahead such as "OK", "進めて", "反映して").
- *      deep -> peak, standard -> default, light -> light, continue -> the tier already in use.
- *      Going down needs a clear answer (DOWN_MIN); anything unclear stays on default or the current tier.
- *   3. No classifier (no key, timeout, error): the current tier, or default.
+ * 1. What the message needs. One call to the Jev classifier (TypeSafe) reads the message and the tail of
+ *    the last answer:
+ *      level  a score on five ordered levels: light (lookups, status), standard (ordinary work), hard (the
+ *             approach is not obvious), deep (system-wide design, analysis) and critical (the highest
+ *             stakes, going in circles). The score is the expected level, and CUTS make it one level.
+ *      go     is the message only a go-ahead ("OK", "進めて", "反映して")? Then the work goes on where it
+ *             is: on the light tier as it was; elsewhere at least at standard, and one rung down from
+ *             critical, since the decision is made.
+ *      asked  only when the message names a model: does the owner ask for it, or is it the topic?
+ *    Measured on the owner's past messages (2026-11-15): four choices (light, standard, deep, continue)
+ *    sent 30 of 120 to the peak model at its best effort; the five levels send 5 there.
+ * 2. The effort follows Artificial Analysis's Intelligence Index per model and effort, as model-radar
+ *    records it in docs/model-radar/_state.json (`scores` in the tier file). Each level needs a score, and
+ *    the lowest effort of the model in use that reaches it is used (a higher effort costs more per task):
+ *      light     the score of the light tier at its configured effort
+ *      standard  the score of the default tier at its configured effort (the owner's minimum bar)
+ *      hard      STEP more
+ *      deep      more than the default model reaches at any effort: the peak model, its lowest such effort
+ *      critical  the best score of the peak model
+ *    New scores move the efforts with no change to this file. Without a score the tier's configured effort.
+ * 3. The model changes as seldom as the level allows. A change of effort keeps the prompt cache; a change
+ *    of model writes the whole conversation again (measured 2026-11-15: all six changes of model in the
+ *    logs read nothing from the cache, four changes of effort read all of it). So:
+ *      - a light message goes to the light tier only where nothing is cached yet (the first message, or a
+ *        session that is there already); later it stays on the model in use, at a lower effort
+ *      - deep and critical go to the peak model at once: the default model does not reach them
+ *      - the peak model is left after LEAVE_PEAK_AFTER messages in a row that do not need it
+ * 4. A model the owner asks for by name (fable/ここぞ, opus, sol/gpt, haiku/軽量で) is used, and so is an
+ *    effort written right after the name ("fable high", "Fable5.2medium"). Fable by name is at least deep.
+ *    Without the classifier the name alone decides, and Fable by name is critical.
+ * 5. No classifier (no key, timeout, error): the tier and effort in use, or default.
+ *
  * Tool follow-ups and retries stay on the model that handled the turn (prompt cache, thinking signatures),
  * and a retry never moves to another model. Requests outside the loop (compaction) use default.
- *
- * Effort (approved by the owner on 2026-11-15) follows Artificial Analysis's Intelligence Index per
- * model and effort, as model-radar records it in docs/model-radar/_state.json (copied into the tier file
- * as `scores`). Each kind of message needs a score, and the lowest effort of the chosen model that
- * reaches it is used (a higher effort costs more per task):
- *   light     the score of the light tier at its configured effort
- *   standard  the score of the default tier at its configured effort (the owner's minimum bar);
- *             STEP more when the classifier gives deep at least HARDER_MIN without reaching peak
- *   deep      the best score of the peak model (ties: the lower effort)
- *   continue  the effort already in use
- * A named tier counts as its kind (peak deep, default standard, light light; strong keeps its effort).
- * Without a score for the model, the tier's configured effort is used. New scores move the efforts
- * with no change to this file.
- *
- * The virtual thinking level is a bias: low never picks peak, max picks peak more readily.
- * Decisions (tier, effort, source, probabilities, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
+ * The virtual thinking level is a bias: low never uses the peak model, max lowers every cut by MAX_SHIFT.
+ * Decisions (tier, effort, level, source, score, never the text) go to ~/.pi/agent/jev-router.log.jsonl.
  * The TypeSafe key is read with op-agent only for a classifier call and never enters process.env.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -38,37 +48,64 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-const HOME = os.homedir();
-const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(HOME, ".pi/agent");
+const HOME_DIR = os.homedir();
+const AGENT_DIR = process.env.PI_CODING_AGENT_DIR || path.join(HOME_DIR, ".pi/agent");
 const TIERS_FILE = path.join(AGENT_DIR, "model-tiers.json");
 const LOG = path.join(AGENT_DIR, "jev-router.log.jsonl");
-const TYPESAFE_REF_FILE = path.join(HOME, ".config/agents/model-typesafe.env");
+const TYPESAFE_REF_FILE = path.join(HOME_DIR, ".config/agents/model-typesafe.env");
 const TYPESAFE_REF = /^TYPESAFE_API_KEY=(?:"(op:\/\/[^"]+)"|(op:\/\/\S+))\s*$/m;
-const OP_AGENT = path.join(HOME, ".local/bin/op-agent");
+const OP_AGENT = path.join(HOME_DIR, ".local/bin/op-agent");
 const CLASSIFIER_TIMEOUT_MS = 6_000;
 const USER_MAX = 6_000;
 const CONTEXT_MAX = 1_500;
-const DOWN_MIN = 0.6;
-const PEAK_MIN: Record<string, number> = { high: 0.5, max: 0.35 };
-const HARDER_MIN = 0.25;
+// Where the classifier's score (0 = light … 4 = critical) passes from one level to the next.
+const CUTS = [0.5, 1.5, 2.5, 3.5];
+const MAX_SHIFT = 0.25;
+const GO_MIN = 0.5;
+const ASKED_MIN = 0.6;
 const STEP = 5;
+const LEAVE_PEAK_AFTER = 2;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
+const LEVELS = ["light", "standard", "hard", "deep", "critical"] as const;
 
 type Tier = "default" | "strong" | "peak" | "light";
-type Kind = "light" | "standard" | "harder" | "deep";
+type Level = (typeof LEVELS)[number];
 type TierSpec = { provider: string; id: string; thinking: string };
 type Scores = Record<string, Record<string, number | null>>;
 type Data = Record<Tier, TierSpec> & { scores?: Scores };
-type State = { tier: Tier; effort?: string };
+type State = { tier: Tier; effort: string; level?: Level; below?: number };
 const TIER_NAMES: Tier[] = ["default", "strong", "peak", "light"];
 const NAMES: Record<Tier, string> = { default: "既定", strong: "強め", peak: "ここぞ", light: "軽量" };
+/** The tier a level belongs to. */
+const HOME: Record<Level, Tier> = { light: "light", standard: "default", hard: "default", deep: "peak", critical: "peak" };
 
-// The owner names a tier. Checked in this order, so "fable と opus" goes to peak.
-const OVERRIDES: [Tier, RegExp][] = [
+// A model the owner names. Checked in this order, so "fable と opus" is peak.
+const NAMED: [Tier, RegExp][] = [
   ["peak", /fable|ここぞ/i],
-  ["strong", /\bsol\b|\bgpt[-\s]?\d/i],
+  ["strong", /\bsol\b|\bgpt[-\s]?\d[\d.]*/i],
   ["default", /\bopus\b/i],
   ["light", /\bhaiku\b|軽量(?:モデル)?で/i],
+];
+// An effort right after the name and its version: "fable high", "Fable5.2medium", "opus-5-5 xhigh".
+const EFFORT_AFTER = /^[\s\-_/:]*(?:\d+(?:[.-]\d+)*)?[\s\-_/:]*(low|medium|high|xhigh|max)(?![a-z])/i;
+
+const WHO = "A solo founder-engineer writes `owner_message` to a coding and thinking agent. ";
+const GO_AHEAD = "A short go-ahead, approval, pick among offered options, or acknowledgement (for example OK, yes, A で, " +
+  "進めて, 反映して, いいね, ありがとう) that continues or closes the work already under way";
+// One description for each of LEVELS, lowest first.
+const LEVEL_CRITERIA = [
+  "Quick lookups, status checks, simple factual questions, restating or summarizing what was said, " +
+    "trivial one-line edits or commands, and running an already decided routine step",
+  "Ordinary implementation, fixes with a known cause, reviews, tool research and recommendations, config changes, " +
+    "explanations, and multi-step work whose approach is clear",
+  "Work whose approach is not obvious: debugging without a known cause or after a fix that did not work, " +
+    "changes that cut across several components, a design with trade-offs, security or permission policy, " +
+    "a comparison of options that needs real analysis",
+  "Architecture or system-wide design, evaluating or rethinking a whole system, product or UI, " +
+    "business, market or product analysis, a diagnosis that must weigh many factors",
+  "The highest-stakes thinking: which business or strategy to bet on, what the owner should work on, " +
+    "a decision that is costly to reverse; or the owner says the work is going in circles, has failed repeatedly, " +
+    "must be sharper, or asks for the deepest possible thinking",
 ];
 
 function loadTiers(): Data | undefined {
@@ -117,9 +154,10 @@ function resolveTypesafeKey(): Promise<string | undefined> {
   return typesafeKey;
 }
 
-type Rating = { probabilities: Record<string, number>; ms: number } | { why: string };
+type Rating = { score: number; go: number; asked: number; ms: number } | { why: string };
 
-async function rate(ctx: any, userText: string, assistantText: string, current: Tier | undefined,
+/** The classifier's answers, or why there are none. Never throws and never waits past the timeout. */
+async function rate(ctx: any, userText: string, assistantText: string, withName: boolean,
   signal?: AbortSignal): Promise<Rating> {
   const jev = ctx.modelRegistry.findOfType?.("classifier", "typesafe", "jev-latest");
   if (!jev) return { why: "classifier unavailable" };
@@ -133,35 +171,44 @@ async function rate(ctx: any, userText: string, assistantText: string, current: 
     if (controller.signal.aborted) return reject(new Error("ended"));
     controller.signal.addEventListener("abort", () => reject(new Error("ended")), { once: true });
   });
+  const questions: Record<string, unknown> = {
+    level: {
+      type: "score",
+      instructions: WHO + "How much thinking does a good answer need? " +
+        "Judge the thinking the answer needs, not the length of the message.",
+      criteria: LEVEL_CRITERIA,
+    },
+    go: {
+      type: "bool",
+      instructions: WHO + "Is `owner_message` only a go-ahead for the work already under way?",
+      criteria: { true: GO_AHEAD, false: "It asks for something new, changes the direction, or asks a question" },
+    },
+  };
+  if (withName) {
+    questions.asked = {
+      type: "bool",
+      instructions: WHO + "Does the owner ask that a particular model (for example Fable, Opus, Sol or GPT, Haiku) " +
+        "answer this message or be consulted for it?",
+      criteria: {
+        true: "The owner tells the agent to use, call or consult a named model for this request " +
+          "(for example: fable で, fable に聞いて, opus でお願い, haiku で要約)",
+        false: "No model is named, or a model is only the topic of the message: its settings, price, tiers, " +
+          "behaviour or whether to use it in general",
+      },
+    };
+  }
   try {
     const apiKey = await Promise.race([resolveTypesafeKey(), ended]);
     if (!apiKey && !process.env.TYPESAFE_API_KEY) return { why: "classifier unavailable" };
     const result = await Promise.race([ctx.modelRegistry.classify(jev, {
-      state: {
-        owner_message: userText.slice(0, USER_MAX),
-        previous_answer_tail: assistantText.slice(-CONTEXT_MAX),
-        current_tier: current ?? "none",
-      },
-      questions: { tier: {
-        type: "choice",
-        instructions: "A solo founder-engineer writes `owner_message` to a coding and thinking agent. " +
-          "Which model tier should answer it? Judge the thinking the answer needs, not the length of the message.",
-        criteria: {
-          light: "Quick lookups, status checks, simple factual questions, short summaries, " +
-            "trivial one-line edits or commands, and running an already decided routine step",
-          standard: "Ordinary implementation, fixes, reviews, tool research and recommendations, config changes, " +
-            "explanations, and multi-step work whose approach is clear",
-          deep: "Business strategy, product or pricing decisions, architecture or cross-cutting design, " +
-            "evaluating a whole system or UI, subtle or long-failing debugging, security or permission policy, " +
-            "or the owner says the work is going in circles, is still broken, or asks for the deepest thinking",
-          continue: "A short go-ahead, approval or acknowledgement (for example OK, yes, 進めて, 反映して, いいね) " +
-            "that continues the work already under way",
-        },
-      } },
+      state: { owner_message: userText.slice(0, USER_MAX), previous_answer_tail: assistantText.slice(-CONTEXT_MAX) },
+      questions,
     }, { signal: controller.signal, apiKey }), ended]);
-    const a = result?.answers?.tier;
-    if (result?.stopReason !== "stop" || a?.type !== "choice") return { why: "classifier unavailable" };
-    return { probabilities: a.probabilities ?? { [a.choice]: 1 }, ms: Date.now() - started };
+    const a = result?.answers;
+    if (result?.stopReason !== "stop" || a?.level?.type !== "score" || typeof a.level.score !== "number"
+      || a?.go?.type !== "bool" || typeof a.go.probability !== "number") return { why: "classifier unavailable" };
+    const asked = a.asked?.type === "bool" && typeof a.asked.probability === "number" ? a.asked.probability : 1;
+    return { score: a.level.score, go: a.go.probability, asked, ms: Date.now() - started };
   } catch {
     return { why: controller.signal.aborted ? "classifier timed out or was canceled" : "classifier unavailable" };
   } finally {
@@ -170,50 +217,80 @@ async function rate(ctx: any, userText: string, assistantText: string, current: 
   }
 }
 
-/** Tier and kind for a rating: going up needs PEAK_MIN, going down needs DOWN_MIN; otherwise default.
- * No kind means "keep going as before" (continue, or an answer with no known choice). */
-export function pick(p: Record<string, number>, current: Tier | undefined, level: string): { tier: Tier; kind?: Kind } {
-  const top = Object.entries(p).sort((a, b) => b[1] - a[1])[0]?.[0];
-  if (top === "continue") return { tier: current ?? "default" };
-  const peakMin = PEAK_MIN[level];
-  if (peakMin !== undefined && (p.deep ?? 0) >= peakMin) return { tier: "peak", kind: "deep" };
-  if (top === "light" && (p.light ?? 0) >= DOWN_MIN) return { tier: "light", kind: "light" };
-  if (top === "light" || top === "standard" || top === "deep") {
-    return { tier: "default", kind: (p.deep ?? 0) >= HARDER_MIN ? "harder" : "standard" };
+const rank = (level: Level) => LEVELS.indexOf(level);
+const atLeast = (level: Level, floor: Level): Level => (rank(level) < rank(floor) ? floor : level);
+const atMost = (level: Level, ceiling: Level): Level => (rank(level) > rank(ceiling) ? ceiling : level);
+
+/** The model the owner names in the message, and the effort written right after the name. */
+export function named(message: string): { tier: Tier; effort?: string } | undefined {
+  for (const [tier, re] of NAMED) {
+    const m = re.exec(message);
+    if (m) return { tier, effort: EFFORT_AFTER.exec(message.slice(m.index + m[0].length))?.[1].toLowerCase() };
   }
-  return { tier: current ?? "default" };
+  return undefined;
 }
 
-/** The lowest effort of the tier's model that reaches the kind's score; see the header. */
-export function effortFor(data: Data, tier: Tier, kind: Kind | undefined): string {
+/** The level for the classifier's score. The selector low stops at hard (no peak model); max leans up. */
+export function levelOf(score: number, selector: string): Level {
+  const s = score + (selector === "max" ? MAX_SHIFT : 0);
+  const level = LEVELS[CUTS.filter((cut) => s >= cut).length];
+  return selector === "low" ? atMost(level, "hard") : level;
+}
+
+/** The tier for a level, given the tier in use and how many messages in a row did not need the peak model. */
+export function tierFor(level: Level, current: Tier | undefined, below: number): Tier {
+  const home = HOME[level];
+  if (!current || current === "light") return home; // nothing large is cached on another model
+  if (home === "peak") return "peak";
+  if (current === "peak" && below + 1 < LEAVE_PEAK_AFTER) return "peak";
+  return "default"; // a light message stays on the default model: only its effort goes down
+}
+
+function scoreOf(data: Data, id: string, effort: string): number | undefined {
+  const v = data.scores?.[id]?.[effort];
+  return typeof v === "number" ? v : undefined;
+}
+
+function bestOf(data: Data, id: string): number | undefined {
+  const all = EFFORTS.flatMap((e) => scoreOf(data, id, e) ?? []);
+  return all.length ? Math.max(...all) : undefined;
+}
+
+/** The score a level needs; `above` where it has to be passed, not only reached. */
+function need(data: Data, level: Level): { score: number; above?: boolean } | undefined {
+  const of = (score: number | undefined, above?: boolean) => (score === undefined ? undefined : { score, above });
+  const standard = scoreOf(data, data.default.id, data.default.thinking);
+  if (level === "light") return of(scoreOf(data, data.light.id, data.light.thinking));
+  if (level === "standard") return of(standard);
+  if (level === "hard") return of(standard === undefined ? undefined : standard + STEP);
+  if (level === "deep") return of(bestOf(data, data.default.id), true);
+  return of(bestOf(data, data.peak.id));
+}
+
+/** The lowest effort of the tier's model that reaches what the level needs: its best where none does,
+ * the tier's configured effort where a score is missing or there is no level. */
+export function effortFor(data: Data, tier: Tier, level: Level | undefined): string {
   const spec = data[tier];
-  const own = data.scores?.[spec.id];
-  const known = EFFORTS.filter((e) => typeof own?.[e] === "number");
-  if (!kind || !own || !known.length) return spec.thinking;
-  const score = (e: string) => own[e] as number;
-  if (kind === "deep") {
-    const best = Math.max(...known.map(score));
-    return known.find((e) => score(e) === best)!;
-  }
-  const bar = kind === "light" ? data.light : data.default;
-  const base = data.scores?.[bar.id]?.[bar.thinking];
-  if (typeof base !== "number") return spec.thinking;
-  const need = base + (kind === "harder" ? STEP : 0);
-  return known.find((e) => score(e) >= need) ?? known.reduce((a, b) => (score(b) > score(a) ? b : a));
+  const known = EFFORTS.filter((e) => scoreOf(data, spec.id, e) !== undefined);
+  const n = level && need(data, level);
+  if (!n || !known.length) return spec.thinking;
+  const score = (e: string) => scoreOf(data, spec.id, e) as number;
+  const best = Math.max(...known.map(score));
+  return known.find((e) => (n.above ? score(e) > n.score : score(e) >= n.score)) ?? known.find((e) => score(e) === best)!;
 }
-
-const KIND_OF: Partial<Record<Tier, Kind>> = { peak: "deep", default: "standard", light: "light" };
 
 export default function (pi: ExtensionAPI) {
-  const tiers = loadTiers();
-  if (!tiers) return; // No tier data on this host: jev/auto is not offered.
+  const data = loadTiers();
+  if (!data) return; // No tier data on this host: jev/auto is not offered.
 
-  const model = (ctx: any, tier: Tier) => {
-    const t = tiers[tier];
+  const model = (ctx: any, tier: Tier, effort: string) => {
+    const t = data[tier];
     const m = ctx.modelRegistry.find(t.provider, t.id);
     if (!m || (ctx.modelRegistry.hasConfiguredAuth && !ctx.modelRegistry.hasConfiguredAuth(m))) return undefined;
-    return { model: m, thinkingLevel: t.thinking };
+    return { model: m, thinkingLevel: effort };
   };
+  const tierOf = (m: any): Tier | undefined =>
+    TIER_NAMES.find((t) => m && data[t].provider === m.provider && data[t].id === m.id);
 
   pi.registerVirtualModel<State>({
     provider: "jev",
@@ -223,44 +300,86 @@ export default function (pi: ExtensionAPI) {
     contextWindow: 1_000_000,
     maxTokens: 128_000,
     async route(request: any, ctx: any) {
-      const fallback = model(ctx, "default");
-      if (!fallback) throw new Error(`jev/auto: ${tiers.default.provider}/${tiers.default.id} has no credentials`);
+      const fallback = model(ctx, "default", data.default.thinking);
+      if (!fallback) throw new Error(`jev/auto: ${data.default.provider}/${data.default.id} has no credentials`);
       if (request.reason === "direct") return fallback;
       const sticky = request.reason === "retry" ? request.failed ?? request.previous : request.previous;
       if (request.reason !== "user" && sticky) return { model: sticky.model, thinkingLevel: sticky.thinkingLevel };
 
-      const current = request.state?.tier as Tier | undefined;
+      const state = request.state as State | undefined;
+      // A session that came to jev/auto from a tier's model has its cache there.
+      const current = state?.tier ?? tierOf(request.previous?.model);
+      const selector = request.thinkingLevel;
       const userText = lastText(request.messages, "user");
-      let tier: Tier | undefined;
-      let kind: Kind | undefined;
-      let source = "override";
-      let probabilities: Record<string, number> | undefined;
-      let ms: number | undefined;
-      for (const [t, re] of OVERRIDES) if (re.test(userText)) { tier = t; kind = KIND_OF[t]; break; }
-      if (!tier) {
-        const r = await rate(ctx, userText, lastText(request.messages, "assistant"), current, request.signal);
-        if ("why" in r) {
-          tier = current ?? "default";
-          source = r.why;
+      const name = named(userText);
+      const r = await rate(ctx, userText, lastText(request.messages, "assistant"), Boolean(name), request.signal);
+
+      let tier: Tier;
+      let level: Level | undefined;
+      let effort: string;
+      let below = 0;
+      let source: string;
+      if ("why" in r) {
+        source = r.why;
+        if (name) {
+          tier = name.tier;
+          level = tier === "peak" ? "critical" : tier === "default" ? "standard" : tier === "light" ? "light" : undefined;
+          effort = name.effort ?? effortFor(data, tier, level);
+          source = `named (${r.why})`;
         } else {
-          ({ tier, kind } = pick(r.probabilities, current, request.thinkingLevel));
-          source = "classifier";
-          probabilities = r.probabilities;
-          ms = r.ms;
+          tier = current ?? "default";
+          level = state?.level;
+          effort = state?.tier === tier ? state.effort : data[tier].thinking;
+          below = state?.below ?? 0;
+        }
+      } else if (name && r.asked >= ASKED_MIN) {
+        const rated = levelOf(r.score, selector);
+        tier = name.tier;
+        level = tier === "peak" ? atLeast(rated, "deep") : tier === "default" ? atMost(rated, "hard")
+          : tier === "light" ? "light" : undefined;
+        effort = name.effort ?? effortFor(data, tier, level);
+        source = "named";
+      } else if (r.go >= GO_MIN) {
+        // The work goes on where it is: on the light tier as it was (a thanks there is no reason to move),
+        // elsewhere at least at standard, and one rung down from critical.
+        level = current === "light" ? "light"
+          : state?.level ? atMost(atLeast(state.level, "standard"), "deep") : state ? undefined : "standard";
+        tier = current ?? HOME[level ?? "standard"];
+        effort = level ? effortFor(data, tier, level) : state?.tier === tier ? state.effort : data[tier].thinking;
+        below = state?.below ?? 0;
+        source = "go-ahead";
+      } else {
+        level = levelOf(r.score, selector);
+        tier = tierFor(level, current, state?.below ?? 0);
+        below = tier === "peak" && HOME[level] !== "peak" ? (state?.below ?? 0) + 1 : 0;
+        effort = effortFor(data, tier, level);
+        source = "classifier";
+      }
+      if (selector === "low" && tier === "peak") {
+        tier = "default";
+        level = level ? atMost(level, "hard") : "standard";
+        effort = effortFor(data, tier, level);
+        below = 0;
+      }
+      let route = model(ctx, tier, effort);
+      if (!route) {
+        source += ` (${tier} unavailable)`;
+        tier = "default";
+        effort = effortFor(data, tier, level ?? "standard");
+        below = 0;
+        route = model(ctx, tier, effort)!;
+      }
+      const rating = "why" in r ? {} : { score: r.score, go: r.go, asked: name ? r.asked : undefined, ms: r.ms };
+      log({ tier, effort, level: level ?? null, from: state?.tier ?? null, source, ...rating, selector });
+      const changed = !state || state.tier !== tier || state.effort !== effort || state.level !== level
+        || (state.below ?? 0) !== below;
+      if (ctx.hasUI && (state?.tier !== tier || state?.effort !== effort)) {
+        ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[tier]} ${effort}`);
+        if (tier === "peak" && state?.tier !== "peak") {
+          ctx.ui?.notify?.(`jev/auto: ${data.peak.id} (${effort}) に上げます (${source})`, "info");
         }
       }
-      if (tier === "peak" && request.thinkingLevel === "low") { tier = "default"; kind = "standard"; }
-      let route = model(ctx, tier);
-      if (!route) { source += ` (${tier} unavailable)`; tier = "default"; kind ??= "standard"; route = fallback; }
-      // Going on as before keeps the effort in use on the same tier.
-      const effort = !kind && tier === current && request.state?.effort ? request.state.effort : effortFor(tiers, tier, kind);
-      log({ tier, effort, kind: kind ?? null, from: current ?? null, source, probabilities, ms, level: request.thinkingLevel });
-      if ((tier !== current || effort !== request.state?.effort) && ctx.hasUI) {
-        ctx.ui?.setStatus?.("jev-router", `auto→${NAMES[tier]} ${effort}`);
-        if (tier === "peak" && tier !== current) ctx.ui?.notify?.(`jev/auto: ${tiers.peak.id} (${effort}) に上げます (${source})`, "info");
-      }
-      const changed = tier !== current || effort !== request.state?.effort;
-      return { ...route, thinkingLevel: effort, ...(changed ? { state: { tier, effort } } : {}) };
+      return changed ? { ...route, state: { tier, effort, ...(level ? { level } : {}), below } } : route;
     },
   });
 }

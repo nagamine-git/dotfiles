@@ -31,11 +31,13 @@ pi:
       id: claude-haiku-5-5
       thinking: high
   # router: 既定の選択を仮想モデル jev/auto にする (dot_pi/agent/extensions/jev-router.ts)。
-  # 本人のメッセージごとに Jev 分類器 (TypeSafe) が上の 4 段から選ぶ。Fable (peak) も本人の指定なしで選んでよい
-  # (本人承認 2026-11-15)。thinking は振り分けの傾き: low は peak を使わない、high は通常、max は peak を選びやすい。
-  # effort は docs/model-radar/_state.json の Artificial Analysis の点数から、依頼の種類が要る点数に届くいちばん低いものを選ぶ
-  # (light は light 段、standard は default 段の上の設定値の点数、難しめは +5、deep は peak の最高点)。上の各段の thinking は
-  # 名指しのときと点数が無いときの値。
+  # 本人のメッセージごとに Jev 分類器 (TypeSafe) が 5 段階 (light・standard・hard・deep・critical) で要る深さを測り、
+  # 上の 4 段のモデルと effort を選ぶ。Fable (peak) も本人の指定なしで選んでよい (本人承認 2026-11-15)。
+  # effort は docs/model-radar/_state.json の Artificial Analysis の点数から、その段階が要る点数に届くいちばん低いものを選ぶ
+  # (light は light 段、standard は default 段の上の設定値の点数、hard は +5、deep は default のモデルが届かない点数、
+  # critical は peak の最高点)。上の各段の thinking は、点数が無いときと sol の名指しのときの値。
+  # モデルの切り替えはキャッシュを失うので少なくし、細かい上げ下げは effort で行う (詳細は docs/agents-unified.md)。
+  # thinking は振り分けの傾き: low は peak を使わない、high は通常、max は上がりやすい。
   # enabled: false にすると従来どおり default 段で起動する。Ctrl+P の先頭が jev/auto、続けて 4 段。
   router:
     enabled: true
