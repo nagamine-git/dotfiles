@@ -1,22 +1,19 @@
 /**
- * live-gate — the owner's go before Pi acts on the owner's live Chrome or desktop.
+ * live-gate — how Pi may act on the owner's live Chrome and desktop.
  *
  * Two surfaces act with the owner's own logins and windows:
- *   chrome   mcp__chrome__*          chrome-devtools-mcp --autoConnect: the running Chrome, every tab of the profile
+ *   chrome   mcp__chrome__*          Playwright MCP through the Playwright Extension: the running Chrome, the owner's logins
  *   desktop  computer_use_linux_*    @agent-sh/computer-use-linux: screen, pointer and keyboard
- * jev-gate's auto mode runs MCP and package tools without a dialog, so without this file a click that submits,
- * buys or publishes would run unseen. Here:
- *   - Looking (lists, snapshots, screenshots, accessibility trees, diagnostics) runs.
- *   - Acting (click, type, key, navigate, drag, upload, run a script, move a window) needs the owner's go,
- *     asked once per session branch and surface. The go is stored on the branch; an abandoned branch's is not read.
- *   - A decline is kept too: the agent is not asked again and cannot ask again. The owner turns a surface on or
- *     off with /live <chrome|desktop|all> <on|off>.
- *   - Without a UI there is nobody to ask, so acting is blocked: an unattended Pi only looks. There is no
- *     environment variable or file that grants the go; only the dialog and /live do.
- *   - A question cut short by Escape decides nothing.
- * A tool this file does not know as looking counts as acting, so a new tool of either package asks first.
- * Decisions are appended to ~/.pi/agent/jev-gate.log.jsonl (layer "live"), without the tool input.
- * This is a floor against accidents, not a sandbox: a go covers the session, not each click.
+ * Each surface has a mode, set per session branch with /live <chrome|desktop|all> <auto|ask|off>:
+ *   auto (default, the owner's choice on 2026-11-15)  Pi looks and acts without asking, also without a UI
+ *                    (pi -p, subagents). The owner stays able to stop it with /live … off.
+ *   ask              Looking runs; the first action asks the owner once for the session (no UI: blocked).
+ *   off              Looking runs; acting is blocked.
+ * Looking = lists, snapshots, screenshots, accessibility trees, diagnostics. Anything else, including a tool this
+ * file does not know, is acting. In every mode the agent is told not to submit, send, purchase, publish or delete
+ * there unless the owner asked for exactly that. This is guidance and a kill switch, not a sandbox.
+ * Desktop input goes to the target window without taking focus (Hyprland background mode), so the owner can keep
+ * working. Decisions are appended to ~/.pi/agent/jev-gate.log.jsonl (layer "live"), without the tool input.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as fs from "node:fs";
@@ -25,20 +22,27 @@ import * as path from "node:path";
 
 const LOG = path.join(os.homedir(), ".pi/agent/jev-gate.log.jsonl");
 const ENTRY = "live-gate";
+const MODES = ["auto", "ask", "off"] as const;
+type Mode = (typeof MODES)[number];
+const DEFAULT: Mode = "auto";
 type Surface = { id: string; label: string; prefix: string; looking: Set<string> };
 const SURFACES: Surface[] = [
   { id: "chrome", label: "ログイン済みの Chrome", prefix: "mcp__chrome__",
-    looking: new Set(["list_pages", "select_page", "take_snapshot", "take_screenshot", "list_console_messages",
-      "get_console_message", "list_network_requests", "get_network_request", "get_css_styles", "wait_for"]) },
+    looking: new Set(["browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests",
+      "browser_wait_for"]) },
   { id: "desktop", label: "PC の画面 (デスクトップ)", prefix: "computer_use_linux_",
     looking: new Set(["tools", "doctor", "list_apps", "list_windows", "focused_window", "get_app_state", "get_tree_page",
       "screenshot"]) },
 ];
 const INSTRUCTIONS =
-  "The owner's running Chrome (mcp__chrome__*) and desktop (computer_use_linux_*) act with the owner's own logins. " +
-  "Looking is free; the first action on each asks the owner once for this session. Look before acting, and never submit, " +
-  "send, purchase, publish or delete there unless the owner asked for exactly that. A decline is final for the session: " +
-  "do not reach the same effect through bash, another browser tool or another harness.";
+  "The owner's running Chrome (mcp__chrome__*, Playwright through the owner's extension, with the owner's logins) and " +
+  "desktop (computer_use_linux_*) are yours to use for the owner's tasks without asking. Look before acting. Never submit, " +
+  "send, purchase, publish, delete or change account settings there unless the owner asked for exactly that; stop at the " +
+  "confirmation step and report instead. If a surface is blocked (/live off or ask without a UI), do not reach the same " +
+  "effect through bash, another browser tool or another harness.";
+
+// Before the package's first tool call: Hyprland input to the target window without focusing it (its README).
+process.env.COMPUTER_USE_LINUX_HYPRLAND_BACKGROUND ??= "1";
 
 function log(entry: Record<string, unknown>): void {
   try {
@@ -46,36 +50,39 @@ function log(entry: Record<string, unknown>): void {
   } catch { /* never break the agent on a logging failure */ }
 }
 
-/** The owner's last word on a surface on this branch: true, false, or undefined when never asked. */
-function decided(ctx: any, surface: string): boolean | undefined {
+/** The surface's mode on this branch. An entry from the first version ({allow}) reads as auto or off. */
+function modeOf(ctx: any, surface: string): Mode {
   const branch = ctx.sessionManager.getBranch();
   for (let i = branch.length - 1; i >= 0; i--) {
     const e = branch[i];
-    if (e.type === "custom" && e.customType === ENTRY && e.data?.surface === surface && typeof e.data.allow === "boolean") return e.data.allow;
+    if (e.type !== "custom" || e.customType !== ENTRY || e.data?.surface !== surface) continue;
+    if (MODES.includes(e.data.mode)) return e.data.mode;
+    if (typeof e.data.allow === "boolean") return e.data.allow ? "auto" : "off";
   }
-  return undefined;
+  return DEFAULT;
 }
 
 export default function (pi: ExtensionAPI) {
   const asking = new Map<string, Promise<boolean>>(); // parallel calls share one dialog
 
   pi.registerCommand("live", {
-    description: "ログイン済みの Chrome と PC 画面の操作を許可・停止: /live [chrome|desktop|all] [on|off]",
-    getArgumentCompletions: (prefix) => ["chrome on", "chrome off", "desktop on", "desktop off", "all on", "all off"]
+    description: "ログイン済みの Chrome と PC 画面: /live [chrome|desktop|all] [auto|ask|off] (auto は確認なし)",
+    getArgumentCompletions: (prefix) => ["chrome", "desktop", "all"].flatMap((s) => MODES.map((m) => `${s} ${m}`))
       .filter((v) => v.startsWith(prefix)).map((value) => ({ value, label: value })),
     handler: async (args, ctx) => {
-      const [which, state] = args.trim().split(/\s+/);
+      const [which, word] = args.trim().split(/\s+/);
+      const mode = word === "on" ? "auto" : word;
       const targets = SURFACES.filter((s) => which === "all" || s.id === which);
-      if (which && (!targets.length || !["on", "off"].includes(state))) {
-        ctx.ui.notify("Usage: /live [chrome|desktop|all] [on|off]", "warning");
+      if (which && (!targets.length || !MODES.includes(mode as Mode))) {
+        ctx.ui.notify("Usage: /live [chrome|desktop|all] [auto|ask|off]", "warning");
         return;
       }
       for (const s of which ? targets : []) {
-        pi.appendEntry(ENTRY, { surface: s.id, allow: state === "on" });
-        log({ surface: s.id, decision: state === "on" ? "allow" : "deny", via: "command" });
+        pi.appendEntry(ENTRY, { surface: s.id, mode });
+        log({ surface: s.id, mode, via: "command" });
       }
-      const show = (v: boolean | undefined) => (v === true ? "許可" : v === false ? "停止" : "未確認 (最初の操作で確認)");
-      ctx.ui.notify(SURFACES.map((s) => `${s.label}: ${show(decided(ctx, s.id))}`).join("\n"), "info");
+      const show = { auto: "自動 (確認なし)", ask: "最初の操作で確認", off: "停止" };
+      ctx.ui.notify(SURFACES.map((s) => `${s.label}: ${show[modeOf(ctx, s.id)]}`).join("\n"), "info");
     },
   });
 
@@ -88,37 +95,44 @@ export default function (pi: ExtensionAPI) {
     if (!s) return;
     const action = event.toolName.slice(s.prefix.length);
     if (s.looking.has(action)) return;
+    const mode = modeOf(ctx, s.id);
+    if (mode === "auto") {
+      log({ surface: s.id, action, decision: "allow", via: "auto" });
+      return;
+    }
     const blocked = (why: string) => ({ block: true, reason: `live-gate: ${why} ` +
       "Do not reach the same effect through bash, another browser tool or another harness; tell the owner what is needed." });
-    let allow = decided(ctx, s.id);
-    if (allow === undefined) {
-      if (!ctx.hasUI || !ctx.ui?.confirm) {
-        log({ surface: s.id, action, decision: "deny", via: "no-ui" });
-        return blocked(`acting on the owner's ${s.id} needs the owner's go, and there is no UI to ask in.`);
-      }
-      let pending = asking.get(s.id);
-      if (!pending) {
-        pending = (async () => {
-          pi.events.emit("herdr:blocked", { active: true, label: "live-gate: 本人確認待ち" });
-          try {
-            return Boolean(await ctx.ui.confirm("live-gate: 操作の許可",
-              `このセッションで、${s.label}の操作 (クリック・入力・ページ移動など) を許可しますか?\n` +
-              "許可すると、このセッションでは以後確認しません (/live で止められます)。\n" +
-              `最初の操作: ${action}`, { signal: ctx.signal }));
-          } finally {
-            pi.events.emit("herdr:blocked", { active: false });
-          }
-        })();
-        asking.set(s.id, pending);
-        void pending.then((ok) => {
-          asking.delete(s.id);
-          if (!ok && ctx.signal?.aborted) return; // the run was stopped, the question was not answered
-          pi.appendEntry(ENTRY, { surface: s.id, allow: ok });
-          log({ surface: s.id, action, decision: ok ? "allow" : "deny", via: "confirm" });
-        }, () => asking.delete(s.id));
-      }
-      try { allow = await pending; } catch { allow = false; }
+    if (mode === "off") {
+      log({ surface: s.id, action, decision: "deny", via: "off" });
+      return blocked(`the owner turned acting on the ${s.id} off (/live ${s.id} auto turns it back on).`);
     }
-    if (!allow) return blocked(`the owner has not allowed acting on the ${s.id} in this session (/live ${s.id} on).`);
+    if (!ctx.hasUI || !ctx.ui?.confirm) {
+      log({ surface: s.id, action, decision: "deny", via: "no-ui" });
+      return blocked(`acting on the owner's ${s.id} is set to ask, and there is no UI to ask in.`);
+    }
+    let pending = asking.get(s.id);
+    if (!pending) {
+      pending = (async () => {
+        pi.events.emit("herdr:blocked", { active: true, label: "live-gate: 本人確認待ち" });
+        try {
+          return Boolean(await ctx.ui.confirm("live-gate: 操作の許可",
+            `このセッションで、${s.label}の操作 (クリック・入力・ページ移動など) を許可しますか?\n` +
+            "許可すると、このセッションでは以後確認しません (/live で切り替えられます)。\n" +
+            `最初の操作: ${action}`, { signal: ctx.signal }));
+        } finally {
+          pi.events.emit("herdr:blocked", { active: false });
+        }
+      })();
+      asking.set(s.id, pending);
+      void pending.then((ok) => {
+        asking.delete(s.id);
+        if (!ok && ctx.signal?.aborted) return; // the run was stopped, the question was not answered
+        pi.appendEntry(ENTRY, { surface: s.id, mode: ok ? "auto" : "off" });
+        log({ surface: s.id, action, decision: ok ? "allow" : "deny", via: "confirm" });
+      }, () => asking.delete(s.id));
+    }
+    let ok = false;
+    try { ok = await pending; } catch { /* treated as not allowed */ }
+    if (!ok) return blocked(`the owner has not allowed acting on the ${s.id} in this session.`);
   });
 }

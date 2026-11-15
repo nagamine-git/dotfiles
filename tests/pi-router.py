@@ -477,6 +477,39 @@ class PiRouter(unittest.TestCase):
         self.assertNotIn(SECRET_TEXT, (self.agent / "jev-router.log.jsonl").read_text())
         self.assertEqual(self.routes(rating=self.DEEP, requests=[{}]), [(ASTRA, "max")])
 
+    def test_a_window_used_ahead_of_its_time_makes_its_models_dearer(self):
+        # 7d reset 4 days away (3/7 elapsed). Fable's own window 7d_oi at 0.78: 1.82x pace -> 3.3x cost -> Fable low
+        # (2.26e8 / 3.3^2 = 2.1e7) falls behind Sol max (6.0e7) for hard. The account window at 0.40 is behind pace: nothing.
+        reset = 1_800_000_000 + 4 * 86400
+        fable = {"model": FABLE, "headers": {"anthropic-ratelimit-unified-7d-utilization": "0.40", "anthropic-ratelimit-unified-7d-reset": str(reset),
+                                             "anthropic-ratelimit-unified-7d_oi-utilization": "0.78", "anthropic-ratelimit-unified-7d_oi-reset": str(reset),
+                                             "anthropic-ratelimit-unified-7d_oi-surpassed-threshold": "0.75"}}
+        self.assertEqual(self.routes(rating={"score": 2.0}, requests=[{}]), [(FABLE, "low")])
+        self.assertEqual(self.routes(rating={"score": 2.0}, requests=[{"responses": [fable]}, {}]), [(SOL, "max"), (SOL, "max")])
+        cache = json.loads((self.agent / "jev-claude-quota.json").read_text())["windows"]
+        self.assertEqual((cache["7d_oi"]["model"], "model" in cache["7d"]), (FABLE, False))
+        entry = [e for e in self.log() if "kind" not in e][-1]
+        self.assertEqual(entry["model"], f"openai/{SOL}")
+        # Opus is not held by Fable's window: without GPT, standard is Opus medium, with no pace on it.
+        self.assertEqual(self.routes(rating={"score": 1.0}, noAuth=[SOL, TERRA, ASTRA, LUNA], requests=[{}]), [(OPUS, "medium")])
+        self.assertNotIn("pace", self.log()[-1])
+        self.assertEqual(self.routes(rating={"score": 2.0}, noAuth=[SOL, TERRA, ASTRA, LUNA], requests=[{}]), [(FABLE, "low")])
+        self.assertAlmostEqual(self.log()[-1]["pace"], (0.78 / (3 / 7)) ** 2, places=2)
+        # On pace or behind: no change. Far ahead: at most PACE_MAX.
+        (self.agent / "jev-claude-quota.json").unlink()
+        on_pace = {"model": FABLE, "headers": {"anthropic-ratelimit-unified-7d_oi-utilization": "0.42", "anthropic-ratelimit-unified-7d_oi-reset": str(reset)}}
+        self.assertEqual(self.routes(rating={"score": 2.0}, requests=[{"responses": [on_pace]}]), [(FABLE, "low")])
+
+    def test_a_model_s_own_window_at_95_percent_leaves_out_that_model_only(self):
+        spent = {"model": FABLE, "headers": {"anthropic-ratelimit-unified-7d_oi-utilization": "0.95",
+                                             "anthropic-ratelimit-unified-7d_oi-reset": "1800003600"}}
+        out = self.run_router(rating=self.DEEP, requests=[{"responses": [spent]}, {"rating": {"score": 2.0}}])
+        # deep: nothing reaches it without Fable, so the best score left (Opus max); hard: Sol max as before Fable's window
+        self.assertEqual([(r["id"], r["thinking"]) for r in out["routes"]], [(OPUS, "max"), (SOL, "max")])
+        self.assertEqual(self.log()[0]["quota"], [f"{FABLE} 7d_oi"])
+        self.assertNotIn("detour", out["routes"][0]["state"])  # Claude itself is still there
+        self.assertEqual(self.routes(rating=self.DEEP, requests=[{"now": 1_800_003_601_000}]), [(FABLE, "high")])  # after the reset
+
     def test_only_confirmed_pi_anthropic_subscription_responses_are_quota_evidence(self):
         for scenario, response in [({}, dict(self.quota(), provider="openai", model=SOL)),
                                    ({}, dict(self.quota(), stream=False)),

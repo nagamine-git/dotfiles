@@ -44,7 +44,10 @@
  *    double against.
  * 6. A model the owner asks for by name (fable/ここぞ, opus, sol/gpt, haiku/軽量で) is used, and so is an
  *    effort written right after the name ("fable high", "Fable5.2medium"). Fable by name is at least deep.
- * 7. Quota. A provider is left out while its subscription is used up: Claude at >=95% of either 5h/7d
+ * 7. Quota. Every window this Pi's Anthropic subscription responses report counts: 5h and 7d for the account,
+ *    7d_<x> for one model (Fable: 7d_oi). A window used ahead of its time makes what it holds dearer by
+ *    (used / elapsed share)^2, up to PACE_MAX, so routing leans to the other provider before a cap. At 95% a
+ *    model window leaves that model out, and the provider is left out while its subscription is used up: Claude at >=95% of either 5h/7d
  *    window as this Pi's own Anthropic subscription responses report it (never another CLI's cache), or an
  *    explicit subscription-cap error from either provider (for CAP_RETRY_MS: the error carries no reset).
  *    Missing headers or age do not end it: every high window must reset or report a newer low value. Only
@@ -360,9 +363,16 @@ export function total(data: Data, a: Arm, level: Level, extra = 0): number {
   return (a.score * (finite(f) && f > 0 ? f : 1)) ** w.intelligence / ((a.cost + extra) ** w.cost * a.seconds ** w.speed);
 }
 
-type QuotaWindow = { used: number; at: number; reset?: number };
+/** `model`: a window that holds one model only (Anthropic's 7d_oi on Fable's responses); else the whole provider. */
+type QuotaWindow = { used: number; at: number; reset?: number; model?: string };
 type Windows = Record<string, QuotaWindow>;
 const QUOTA_WINDOWS = ["5h", "7d"];
+// Anthropic's unified windows: 5h and 7d for the account, 7d_<x> for a model (Fable: 7d_oi, seen 2026-11-15).
+const WINDOW_KEY = /^anthropic-ratelimit-unified-((?:5h|7d)(?:_[a-z0-9]+)?)-utilization$/;
+const WINDOW_SECONDS: Record<string, number> = { "5h": 5 * 3600, "7d": 7 * 86400 };
+// Pacing: a window used faster than its time passes makes what it holds dearer, by (used / elapsed share)^2,
+// at most PACE_MAX. On pace or behind it costs nothing extra. 95% still leaves it out (QUOTA_THRESHOLD).
+const PACE_MAX = 4;
 
 /** Consult the registry's effective auth, not auth.json or a CLI's unrelated quota cache. */
 function subscription(ctx: any, m: any): boolean {
@@ -391,12 +401,14 @@ class Quota {
       if (fs.statSync(QUOTA_FILE).size > 16_384) return;
       const d = JSON.parse(fs.readFileSync(QUOTA_FILE, "utf8"));
       if (d?.source !== "pi-anthropic-subscription-v1" || !d.windows || typeof d.windows !== "object") return;
-      for (const key of [...QUOTA_WINDOWS, "limit", "openai"]) {
-        const w = d.windows[key];
+      for (const [key, w] of Object.entries<any>(d.windows)) {
+        if (!/^(?:(?:5h|7d)(?:_[a-z0-9]+)?|limit|openai)$/.test(key)) continue;
         if (!w || !finite(w.used) || w.used < 0 || w.used > 1 || !finite(w.at) || w.at <= 0 || w.at > Date.now()
-          || (w.reset !== undefined && (!finite(w.reset) || w.reset <= 0))) continue;
+          || (w.reset !== undefined && (!finite(w.reset) || w.reset <= 0))
+          || (w.model !== undefined && (typeof w.model !== "string" || !/^[\w.-]{1,80}$/.test(w.model)))) continue;
         if (!this.windows[key] || w.at >= this.windows[key].at) {
-          this.windows[key] = { used: w.used, at: w.at, ...(w.reset !== undefined ? { reset: w.reset } : {}) };
+          this.windows[key] = { used: w.used, at: w.at, ...(w.reset !== undefined ? { reset: w.reset } : {}),
+            ...(w.model ? { model: w.model } : {}) };
         }
       }
     } catch { /* unavailable cache: do not erase an in-memory high observation */ }
@@ -413,7 +425,9 @@ class Quota {
 
   parse(headers: Record<string, string>): Windows {
     const windows: Windows = {};
-    for (const key of QUOTA_WINDOWS) {
+    for (const name of Object.keys(headers)) {
+      const key = WINDOW_KEY.exec(name)?.[1];
+      if (!key) continue;
       const prefix = `anthropic-ratelimit-unified-${key}-`;
       const value = headers[prefix + "utilization"];
       if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/.test(value)) continue;
@@ -426,11 +440,13 @@ class Quota {
     return windows;
   }
 
-  observe(windows: Windows) {
+  /** `model`: the model whose response carried the windows; a suffixed window belongs to it. */
+  observe(windows: Windows, model?: string) {
     if (!Object.keys(windows).length) return;
     this.read();
     for (const [key, w] of Object.entries(windows)) {
-      if (!this.windows[key] || w.at >= this.windows[key].at) this.windows[key] = w;
+      const own = key.includes("_") && model ? { ...w, model } : w;
+      if (!this.windows[key] || w.at >= this.windows[key].at) this.windows[key] = own;
     }
     if (this.windows.limit && QUOTA_WINDOWS.every((key) => windows[key] && windows[key].used < QUOTA_THRESHOLD
       && windows[key].at >= this.windows.limit.at)) {
@@ -451,9 +467,32 @@ class Quota {
     this.save();
   }
 
+  private live(w: QuotaWindow): boolean {
+    return w.reset === undefined || Date.now() < w.reset * 1000;
+  }
+
   private high(): string[] {
-    return Object.entries(this.windows).filter(([, w]) => w.used >= QUOTA_THRESHOLD
-      && (w.reset === undefined || Date.now() < w.reset * 1000)).map(([k]) => k);
+    return Object.entries(this.windows).filter(([, w]) => !w.model && w.used >= QUOTA_THRESHOLD && this.live(w)).map(([k]) => k);
+  }
+
+  /** Models whose own window is used up: { model id: window }. */
+  modelsOut(): Record<string, string> {
+    this.read();
+    return Object.fromEntries(Object.entries(this.windows).filter(([, w]) => w.model && w.used >= QUOTA_THRESHOLD && this.live(w))
+      .map(([k, w]) => [w.model!, k]));
+  }
+
+  /** How much dearer a model is for being ahead of its windows' pace: max over the provider's windows and its own. */
+  pace(provider: string, model: string): number {
+    if (provider !== "anthropic") return 1;
+    let m = 1;
+    for (const [key, w] of Object.entries(this.windows)) {
+      const length = WINDOW_SECONDS[key.slice(0, 2)];
+      if (!length || (w.model && w.model !== model) || w.reset === undefined || !this.live(w)) continue;
+      const elapsed = Math.min(1, Math.max(0.05, 1 - (w.reset - Date.now() / 1000) / length));
+      m = Math.max(m, Math.min(PACE_MAX, (w.used / elapsed) ** 2));
+    }
+    return m;
   }
 
   /** The windows that keep each provider out. `wasAway`: a lost cache on resume is not proof a detour can end. */
@@ -493,7 +532,7 @@ export default function (pi: ExtensionAPI) {
     const windows = pending;
     pending = undefined;
     if (event.provider === "anthropic" && windows
-      && subscription(ctx, ctx.modelRegistry.find(event.provider, event.model))) quota.observe(windows);
+      && subscription(ctx, ctx.modelRegistry.find(event.provider, event.model))) quota.observe(windows, event.model);
   });
   pi.on("message_end", (event, ctx) => {
     const m = event.message as any;
@@ -516,11 +555,14 @@ export default function (pi: ExtensionAPI) {
       }
     }
     const tokens = ctx.getContextUsage?.()?.tokens;
+    const spent = quota.modelsOut();
+    for (const [model, window] of Object.entries(spent)) why.push(`${model} ${window}`);
     const arms = loadArms().flatMap((a) => {
+      if (spent[a.id]) return [];
       const s = data.scarce?.[a.id];
-      if (!s) return [a];
-      if (EFFORTS.includes(s.max_effort ?? "") && EFFORTS.indexOf(a.effort) > EFFORTS.indexOf(s.max_effort!)) return [];
-      return [{ ...a, cost: a.cost * (finite(s.cost_factor) && s.cost_factor > 0 ? s.cost_factor : 1) }];
+      if (s && EFFORTS.includes(s.max_effort ?? "") && EFFORTS.indexOf(a.effort) > EFFORTS.indexOf(s.max_effort!)) return [];
+      const scarce = s && finite(s.cost_factor) && s.cost_factor > 0 ? s.cost_factor : 1;
+      return [{ ...a, cost: a.cost * scarce * quota.pace(a.provider, a.id) }];
     });
     return { ctx, arms, tokens: finite(tokens) ? tokens : 0, out, why };
   };
@@ -594,7 +636,8 @@ export default function (pi: ExtensionAPI) {
       ...(ab && Object.keys(ab).length ? { ab } : {}), ...(e.out.size ? { detour: true as const } : {}) };
     log({ model: c.key, effort: c.effort, level: level ?? null, from: old?.model ?? null, source, ...extra,
       selector: request.thinkingLevel, reason: request.reason, ...(e.tokens ? { tokens: e.tokens } : {}),
-      ...(c.ab ? { ab: c.ab } : {}), ...(e.out.size ? { quota: e.why } : {}) });
+      ...(c.ab ? { ab: c.ab } : {}), ...(e.why.length ? { quota: e.why } : {}),
+      ...((pace) => (pace > 1 ? { pace: Math.round(pace * 100) / 100 } : {}))(quota.pace(m.provider, m.id)) });
     if (ctx.hasUI && (old?.model !== state.model || old?.effort !== state.effort || old?.detour !== state.detour)) {
       ctx.ui?.setStatus?.("jev-router", `auto→${short(c.key)} ${c.effort}${state.detour ? " (枠退避)" : ""}`);
       if (state.detour && !old?.detour) {
