@@ -2,12 +2,17 @@
 # Pi's "chrome" MCP server: Playwright MCP attached to the owner's running Chrome through the Playwright Extension
 # (https://chromewebstore.google.com/detail/mmlmfjhmonkocbjadbfplnigmagldckm), with the owner's tabs and logins.
 # With the extension's token (Agents vault, referenced in ~/.config/agents/chrome.env) it connects without the
-# approval page; until the token is there, the extension asks on each connection. The token is resolved by op-agent
+# approval page. Without the token it falls back as below. The token is resolved by op-agent
 # for this process only and never written here, to arguments or to logs. --background keeps the window unfocused.
 set -eu
 env_file="$HOME/.config/agents/chrome.env"
 args=(-y @playwright/mcp@latest --extension --background)
 if [[ -r "$env_file" ]] && op-agent run --env-file "$env_file" -- true >/dev/null 2>&1; then
   exec op-agent run --env-file "$env_file" -- env -u OP_SERVICE_ACCOUNT_TOKEN npx "${args[@]}" "$@"
+fi
+# No token yet: when Chrome's own remote debugging is on (chrome://inspect/#remote-debugging), use Google's
+# chrome-devtools-mcp on it. Chrome asks the owner to allow each new connection (once per Pi session).
+if [[ -s "$HOME/.config/google-chrome/DevToolsActivePort" ]]; then
+  exec npx -y chrome-devtools-mcp@latest --autoConnect --no-usage-statistics "$@"
 fi
 exec npx "${args[@]}" "$@"

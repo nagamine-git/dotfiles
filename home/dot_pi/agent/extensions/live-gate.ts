@@ -29,7 +29,10 @@ type Surface = { id: string; label: string; prefix: string; looking: Set<string>
 const SURFACES: Surface[] = [
   { id: "chrome", label: "ログイン済みの Chrome", prefix: "mcp__chrome__",
     looking: new Set(["browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests",
-      "browser_wait_for"]) },
+      "browser_wait_for",
+      // chrome-devtools-mcp, the fallback while the extension's token is missing
+      "list_pages", "take_snapshot", "take_screenshot", "list_console_messages", "get_console_message",
+      "list_network_requests", "get_network_request", "wait_for"]) },
   { id: "desktop", label: "PC の画面 (デスクトップ)", prefix: "computer_use_linux_",
     looking: new Set(["tools", "doctor", "list_apps", "list_windows", "focused_window", "get_app_state", "get_tree_page",
       "screenshot"]) },
