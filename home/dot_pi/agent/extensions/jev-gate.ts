@@ -4,7 +4,8 @@
  * Two modes. /auto [on|off|status] stores the choice on the session branch; JEV_GATE_MODE=auto|ask
  * overrides it, and any other value fails closed.
  *   auto (default)  Ordinary calls that pass fixed rules run without a classifier or a dialog.
- *                   Control-file changes still require the owner's review in the same dialog as ask. The agent remains
+ *                   Control-file changes still require the owner's review in the same dialog as ask; an approval
+ *                   covers the same file, or the same applied target, for 30 minutes. The agent remains
  *                   responsible for staying within the owner's requested scope.
  *   ask             The jev classifier (TypeSafe, through Pi's model registry) judges bash, write, edit,
  *                   delegate and MCP calls. A clear allow runs, a deny is blocked, and anything else is
@@ -23,12 +24,19 @@
  *      not copied, so the two cannot drift. A missing or toothless hook closes bash for the session.
  *      A delegated task is prose, so DELEGATE_RULES also stop one that names a credential location.
  *
+ * The rules read commands, not every string in them: a false positive teaches the owner to click through.
+ * A force push needs its flag on the push itself. A gate override must be set or forwarded, not merely named.
+ * chezmoi apply is looked for where a shell would run it (not in a quoted here-document fed to cat or python,
+ * a commit message or a grep pattern), and a delegated task names a control file by its path, not by a lone "/".
+ * A session keeps the gate it loaded: when the installed file changes, the status line says so until /reload.
+ *
  * Pi's bash is plain bash: the owner's zsh aliases are not loaded, so an alias cannot stand for a denied command.
  * The TypeSafe key is read with op-agent only for a classifier call and never enters process.env.
  * Every decision is appended to ~/.pi/agent/jev-gate.log.jsonl.
  */
 import { type ExtensionAPI, isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -61,7 +69,8 @@ const AUTO_INSTRUCTIONS =
   "Fixed rules are not a sandbox: new scope, production changes, publishing, payments, permission changes " +
   "and destructive or irreversible operations still need the owner's explicit request. " +
   "Executable gate, hook and permission-policy edits and their application show the owner a review dialog (no /auto off needed); " +
-  "a decline or a session without UI blocks them; " +
+  "an approval covers the same file or applied target for 30 minutes; a decline or a session without UI blocks them; " +
+  "name chezmoi apply targets literally (absolute or ~/ paths) so that ordinary applies need no review; " +
   "do not disable that boundary or use another tool or harness to get the same effect. " +
   "A fixed-rule denial is final: do not rephrase it or route around it through another tool or harness.";
 
@@ -80,6 +89,17 @@ function log(entry: Record<string, unknown>): void {
   try {
     fs.appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n");
   } catch { /* never break the agent on a logging failure */ }
+}
+
+// A session keeps the gate it loaded. When the installed file changes, say so until the owner reloads.
+const SELF = path.join(HOME, ".pi/agent/extensions/jev-gate.ts");
+function selfDigest(): string | undefined {
+  try { return createHash("sha256").update(fs.readFileSync(SELF)).digest("hex"); } catch { return undefined; }
+}
+const LOADED = selfDigest();
+function gateChanged(): boolean {
+  const now = selfDigest();
+  return LOADED !== undefined && now !== undefined && now !== LOADED;
 }
 
 // --- 1. Protected paths ----------------------------------------------------------
@@ -179,37 +199,153 @@ function controlPath(given: string, cwd: string, includeChildren = false): boole
     || patterns.some((re) => re.test(p.split(path.sep).join("/"))));
 }
 
-function applyReview(command: string, cwd: string): string | undefined {
-  for (const match of command.matchAll(/\bchezmoi\b[^\n;&|]*?\b(?:apply|update)\b[^\n;&|]*/g)) {
-    const words = match[0].trim().split(/\s+/);
-    const index = words.findIndex((w) => w === "apply" || w === "update");
-    if (index < 0 || words[index] === "update" || words.some((w) => w === "--force" || w === "-f")) {
-      return "broad or forced chezmoi application requires owner review";
-    }
-    if (words.includes("--dry-run") || words.includes("-n")) continue;
-    const targets = words.slice(index + 1).filter((w) => !["--", "--verbose", "-v"].includes(w))
-      .map((w) => w.replace(/^(['"])(\/[^'"]+)\1$/, "$2"));
-    if (index !== 1 || !targets.length || targets.some((w) => !/^(?:\/|~\/)[A-Za-z0-9._@+/-]+$/.test(w))) {
-      return "chezmoi application needs literal absolute or ~/ targets and owner review for other syntax";
-    }
-    if (targets.some((p) => controlPath(p, cwd, true))) return "applying executable gate, hook or policy configuration requires owner review";
+// Why a call needs the owner. keys name what an approval then covers for GRANT_MINUTES: a control file that is
+// edited (edit:<path>) or a control target that is applied (apply:<path>). Without keys the owner is always asked.
+type Review = { reason: string; keys?: string[] };
+const REVIEW_EDIT = "editing executable gate, hook or policy configuration requires owner review";
+const REVIEW_APPLY = "applying executable gate, hook or policy configuration requires owner review";
+const REVIEW_BROAD = "broad or forced chezmoi application requires owner review";
+const REVIEW_SYNTAX = "chezmoi application needs literal absolute or ~/ targets and owner review for other syntax";
+const REVIEW_DELEGATE = "delegating a control-file reference or chezmoi application requires owner review";
+const GRANT_MINUTES = 30;
+
+// Shell text is read where a shell would run it. Where one simple command ends; quotes are not honoured, since
+// more pieces only means more places to look.
+const SEPARATOR = /\n|;|&&?|\|\|?|\$\(|`/g;
+// Commands whose arguments are text to print, search or record, not commands to run.
+const TEXT_COMMANDS = new Set(["echo", "printf", "git", "gh", "rg", "grep", "egrep", "fgrep", "ag", "sed", "awk", "jq",
+  "cat", "tee", "head", "tail", "less", "wc", "ls", "test", "[", "[[", ":", "true", "false", "read", "notify-send", "slack-notify"]);
+// Programs that take a here-document as data or as their own code. Shells, ssh, sudo and anything unknown keep theirs.
+const HEREDOC_DATA = /^(?:cat|tee|python[\d.]*|node|deno|bun|ruby|perl|php|jq|awk|sed|sqlite3|psql|mysql|git|gh|curl)$/;
+// Code in such a here-document that itself runs chezmoi apply or update.
+const CODE_RUNS_CHEZMOI = /(?:subprocess\.\w+|os\.(?:system|popen|exec\w*|spawn\w*)|\b(?:exec|execFile|spawn)(?:Sync)?|\bsystem|\bpopen)\s*\(\s*[^)]*\bchezmoi\b[^)]*\b(?:apply|update)\b/;
+// chezmoi [global options] apply|update [the rest of the simple command], also by path (~/bin/chezmoi).
+const CHEZMOI = /(?:^|[^\w./$~-])((?:[\w.~-]*\/)*chezmoi)((?:\s+-{1,2}[\w-]+(?:=\S+|\s+(?!(?:apply|update)(?:$|[\s'")]))[^\s-]\S*)?)*)\s+(apply|update)(?=$|[\s'")])(.*)$/;
+const SAFE_FLAGS = new Set(["--", "-v", "--verbose", "--no-pager", "--no-tty", "-k", "--keep-going"]);
+const LITERAL_TARGET = /^(?:\/|~\/)[A-Za-z0-9._@+/-]+$/;
+
+// The command word of a simple command, after assignments and a few prefix commands.
+function commandWord(segment: string): string | undefined {
+  let s = segment.replace(/^[\s({!]+/, "");
+  for (;;) {
+    const rest = s.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S*)|time|nohup|command|exec|setsid|env|timeout\s+(?:-\S+\s+)*\S+|nice(?:\s+-n\s*\S+)?)\s+/, "");
+    if (rest === s) break;
+    s = rest;
   }
+  const word = s.match(/^[^\s'"]+/)?.[0];
+  return word === undefined ? undefined : path.basename(word);
 }
 
-function delegateReview(task: string, cwd: string): string | undefined {
-  if (/\bchezmoi\b[^\n]*\b(?:apply|update)\b/.test(task)
-      || [...task.matchAll(/[A-Za-z0-9._~@+/-]+/g)].some(([p]) => controlPath(p, cwd, true))) {
-    return "delegating a control-file reference or chezmoi application requires owner review";
+// The command as a shell reads it. The body of a quoted here-document that is data for another program is taken
+// out and returned on its own, so that code in it which runs chezmoi is still seen.
+function shellView(command: string): { shell: string; data: string } {
+  const lines = command.split("\n");
+  const shell: string[] = [], data: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    shell.push(line);
+    for (const m of line.matchAll(/(?<!<)<<(-?)(?!<)\s*(?:(['"])([\w.-]+)\2|(\\?)([\w.-]+))/g)) {
+      const quoted = m[2] !== undefined || m[4] === "\\";   // an unquoted body still runs its $(...)
+      const end = m[3] ?? m[5];
+      const owner = (line.slice(0, m.index!).split(/;|&&?|\|\|?/).pop() ?? "").split(/\$\(|`/);
+      const inner = commandWord(owner[owner.length - 1]) ?? "";
+      const outer = owner.length > 1 ? commandWord(owner[0]) : undefined;
+      const outerIsText = outer === undefined || /^\w+=$/.test(outer) || TEXT_COMMANDS.has(outer) || HEREDOC_DATA.test(outer);
+      const piped = line.slice(m.index! + m[0].length).includes("|");
+      const sink = quoted && HEREDOC_DATA.test(inner) && outerIsText && !piped ? data : shell;
+      for (i++; i < lines.length; i++) {
+        if ((m[1] ? lines[i].replace(/^\t+/, "") : lines[i]) === end) break;
+        sink.push(lines[i]);
+      }
+    }
+  }
+  return { shell: shell.join("\n"), data: data.join("\n") };
+}
+
+// $HOME, and NAME="..." set earlier in the same command (one level). Anything else is left as written.
+function expandWord(word: string, earlier: string): string[] {
+  const home = (s: string) => s.replace(/\$\{HOME\}|\$HOME(?!\w)/g, HOME);
+  const name = word.match(/^\$(?:\{(\w+)\}|(\w+))$/)?.slice(1).find(Boolean);
+  if (!name || name === "HOME") return [home(word)];
+  let value: string | undefined;
+  for (const a of earlier.matchAll(new RegExp(`(?:^|[\\s;&|(])${name}=(?:"([^"]*)"|'([^']*)'|([^\\s;&|]*))`, "g"))) {
+    value = a[2] !== undefined ? a[2] : home(a[1] ?? a[3] ?? "");
+  }
+  return value === undefined ? [word] : value.split(/\s+/).filter(Boolean);
+}
+
+// Why a chezmoi command in this bash input needs the owner, or undefined.
+function applyReview(command: string, cwd: string): Review | undefined {
+  const { shell, data } = shellView(command);
+  if (CODE_RUNS_CHEZMOI.test(data)) return { reason: REVIEW_BROAD };
+  const keys: string[] = [];
+  let start = 0;
+  for (const sep of [...shell.matchAll(SEPARATOR), undefined]) {
+    const end = sep ? sep.index! : shell.length;
+    const segment = shell.slice(start, end);
+    const earlier = shell.slice(0, start);
+    start = end + (sep ? sep[0].length : 0);
+    const m = /^\s*#/.test(segment) ? null : segment.match(CHEZMOI);
+    if (!m) continue;
+    // Text handed to a command that only prints, searches or records it is not run.
+    const before = segment.slice(0, m.index! + m[0].indexOf(m[1])).replace(/^[\s({!]+/, "").replace(/['"\s]+$/, "");
+    if (before && TEXT_COMMANDS.has(commandWord(segment) ?? "")) continue;
+    const clean = (w: string) => w.replace(/^(['"])(.*)\1$/, "$2").replace(/^['"]+|['")]+$/g, "");
+    const tokens = (m[4].match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map(clean).filter(Boolean);
+    const words: string[] = [];
+    for (let k = 0; k < tokens.length; k++) {
+      if (/^\d*(?:>>?|<)/.test(tokens[k])) {            // a redirection, with its file when that is the next word
+        if (/^\d*(?:>>?|<)$/.test(tokens[k])) k++;
+        continue;
+      }
+      words.push(tokens[k]);
+    }
+    if ((m[2].match(/\S+/g) ?? []).some((w) => !SAFE_FLAGS.has(w))) return { reason: REVIEW_SYNTAX };
+    if (m[3] === "update" || words.some((w) => w === "--force" || w === "-f")) return { reason: REVIEW_BROAD };
+    if (words.includes("--dry-run") || words.includes("-n")) continue;
+    if (words.some((w) => w.startsWith("-") && !SAFE_FLAGS.has(w))) return { reason: REVIEW_SYNTAX };
+    const targets = words.filter((w) => !w.startsWith("-")).flatMap((w) => expandWord(w, earlier));
+    if (!targets.length || targets.some((t) => !LITERAL_TARGET.test(t))) return { reason: REVIEW_SYNTAX };
+    keys.push(...targets.filter((t) => controlPath(t, cwd, true)).map((t) => `apply:${real(toolPath(t, cwd))}`));
+  }
+  return keys.length ? { reason: REVIEW_APPLY, keys } : undefined;
+}
+
+// A path in prose that names a control file or one of the control directories. A lone "/" or "~" names
+// everything and nothing: it resolved to an ancestor of every control file and asked the owner 13 times in two days.
+function controlReference(token: string, cwd: string): boolean {
+  const given = token.replace(/\.+$/, "");               // the full stop that ends a sentence
+  if (!given || (!/[/~]/.test(given) && !given.startsWith("."))) return false;
+  const lexical = toolPath(given, cwd);
+  return controlPath(given, cwd)
+    || [lexical, real(lexical)].some((p) => /\/\.(?:pi(?:\/agent)?|claude|codex)$/.test(p.split(path.sep).join("/")));
+}
+
+function delegateReview(task: string, cwd: string): Review | undefined {
+  if (/\bchezmoi\s+(?:-\S+\s+)*(?:apply|update)\b/.test(task)
+      || [...task.matchAll(/[A-Za-z0-9._~@+/-]+/g)].some(([p]) => controlReference(p, cwd))) {
+    return { reason: REVIEW_DELEGATE };
   }
 }
 
 // --- 2. Deterministic rules -------------------------------------------------------
+const GATE_OVERRIDE_REASON = "changing or forwarding the owner's gate overrides (only the owner may configure them)";
+// Setting, unsetting or forwarding a gate override. Reading the variable or searching for its name is ordinary:
+// every denial of the old rule (any mention) in the log was a grep, a read or a test.
+const GATE_OVERRIDE = new RegExp([
+  String.raw`(?:^|[^\w$])JEV_GATE_\w*\s*=(?!=)`,   // NAME=value: a command prefix, export, env, --setenv=, process.env.NAME = value
+  String.raw`JEV_GATE_\w*['"]\s*\]\s*=(?!=)`,        // os.environ['NAME'] = value
+  String.raw`['"]JEV_GATE_\w*['"]\s*:`,              // {'NAME': value}: the environment of a child process
+  String.raw`\b(?:export|unset|readonly|declare|typeset|local|setenv)\b[^\n;&|]*?\bJEV_GATE_`,
+  String.raw`(?:^|\s)(?:-u|--unset|-e|--env|--setenv)(?:=|\s+)JEV_GATE_`,
+].join("|"));
 const DENY_RULES: { re: RegExp; reason: string }[] = [
   { re: /\bop-agent\s+read\b/, reason: "printing an Agents vault secret (use op-agent run --env-file to pass it to a command)" },
   { re: /agents-sa-token|\.config\/op(?![\w.-])|\.(?:pi\/agent|codex)\/(?:mcp-)?auth\.json/, reason: "touching 1Password's agent config (~/.config/op) or an agent auth.json or MCP OAuth tokens (mcp-auth.json)" },
   { re: /\bPI_JEV_ALLOW_OPENROUTER\b/, reason: "turning on OpenRouter (pay-per-use) from inside Pi" },
-  { re: /\bJEV_GATE_/, reason: "changing or forwarding the owner's gate overrides (only the owner may configure them)" },
-  { re: /git\s+push\s+.*(--force|-f)\b/, reason: "git force push" },
+  { re: GATE_OVERRIDE, reason: GATE_OVERRIDE_REASON },
+  // The flag must be on the push itself, as a word: --force of a later command or the -f in [0-9a-f] is not one.
+  { re: /\bgit\b(?:\s+-[cC]\s*\S+|\s+--[\w-]+(?:=\S+)?)*\s+push\b[^\n;&|]*?\s(?:--force(?:-with-lease(?:=\S*)?|-if-includes)?|-[a-zA-Z]*f[a-zA-Z]*)(?=$|[\s'")])/, reason: "git force push" },
   { re: /git\s+reset\s+--hard\s+origin\//, reason: "hard reset to origin" },
   { re: /\b(gh\s+repo\s+delete|npm\s+publish|pnpm\s+publish|yarn\s+publish|cargo\s+publish)\b/, reason: "publish/delete of a package or repo" },
 ];
@@ -220,6 +356,7 @@ const DELEGATE_RULES: { re: RegExp; reason: string }[] = [
   { re: /(?:^|[^\w.-])\.(?:ssh|gnupg|netrc)(?![\w-])|\.config\/(?:op|gh\/hosts\.yml)(?![\w.-])|(?:mcp-)?auth\.json|credentials/i,
     reason: "handing over a credential location (~/.ssh, ~/.gnupg, ~/.config/op, gh hosts.yml, .netrc, (mcp-)auth.json, *credentials*)" },
   { re: /PI_JEV_/, reason: "handing over pi-jev's settings (PI_JEV_*)" },
+  { re: /\bJEV_GATE_/, reason: GATE_OVERRIDE_REASON },   // in prose, naming the override is enough
   ...DENY_RULES,
 ];
 
@@ -368,7 +505,12 @@ function excerpt(text: string, keep = 150): string {
 }
 
 export default function (pi: ExtensionAPI) {
-  const updateStatus = (ctx: any) => ctx.ui.setStatus("jev-gate", `gate:${gateMode(ctx)}`);
+  const updateStatus = (ctx: any) =>
+    ctx.ui.setStatus("jev-gate", `gate:${gateMode(ctx)}${gateChanged() ? " (更新あり: /reload)" : ""}`);
+  let changeNoted = false;
+  // The owner's approvals of this session (edit:<path>, apply:<path>) and when each expires. A reload forgets them.
+  const grants = new Map<string, number>();
+  const granted = (keys?: string[]) => !!keys?.length && keys.every((k) => (grants.get(k) ?? 0) > Date.now());
 
   pi.registerCommand("auto", {
     description: "通常作業を確認待ちなしで進める: /auto [on|off|status] (off は分類器と本人確認を使う ask)",
@@ -388,12 +530,19 @@ export default function (pi: ExtensionAPI) {
         pi.appendEntry(MODE_ENTRY, { mode: arg === "on" ? "auto" : "ask" });
       }
       updateStatus(ctx);
-      ctx.ui.notify(`jev-gate: ${gateMode(ctx)} · auto は通常作業を固定規則で実行、制御ファイルは ask で本人確認`, "info");
+      ctx.ui.notify(`jev-gate: ${gateMode(ctx)} · auto は通常作業を固定規則で実行、制御ファイルは本人確認 (許可は同じファイルに ${GRANT_MINUTES} 分有効)`, "info");
     },
   });
   pi.on("session_tree", (_e, ctx) => updateStatus(ctx));
   pi.on("before_agent_start", (event, ctx) => {
     if (gateMode(ctx) === "auto") event.systemPromptOptions.sections.jev_auto = AUTO_INSTRUCTIONS;
+    if (gateChanged()) {
+      updateStatus(ctx);
+      if (!changeNoted) {
+        changeNoted = true;
+        ctx.ui?.notify?.("jev-gate: ディスク上のゲートが更新されています。このセッションは /reload するまで古い判定のままです", "warning");
+      }
+    }
   });
   pi.on("session_start", (_e, ctx) => {
     updateStatus(ctx);
@@ -443,25 +592,34 @@ export default function (pi: ExtensionAPI) {
       log({ layer: hit.layer, ...about, decision: "deny", reason: hit.reason });
       return { block: true, reason: `jev-gate (rule): ${hit.reason}` };
     }
-    const review = (kind === "write" || kind === "edit") && controlPath(String((event.input as any)?.path ?? ""), ctx.cwd)
-      ? "editing executable gate, hook or policy configuration requires owner review"
+    const edited = String((event.input as any)?.path ?? "");
+    const review: Review | undefined = (kind === "write" || kind === "edit") && controlPath(edited, ctx.cwd)
+      ? { reason: REVIEW_EDIT, keys: [`edit:${real(toolPath(edited, ctx.cwd))}`] }
       : kind === "bash" ? applyReview(text, ctx.cwd)
       : kind === "delegate" ? delegateReview(String((event.input as any)?.task ?? ""), ctx.cwd) : undefined;
     if (review) {
-      const reason = `jev-gate (owner review): ${review}. This is a security/policy approval boundary, not ordinary work. ` +
+      // The owner approved this very file or target a moment ago: do not ask again for every edit of it.
+      if (granted(review.keys)) {
+        log({ layer: "control-review", ...about, decision: "allow", via: "grant", reason: review.reason });
+        return;
+      }
+      const reason = `jev-gate (owner review): ${review.reason}. This is a security/policy approval boundary, not ordinary work. ` +
         "Do not retry this effect through bash, delegate, copying or another harness. " +
         "Only the owner may confirm a reviewed change in the review dialog.";
+      const covers = !review.keys ? ""
+        : `\n許可すると、同じ${kind === "bash" ? "反映先" : "ファイル"}は ${GRANT_MINUTES} 分間、確認なしで通ります。`;
       let ok = false;
       // Both modes ask the owner here; neither the agent nor a classifier approves a control change.
       if ((mode === "ask" || mode === "auto") && ctx.hasUI && ctx.ui?.confirm) {
         pi.events.emit("herdr:blocked", { active: true, label: "jev-gate: 本人確認待ち" });
         try {
-          ok = await ctx.ui.confirm("jev-gate: owner review", `${review}\n${excerpt(text)}`, { signal: ctx.signal });
+          ok = await ctx.ui.confirm("jev-gate: owner review", `${review.reason}\n${excerpt(text)}${covers}`, { signal: ctx.signal });
         } finally {
           pi.events.emit("herdr:blocked", { active: false });
         }
       }
-      log({ layer: "control-review", ...about, decision: ok ? "allow" : "deny", reason: review });
+      if (ok) for (const key of review.keys ?? []) grants.set(key, Date.now() + GRANT_MINUTES * 60_000);
+      log({ layer: "control-review", ...about, decision: ok ? "allow" : "deny", reason: review.reason });
       return ok ? undefined : { block: true, reason };
     }
     if (mode === "auto") {
