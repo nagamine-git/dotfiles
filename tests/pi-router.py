@@ -244,6 +244,12 @@ class PiRouter(unittest.TestCase):
         windows = {SOL: 272_000, TERRA: 272_000, ASTRA: 272_000, LUNA: 272_000}
         self.assertEqual(self.routes(rating={"score": 1.0}, windows=windows, requests=[{"tokens": 200_000}, {"tokens": 250_000}]),
                          [(SOL, "high"), (FABLE, "low")])  # 80% of 272k is 217.6k
+        # Past 80% of every window (886k of 1M, seen 2026-11-16, which ended in "has no credentials"): the models whose
+        # window still holds it, so nothing is compacted; past every window, any model (Pi compacts).
+        windows.update({OPUS: 1_000_000, FABLE: 1_000_000, HAIKU: 1_000_000, SONNET: 1_000_000})
+        self.assertEqual(self.routes(rating={"score": 1.0}, windows=windows, requests=[{"tokens": 886_510}]), [(FABLE, "low")])
+        self.assertEqual(self.routes(rating={"score": 1.0}, windows=windows, noClassifier=True, requests=[{"tokens": 886_510}]), [(OPUS, "medium")])
+        self.assertEqual(self.routes(rating={"score": 1.0}, windows=windows, requests=[{"tokens": 1_200_000}]), [(SOL, "high")])
 
     def test_other_providers_are_candidates_only_with_a_subscription(self):
         # OpenAI on an API key: never chosen automatically. The default's provider is used as it is set up.

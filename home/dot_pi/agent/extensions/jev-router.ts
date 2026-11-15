@@ -505,7 +505,8 @@ class Quota {
   }
 }
 
-type Env = { ctx: any; arms: Arm[]; tokens: number; out: Set<string>; why: string[] };
+/** `room`: the share of a context window the conversation may fill (computed once per decision). */
+type Env = { ctx: any; arms: Arm[]; tokens: number; out: Set<string>; why: string[]; room?: number };
 type Choice = { key: string; effort: string; ab?: [string, string]; assigned?: string };
 
 export default function (pi: ExtensionAPI) {
@@ -568,11 +569,22 @@ export default function (pi: ExtensionAPI) {
   };
 
   /** Never a paid API key in place of a subscription: other providers than the default's only with one. */
-  const eligible = (e: Env, a: { key: string; provider: string }) => {
+  const allowed = (e: Env, a: { key: string; provider: string }) => {
     if (e.out.has(a.provider)) return false;
     const m = find(e.ctx, a.key);
-    if (!m || !(subscription(e.ctx, m) || (!e.out.size && a.provider === data.default.provider))) return false;
-    return !(finite(m.contextWindow) && m.contextWindow > 0 && e.tokens > m.contextWindow * WINDOW_SHARE);
+    return Boolean(m && (subscription(e.ctx, m) || (!e.out.size && a.provider === data.default.provider)));
+  };
+  const fits = (e: Env, k: string, share: number) => {
+    const m = find(e.ctx, k);
+    return !(m && finite(m.contextWindow) && m.contextWindow > 0 && e.tokens > m.contextWindow * share);
+  };
+  /** Allowed, and with room for the conversation: WINDOW_SHARE of the window where some allowed model has that,
+   * else the whole window (a very long session stays on the large models), else any (Pi compacts it). */
+  const eligible = (e: Env, a: { key: string; provider: string }) => {
+    if (!allowed(e, a)) return false;
+    const all = [...e.arms, ...TIER_NAMES.map((t) => ({ key: key(data[t]), provider: data[t].provider }))].filter((b) => allowed(e, b));
+    e.room ??= [WINDOW_SHARE, 1].find((share) => all.some((b) => fits(e, b.key, share))) ?? Infinity;
+    return fits(e, a.key, e.room);
   };
 
   /** No score data: the level's own tier at its configured effort. */
