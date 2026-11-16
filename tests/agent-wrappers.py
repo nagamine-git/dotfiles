@@ -15,13 +15,13 @@ FAKE_OP = r'''#!/usr/bin/env bash
 [[ "$1" == run ]] || exit 9
 [[ -e "$HOME/vault-ok" ]] || { echo "item not found" >&2; exit 1; }
 shift; shift; shift; shift
-export CLAUDE_CODE_OAUTH_TOKEN=SYNTHETIC PLAYWRIGHT_MCP_EXTENSION_TOKEN=SYNTHETIC OP_SERVICE_ACCOUNT_TOKEN=SA-SYNTHETIC
+export CLAUDE_CODE_OAUTH_TOKEN=$' SYNTHETIC\n' PLAYWRIGHT_MCP_EXTENSION_TOKEN=SYNTHETIC OP_SERVICE_ACCOUNT_TOKEN=SA-SYNTHETIC
 exec "$@"
 '''
 FAKE_CMD = r'''#!/usr/bin/env python3
 import json, os, sys
 print(json.dumps({"cmd": os.path.basename(sys.argv[0]), "argv": sys.argv[1:],
-                  "token": os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or os.environ.get("PLAYWRIGHT_MCP_EXTENSION_TOKEN"),
+                  "token": os.environ.get("CLAUDE_CODE_OAUTH_TOKEN" if os.path.basename(sys.argv[0]) == "claude" else "PLAYWRIGHT_MCP_EXTENSION_TOKEN"),
                   "sa": os.environ.get("OP_SERVICE_ACCOUNT_TOKEN")}))
 '''
 

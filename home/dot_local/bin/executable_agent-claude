@@ -6,6 +6,9 @@
 set -eu
 env_file="$HOME/.config/agents/claude-code.env"
 if [[ -r "$env_file" ]] && op-agent run --env-file "$env_file" -- true >/dev/null 2>&1; then
-  exec op-agent run --env-file "$env_file" -- env -u OP_SERVICE_ACCOUNT_TOKEN claude "$@"
+  # A token pasted into 1Password can carry a stray space or line break: drop whitespace, a token has none.
+  # shellcheck disable=SC2016  # expanded by the inner bash, after op-agent resolved the reference
+  exec op-agent run --env-file "$env_file" -- env -u OP_SERVICE_ACCOUNT_TOKEN \
+    bash -c 'export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN//[[:space:]]/}"; exec claude "$@"' agent-claude "$@"
 fi
 exec claude "$@"
