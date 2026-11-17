@@ -19,3 +19,7 @@ Spawn one read-only general-purpose subagent that explores and explains in one p
 ## 2. Present
 
 Present the subagent's output. Light edits for clarity or context from the conversation are fine. Do not substantially rewrite it.
+
+## Language (local addition)
+
+Reply to the user in Japanese. You may reason in English. Keep code, identifiers, commands, and quoted source text as they are.
