@@ -114,6 +114,7 @@ Fable を最上位に追加するときも、`pi update --models` と `pi --list
 ## 追加のしかた (1 回書けば全部に入る)
 
 - スキル: `home/dot_agents/skills/<name>/SKILL.md` を作って `chezmoi apply`。`npx skills add` で `~/.agents/skills` に入れたものも `agents-sync skills` が Claude 側にリンクする。
+- 外から取り込んだスキル: `bro`・`unslop`・`why`・`how`・`teach`・`in-your-own-words` は pstack (Lauren Tan、MIT、ライセンスは `docs/third-party/pstack-LICENSE`) の `backnotprop/pstack` commit `059190ea` の写しで、本人が選んだ 6 個だけを置く (`why` と `teach` は `how` を、`teach` は `unslop` を呼ぶ)。更新は新しい commit の中身を確かめてから写し直す。
 - MCP サーバー: `home/dot_agents/mcp.json` に名前・`command` / `args` または `type: http` と `url` を足して `chezmoi apply`。秘密の環境変数は `secrets` に名前だけ書く (値は書かない。自動では足されないので `claude mcp add -e` / `codex mcp add --env` / `pi mcp add --env` で 1 回入れる)。一部の道具だけに配るなら `"clients": ["pi"]` のように道具の名前 (`claude` / `codex` / `pi`) を並べる (例: Linear は Claude に claude.ai のコネクタがあるので Pi だけ)。後から `clients` で外しても、すでに入った道具からは消さない。
 - subagent: `home/dot_claude/agents/<name>.md` を書く。Codex 用 toml と Pi 用 md は自動生成。
 - 指示: `home/dot_agents/AGENTS.md` を直す。道具固有の規則は「道具ごとの差」に書く。
