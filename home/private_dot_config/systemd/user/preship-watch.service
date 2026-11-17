@@ -1,0 +1,11 @@
+[Unit]
+Description=Preship の登録と Google の出来事を本番 D1 から読み、新しい物を Slack (preship) に知らせる
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/ghq/github.com/efg-technologies/preship-lp
+Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/mise/installs/python/latest/bin/python3 tools/watch_events.py
+TimeoutStartSec=300

@@ -1,0 +1,10 @@
+[Unit]
+Description=Preship の出来事を 10 分ごとに見る
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
