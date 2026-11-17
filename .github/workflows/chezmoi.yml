@@ -6,35 +6,33 @@ on:
   pull_request:
     branches: [main]
 
+# 既定は読み取りだけ。書き込みが要るジョブだけ個別に足す
+permissions:
+  contents: read
+
+# アクションは版のタグではなくコミットで固定する (タグは後から付け替えられる)。更新は zizmor / prek の指摘を見て手で上げる
 jobs:
   template-check:
     name: Template & syntax check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install chezmoi
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
 
-      - name: Stub 1Password CLI (op)
-        run: |
-          sudo tee /usr/local/bin/op >/dev/null <<'EOF'
-          #!/bin/bash
-          # Stub for CI — return dummy value (no newline) for any onepasswordRead lookup
-          printf 'STUB_SECRET_VALUE'
-          EOF
-          sudo chmod +x /usr/local/bin/op
-
       - name: Install Node 24 (tests/jev-gate.py loads the TypeScript extension by stripping its types)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
-      - name: Install zsh and Lua (run the real shell and rendered desktop configuration tests)
+      - name: Install zsh, Lua and just (the real shell, rendered desktop configuration tests, and the test runner)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends zsh lua5.4
+          sudo apt-get install -y --no-install-recommends zsh lua5.4 just
 
       - name: Shell syntax of the scripts the tests drive
         run: |
@@ -51,16 +49,7 @@ jobs:
       # テストは鍵・ネットワーク・モデル呼び出しを使わない。unittest.main を持たないファイル (pi_real.py などの補助) は飛ばす。
       # CI が設定されていると、古い Node は jev-gate のテストを飛ばさず失敗させる。Pi 本体が要る確認は Pi の無い CI では飛ぶ
       - name: Run every test (no keys, network or model calls)
-        shell: bash
-        run: |
-          fail=0
-          for t in tests/*.py; do
-            grep -q 'unittest.main' "$t" || continue
-            echo "::group::$t"
-            python3 -B "$t" || { echo "::error file=$t::$t failed"; fail=1; }
-            echo "::endgroup::"
-          done
-          exit "$fail"
+        run: just test
 
       - name: Verify chezmoi source state
         run: |
@@ -80,11 +69,16 @@ jobs:
   gitleaks:
     name: Secret scan
     runs-on: ubuntu-latest
+    # PR では結果をコメントで返すので、このジョブだけ PR への書き込みを許す
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -92,9 +86,11 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Run shellcheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master (2026-11-17)
         env:
           SHELLCHECK_OPTS: -e SC1091,SC2016,SC2155
         with:

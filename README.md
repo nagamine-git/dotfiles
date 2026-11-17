@@ -46,7 +46,7 @@ chezmoi init --apply nagamine-git
 ```
 
 - Linux では初回の apply で `home/.chezmoiscripts/linux/` のスクリプトが、`system/pkglist.txt` のパッケージ・システム設定 (`system/etc`)・壁紙を入れます (sudo を使う)
-- 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck 等がコミット時に走る)
+- 開発時は `prek install` を推奨 (pre-commit 互換。gitleaks / shellcheck / ruff / zizmor がコミット時に走る)。テストは `just test`、全ファイルの検査は `just lint`
 
 ### 構成
 

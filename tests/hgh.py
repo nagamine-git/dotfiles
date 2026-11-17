@@ -1,6 +1,5 @@
 """dot_zshrc の hgh / hd / hm / ha / hs。偽の herdr・ghq・fzf・zoxide だけを使い、実物は起動しない。"""
 import json
-import os
 from pathlib import Path
 import re
 import shutil

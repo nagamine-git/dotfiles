@@ -4,8 +4,6 @@
 # tests/ が dot_local/bin の Python スクリプトを読み込むと、隣に __pycache__ ができる
 **/__pycache__
 **/__pycache__/**
-.claude-code-router
-.claude-code-router/**
 
 {{- /*
    macOS 用に Linux 専用の設定を無視する。
@@ -65,7 +63,6 @@
 .local/bin/hypr-vrr-off.sh
 .local/bin/hyprvoice_ptt.sh
 .local/bin/droidcam.sh
-.local/bin/mic-snr.sh
 .local/bin/sleep-now.sh
 .local/bin/security-update-check.sh
 # Vicinae の電源の Lock / Logout から呼ぶ (Hyprland 用)

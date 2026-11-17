@@ -36,7 +36,6 @@ docker
 docker-compose
 fzf
 ghq
-github-cli
 jq
 yq
 ripgrep

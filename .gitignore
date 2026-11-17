@@ -22,6 +22,9 @@ __pycache__/
 
 private*token
 
+# Playwright MCP がカレントディレクトリに残すログ
+.playwright-mcp/
+
 # macOS metadata (AppleDouble etc.) — 2026-05-29 に混入していたため追加
 ._*
 .AppleDouble

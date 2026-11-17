@@ -1,9 +1,7 @@
 """agent-claude and agent-chrome-mcp: the vault token when it resolves, the plain command otherwise.
 Fake op-agent, claude and npx; no keys, network or vault."""
 import json
-import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 import unittest

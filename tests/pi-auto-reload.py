@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 sys.dont_write_bytecode = True

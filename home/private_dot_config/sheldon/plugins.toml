@@ -10,6 +10,10 @@ shell = "zsh"
 [plugins.zsh-completions]
 github = "zsh-users/zsh-completions"
 
+# 補完の初期化。zsh-completions が fpath に入った後、compdef を使うプラグイン (omz-git) の前に実行する
+[plugins.compinit]
+inline = 'autoload -Uz compinit && compinit -i'
+
 # 2. zsh-autosuggestions
 [plugins.zsh-autosuggestions]
 github = "zsh-users/zsh-autosuggestions"

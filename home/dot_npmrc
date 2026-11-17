@@ -1,0 +1,4 @@
+# 公開から 3 日たっていない版は入れない (乗っ取られたパッケージは数日のうちに取り下げられることが多い)。
+# npx で起動する MCP サーバーの @latest にも効く。既存の lockfile どおりの npm ci / install は妨げない (2026-11 に確認)。
+# 急ぎで最新版が要るときだけ: npm install --min-release-age=0 <pkg>
+min-release-age=3

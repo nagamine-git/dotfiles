@@ -43,18 +43,13 @@ export REACT_NATIVE_PACKAGER_HOSTNAME="$(command -v tailscale >/dev/null 2>&1 &&
 
 # export MISE_VERBOSE=1
 
-# 補完
-autoload -Uz compinit
-compinit -i
-
-# 補完の設定
+# 補完の設定。compinit は sheldon の plugins.toml で zsh-completions の直後に実行する
+# (ここで先に実行すると、あとから fpath に入る zsh-completions の補完が登録されない)
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # 大文字小文字を区別しない
 zstyle ':completion:*' menu select # 補完メニューを有効化
 zstyle ':completion:*' verbose yes # 補完の詳細を表示
 
-# プラグイン管理
-# NOTE: 5つのevalが順次実行されるため起動時間に影響
-# 改善案: キャッシュ化または遅延ロードを検討
+# プラグイン管理 (対話シェルの起動は実測で約 0.06 秒。キャッシュや遅延読み込みは要らない)
 eval "$(starship init zsh)"
 eval "$(mise activate zsh)"
 eval "$(sheldon source)"
@@ -284,27 +279,6 @@ alias ghd='gh dash'
 alias lg='lazygit'
 alias ld='lazydocker'
 
-# Cursorの実行
-code() {
-  if [[ "$OSTYPE" == darwin* ]]; then
-    # macOS: cursor は PATH 経由（"Install 'cursor' command" でインストールされる）
-    command cursor "$@" > /dev/null 2>&1 &
-    disown
-  else
-    unset GTK_IM_MODULE QT_IM_MODULE
-    export XMODIFIERS="@im=fcitx"
-    command /usr/bin/cursor "$@" \
-      --no-sandbox \
-      --enable-features=UseOzonePlatform \
-      --ozone-platform=wayland \
-      --enable-wayland-ime \
-      --wayland-text-input-version=3 \
-      > /dev/null 2>&1 &
-    disown
-  fi
-}
-
-
 # ChatGPT はデスクトップ (Hyprland の起動・desktop entry) と同じく Wayland で起動し、端末から切り離す。
 # chatgpt-launch を置いているホスト (am5-itx) では、それを通してメモリ上限を付ける。
 chatgpt() {
@@ -330,7 +304,6 @@ alias gdd='git -c diff.external=difft diff'
 export DFT_BACKGROUND=light
 alias gls='git ls-files'
 alias supabase='npx supabase'
-alias cursor='code'
 
 # Distroboxコンテナ準備の共通処理
 _ensure_kali_running() {
@@ -475,48 +448,6 @@ case ":$PATH:" in
   *":$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools:"*) ;;
   *) export PATH="$PATH:$HOME/ghq/github.com/efg-technologies/zeed-browser/depot_tools" ;;
 esac
-
-alias ccnim='ANTHROPIC_AUTH_TOKEN=freecc ANTHROPIC_BASE_URL=http://localhost:8082 claude'
-alias ccr-code='~/.local/bin/ccr-start.sh'
-alias ccrc='ccr-code'
-
-# フォールバック付きClaudeランチャー
-# 優先順位: Claude Pro(sonnet) → Ollama glm-5:cloud → Ollama glm-4.7-flash-24k local
-_CC_LOCAL_MODEL="glm-4.7-flash-24k"
-
-_cc_is_pro_available() {
-    # claude auth status のJSON出力からsubscriptionTypeを確認
-    local auth
-    auth=$(claude auth status 2>/dev/null) || return 1
-    echo "$auth" | grep -q '"subscriptionType":\s*"pro"'
-}
-
-_cc_is_ollama_model_available() {
-    # ollamaにモデルが存在するか確認
-    ollama list 2>/dev/null | grep -q "^${1}[: ]"
-}
-
-# 入力待ちの通知は herdr がエージェントの状態から出す ([ui.toast])
-cc() {
-    local rc=0
-    if _cc_is_pro_available; then
-        echo "→ Claude Pro (sonnet)" >&2
-        claude --model sonnet "$@" || rc=$?
-    elif _cc_is_ollama_model_available "glm-5"; then
-        echo "→ Ollama: glm-5:cloud" >&2
-        ollama launch claude --model glm-5:cloud "$@" || rc=$?
-    elif _cc_is_ollama_model_available "$_CC_LOCAL_MODEL"; then
-        echo "→ Ollama local: $_CC_LOCAL_MODEL" >&2
-        ollama launch claude --model "$_CC_LOCAL_MODEL" "$@" || rc=$?
-    else
-        echo "[cc] 利用可能なバックエンドが見つかりません:" >&2
-        echo "  1. Claude Pro: claude auth login" >&2
-        echo "  2. Ollama cloud: ollama pull glm-5" >&2
-        echo "  3. Ollama local: ollama pull glm-4.7-flash && ollama create $_CC_LOCAL_MODEL" >&2
-        rc=1
-    fi
-    return $rc
-}
 
 # セキュリティ/更新チェックの起動時表示 (Arch のみ)
 # 実体は ~/.local/bin/security-update-check.sh が state ファイルへ書く。zsh は「読むだけ」+

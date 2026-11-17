@@ -3,6 +3,8 @@
 # パターンはホームからの相対パスで、glob として当てる。ほかの用途のファイルを巻き込まないよう、
 # 1 つずつ正確に書き、そのファイルを配置していた OS に限る。全機で消えたら外してよい。
 .local/bin/biz_start.sh
+# claude-code-router は使わなくなった (2026-11)
+.local/bin/ccr-start.sh
 {{- if ne .chezmoi.os "darwin" }}
 .local/bin/unified_launcher.sh
 .local/bin/desktop-apps-tmux
@@ -19,6 +21,8 @@
 # GPUメーターは Python標準ライブラリ、描画効果の切替は Hyprland Lua に統合した
 .config/waybar/scripts/gpu_status.sh
 .local/bin/lib_hypr_perfmode.sh
+# マイクの S/N 計測。呼び出し元も利用履歴も無かった (2026-11)
+.local/bin/mic-snr.sh
 bin/server.sh
 # 2026-11 の UI 見直しで waybar を不透明の暗い島にし、壁紙に合わせた明暗の切替をやめた
 .local/bin/waybar-auto-theme.sh

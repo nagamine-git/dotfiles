@@ -3,7 +3,6 @@
 herdr の中のエージェントの完了と承認待ちは herdr ([ui.toast]) が通知するので、claude-notify はデスクトップに出さない。
 """
 import json
-import os
 from pathlib import Path
 import re
 import shutil

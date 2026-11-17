@@ -1,0 +1,4 @@
+# 公開から 3 日 (259200 秒) たっていない版は入れない。理由は ~/.npmrc と同じ。
+# 既存の lockfile どおりの bun install は妨げない (2026-11 に確認)。
+[install]
+minimumReleaseAge = 259200
