@@ -33,15 +33,15 @@ waybar の島は壁紙に合わせて色を帯び、明るい壁紙では明る�
 
 ## セットアップ
 
-前提: テンプレートが `onepasswordRead` を使うため **1Password CLI (`op`) の
-インストールとサインインが必要** (無いと初回 apply がレンダリングで失敗します)。
+現在、配布対象のテンプレート展開に1Password CLIへのサインインは不要です。秘密を使うコマンドの認証は、[秘密管理の手順](docs/agent-secrets.md)に従って別に用意します。
+am5-itx 専用の非公開リポジトリ `agent-tools` の取得には、GitHubへの認証が必要です。
 
 ```bash
 # chezmoi のインストール
 paru -S chezmoi          # Arch/EndeavourOS
 brew install chezmoi     # macOS
 
-# 1Password CLI にサインインしてから
+# 初回導入。Linuxではパッケージ導入やシステム設定にsudoを使う
 chezmoi init --apply nagamine-git
 ```
 
@@ -55,17 +55,21 @@ chezmoi init --apply nagamine-git
 | 場所 | 中身 |
 |---|---|
 | `home/` | chezmoi のソース (`dot_*`、`private_dot_*`、`.chezmoidata`、`.chezmoiignore`、`.chezmoiremove`) |
-| `home/.chezmoiscripts/` | 実行スクリプト。`linux/` の 3 つは中身を OS の条件で囲み、Mac では空になって走らない |
+| `home/.chezmoiscripts/` | 実行スクリプト。`linux/` は中身を OS の条件で囲み、Mac では空になって走らない |
 | `system/` | ホームの外へ入れるもの: `etc/` (keyd・systemd・scx など)、`pkglist.txt`、`wolow/` |
 | `tests/` `docs/` `.github/` | テスト・文書・CI (ホームには配らない) |
 
 ### 更新
 
+通常の設定変更は、対象の差分とdry-runを確認してから、その対象だけに反映します。例は `~/.zshrc` の更新です。
+
 ```bash
-chezmoi apply -v
+chezmoi diff ~/.zshrc
+chezmoi apply --dry-run --verbose ~/.zshrc
+chezmoi apply --verbose ~/.zshrc
 ```
 
-`home/.chezmoiscripts/linux/` のスクリプトは、関係するファイルが変わったときだけ再実行される。
+全体への反映では、未反映の設定や導入スクリプトも実行対象になります。`home/.chezmoiscripts/linux/` の主な導入スクリプトは、関係するファイルが変わったときに再実行されます。
 
 | スクリプト | 再実行の条件 | 中身 |
 |---|---|---|
@@ -75,33 +79,12 @@ chezmoi apply -v
 
 `system/pkglist.txt` から外したパッケージは自動では消えない。不要なら `paru -Rns <パッケージ>` で消す。
 
-### AIの共通回答形式
+### AIの共通指示
 
-回答形式の正本は `home/dot_agents/AGENTS.md` の「Codex のみ」節です。
-Claude Code と Codex の共通指示と同じファイルで、Linux と macOS で `~/.agents/AGENTS.md` と
-`~/.codex/AGENTS.md` に展開します (Claude Code は `~/.claude/CLAUDE.md` から読み込みます)。
-このファイルはOS・ホスト別の除外対象ではありません。
+Claude Code・Codex・Pi の共通指示の正本は `home/dot_agents/AGENTS.md` です。回答形式は「報告と書き方」にまとめています。
+共有先・道具ごとの差・反映方法は [AI設定の同期手順](docs/agents-unified.md)を参照してください。ここでは手順を重複して管理しません。
 
-既存のchezmoi環境では、sourceを更新して対象だけ適用します。
-作業中の変更があれば、先に保存してください。
-
-```bash
-git -C "$(chezmoi source-path)" pull --ff-only origin main
-chezmoi diff ~/.codex/AGENTS.md
-chezmoi apply --dry-run --verbose ~/.codex/AGENTS.md
-chezmoi apply --verbose ~/.codex/AGENTS.md
-```
-
-新規環境は上記セットアップ後に反映されます。
-適用後、新しいCodexセッションを開始してください。
-`CODEX_HOME` 指定時は、その配下へ指示を配置します。
-`AGENTS.override.md` とプロジェクト指示は優先されます。
-
-ChatGPTとdotsの設定はchezmoiから自動同期されません。
-`回答形式` の5項目を、同じアカウントの指示にも記録します。
-別アカウントではカスタム指示とdotsに再登録してください。
-
-参考: [OpenAI公式の指示読込仕様](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+各プロジェクトの指示がある場合は、そちらも確認します。ブラウザ版ChatGPTなど、chezmoiの管理外の設定へ自動同期されるとは考えません。
 
 ## 構成ハイライト
 

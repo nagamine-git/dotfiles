@@ -3,7 +3,7 @@
 # 他アプリ（チャット/ブラウザ/画像エディタ等）にそのまま貼り付け可能。
 # yazi の <C-y>（keymap で `shell --orphan` 経由）からもシェルからも同一動作。
 #   使い方: imgcopy <image-file>
-set -uo pipefail
+set -euo pipefail
 
 f="${1:-}"
 if [ -z "$f" ] || [ ! -f "$f" ]; then
@@ -19,10 +19,10 @@ case "$mime" in
     # yazi 側は keymap で `shell --orphan` を使い、この常駐プロセスを追跡/kill しないので
     # 「unfinished tasks」警告も出ず、yazi を閉じてもクリップボードが残る。
     wl-copy --type "$mime" <"$f"
-    notify-send "imgcopy" "コピー: $(basename -- "$f") ($mime)" 2>/dev/null || true
+    notify-send "imgcopy" "コピー: ${f##*/} ($mime)" 2>/dev/null || true
     ;;
   *)
-    notify-send -u critical "imgcopy" "画像ではありません ($mime): $(basename -- "$f")" 2>/dev/null || true
+    notify-send -u critical "imgcopy" "画像ではありません ($mime): ${f##*/}" 2>/dev/null || true
     echo "imgcopy: not an image ($mime): $f" >&2
     exit 1
     ;;

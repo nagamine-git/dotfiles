@@ -41,6 +41,7 @@ jobs:
           scripts="home/dot_local/bin/executable_agent-gateway home/dot_local/bin/executable_claude-statusline
             home/dot_local/bin/executable_chatgpt-launch home/dot_local/bin/executable_claude-notify home/dot_local/bin/executable_pi-jev
             home/dot_local/bin/executable_hypr_perfmodeswitch.sh
+            home/dot_local/bin/executable_imgcopy home/dot_local/bin/executable_tmux-fzf-window
             home/dot_local/share/vicinae/scripts/executable_meet-join.sh"
           bash -n $scripts
           shellcheck $scripts
