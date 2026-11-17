@@ -43,7 +43,7 @@ class LinuxBootstrap(unittest.TestCase):
 
     def test_desktop_tuning_stays_off_the_laptop(self):
         name = "run_onchange_after_20-system.sh.tmpl"
-        for desktop_only in ("etc/systemd/zram-generator.conf", "etc/scx_loader/config.toml", "etc/tmpfiles.d/cpu-epp.conf"):
+        for desktop_only in ("etc/systemd/zram-generator.conf", "etc/scx_loader/config.toml", "etc/tmpfiles.d/cpu-epp.conf", "etc/tmpfiles.d/zswap.conf"):
             with self.subTest(config=desktop_only):
                 self.assertIn(desktop_only, self.rendered["am5-itx"][name])
                 self.assertNotIn(desktop_only, self.rendered["fp7-e14"][name])

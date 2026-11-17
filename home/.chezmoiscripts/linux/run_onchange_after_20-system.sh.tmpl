@@ -39,6 +39,9 @@ sudo install -D -m 644 etc/systemd/system/user-.slice.d/10-oomd-user-slice-defau
 sudo systemctl daemon-reload
 sudo systemctl start systemd-zram-setup@zram0.service systemd-zram-setup@zram1.service
 sudo systemctl enable --now systemd-oomd.service
+# zram の手前で zswap が動くと、zram の枠を使わずに予約だけして埋める。zram を使うので zswap は切る (2026-11-17)
+sudo install -D -m 644 etc/tmpfiles.d/zswap.conf /etc/tmpfiles.d/zswap.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/zswap.conf
 
 # === am5-itx: sched-ext (scx_bpfland) で重い処理中の入力遅延を減らす (2026-09-06) ===
 # `systemctl stop scx_loader` で即座に既定のスケジューラへ戻る
