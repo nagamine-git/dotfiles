@@ -88,9 +88,11 @@
   },
 
   "custom/gpu": {
-    "exec": "~/.config/waybar/scripts/gpu_status.sh",
+    "exec": "~/.config/waybar/scripts/gpu_status.py",
     "interval": 3,
     "return-type": "json",
+    "format": "󰢮 {icon}",
+    "format-icons": ["⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"],
     "tooltip": true
   },
 

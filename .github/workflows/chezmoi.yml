@@ -31,15 +31,16 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install zsh (Pi's shell; tests/pi-jev.py and tests/pi-settings.py run the real one)
+      - name: Install zsh and Lua (run the real shell and rendered desktop configuration tests)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends zsh
+          sudo apt-get install -y --no-install-recommends zsh lua5.4
 
       - name: Shell syntax of the scripts the tests drive
         run: |
           scripts="home/dot_local/bin/executable_agent-gateway home/dot_local/bin/executable_claude-statusline
             home/dot_local/bin/executable_chatgpt-launch home/dot_local/bin/executable_claude-notify home/dot_local/bin/executable_pi-jev
+            home/dot_local/bin/executable_hypr_perfmodeswitch.sh
             home/dot_local/share/vicinae/scripts/executable_meet-join.sh"
           bash -n $scripts
           shellcheck $scripts

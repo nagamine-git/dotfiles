@@ -64,7 +64,6 @@
 .local/bin/hypr_perfmodeswitch.sh
 .local/bin/hypr-vrr-off.sh
 .local/bin/hyprvoice_ptt.sh
-.local/bin/lib_hypr_perfmode.sh
 .local/bin/droidcam.sh
 .local/bin/mic-snr.sh
 .local/bin/sleep-now.sh

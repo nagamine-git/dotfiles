@@ -16,6 +16,9 @@
 .config/cursor-flags.conf
 .config/electron27-flags.conf
 .local/bin/hypr_auto_perfmonitor.sh
+# GPUメーターは Python標準ライブラリ、描画効果の切替は Hyprland Lua に統合した
+.config/waybar/scripts/gpu_status.sh
+.local/bin/lib_hypr_perfmode.sh
 bin/server.sh
 # 2026-11 の UI 見直しで waybar を不透明の暗い島にし、壁紙に合わせた明暗の切替をやめた
 .local/bin/waybar-auto-theme.sh

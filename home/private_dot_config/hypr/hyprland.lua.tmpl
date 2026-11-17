@@ -439,7 +439,7 @@ hl.bind(mainMod .. " + SHIFT + s", hl.dsp.exec_cmd(fileManager), { description =
 -- === LAUNCHER (Vicinae: アプリ・ウィンドウ・クリップボード・計算・絵文字・電源・Meet) ===
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd("vicinae toggle"), { description = "起動｜ランチャー (Vicinae)" })
 
-hl.bind(mainMod .. " + a", hl.dsp.exec_cmd("~/.local/bin/hypr_perfmodeswitch.sh"), { description = "システム｜性能モードの切替" })
+hl.bind(mainMod .. " + a", require("effects").toggle, { description = "システム｜描画効果の軽量化を切替 (CPU・日本語入力は変更しない)" })
 
 -- === SCREEN LOCK ===
 hl.bind(mainMod .. " + l", hl.dsp.exec_cmd("hyprlock"), { description = "システム｜画面をロック" })
