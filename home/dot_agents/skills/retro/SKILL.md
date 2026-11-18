@@ -1,6 +1,6 @@
 ---
 name: retro
-description: agent-retro (会話から失敗を拾い、2 回起きた教訓を自動で lessons.md に載せる仕組み) の教訓を、チャットで見る・外すときに使う。「振り返りを見せて」「L1 はいらない」「L1 を詳しく」「retro」「教訓の一覧」と言われたとき。
+description: agent-retro (会話から失敗を拾い、2 回起きた教訓を自動で lessons.md に載せる仕組み) の教訓を、チャットで見る・外すときに使う。「振り返りを見せて」「L1 はいらない」「retro」「教訓の一覧」と言われたとき。
 ---
 
 # retro
@@ -10,7 +10,6 @@ description: agent-retro (会話から失敗を拾い、2 回起きた教訓を�
 ## 見せる (「振り返りを見せて」)
 
 - 一覧: `agent-retro report`。状態は candidate (1 回だけ)、adopted (載せている)、ineffective (載せた後も 3 回再発したので外した)、retired (60 日起きなかったので外した)、dropped (本人が外した)。
-- 1 件を詳しく: `agent-retro show <ID>`。「これまでの返答 → 本人の発言 → 適用後の返答の例」が出る。
 - 出力を貼るだけにせず、何がどう変わったかを 2〜3 文で添える。
 
 ## 外す (「L7 はいらない」)

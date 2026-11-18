@@ -81,7 +81,7 @@ class FlagTest(unittest.TestCase):
 
 
 class LedgerTest(unittest.TestCase):
-    NEW = {"lesson": "new", "title": "説明が専門的", "situation": "報告のとき", "instead": "平易に書く", "kind": "instruction"}
+    NEW = {"lesson": "new", "title": "説明が専門的", "situation": "報告のとき", "instead": "平易に書く"}
 
     def ep(self, session, ts):
         return {"session": session, "ts": ts, "signal": "restate"}
@@ -169,65 +169,6 @@ class LedgerTest(unittest.TestCase):
         self.assertNotIn("平易に書く", text)
 
 
-class PreviewTest(unittest.TestCase):
-    def ledger(self):
-        ledger = {}
-        new = {"lesson": "new", "title": "平易な言葉で言い直す", "situation": "報告", "instead": "短い文で書く", "kind": "instruction"}
-        i = retro.record(ledger, {"session": "s1", "ts": 1, "signal": "restate"}, dict(new))
-        retro.record(ledger, {"session": "s2", "ts": 2, "signal": "restate"}, dict(new))
-        episodes = [{"session": "s1", "ts": 1, "signal": "restate", "reply": "古い返答", "said": "わかりやすく"},
-                    {"session": "s2", "ts": 2, "signal": "restate", "reply": "zswap が zram の枠を予約する二重構成です", "said": "わかりやすくおしえて"}]
-        return ledger, i, episodes
-
-    def test_proposal_shows_what_was_said_before_and_how_it_would_read_after(self):
-        ledger, i, episodes = self.ledger()
-        answer = '[{"n": 1, "after": "メモリの節約機能が二重に動いていて、片方が無駄になっています", "change": "AGENTS.md に「内部の名前は言い換える」を足す"}]'
-        retro.add_previews(ledger, [i], episodes, lambda prompt: answer)
-        text = retro.render(i, ledger[i])
-        self.assertIn("▼ これまで\n  zswap が zram", text)       # いちばん新しい場面の実際の返答
-        self.assertIn("▼ あなた\n  わかりやすくおしえて", text)
-        self.assertIn("▼ これから\n  メモリの節約機能が二重", text)
-        self.assertIn("反映のしかた (指示に 1 行足す)\n" + retro.FENCE + "\nAGENTS.md に", text)
-        self.assertEqual(text.count(retro.FENCE) % 2, 0)
-
-    def test_skill_invocation_is_shown_by_meaning_and_the_model_sees_only_the_excerpt(self):
-        ledger, i, episodes = self.ledger()
-        episodes[1]["said"] = '<skill name="bro" location="/x/SKILL.md"> Restate your last message.'
-        seen = []
-        retro.add_previews(ledger, [i], episodes, lambda prompt: seen.append(prompt) or "[]")
-        self.assertIn("/bro (もっと簡単に言って)", retro.render(i, ledger[i]))
-        self.assertNotIn("SKILL.md", seen[0])
-
-    def test_long_lines_wrap_and_backticks_cannot_break_the_block(self):
-        text = retro.wrap("あ" * 40 + "abc" + retro.FENCE + "def")
-        self.assertEqual(len(text.split("\n")[0].strip()), 34)
-        self.assertNotIn(retro.FENCE, text)
-
-    def test_model_failure_still_shows_the_real_exchange(self):
-        ledger, i, episodes = self.ledger()
-
-        def broken(prompt):
-            raise RuntimeError("no model")
-        retro.add_previews(ledger, [i], episodes, broken)
-        text = retro.render(i, ledger[i])
-        self.assertIn("▼ これまで\n  zswap", text)
-        self.assertNotIn("これから", text)
-        self.assertIn(retro.FENCE + "\n短い文で書く\n" + retro.FENCE, text)
-
-    def test_preview_is_made_once_from_one_scene(self):
-        ledger, i, episodes = self.ledger()
-        calls = []
-
-        def ask(prompt):
-            calls.append(prompt)
-            return '[{"n": 1, "after": "あと", "change": "かえる"}]'
-        retro.add_previews(ledger, [i], episodes, ask)
-        retro.add_previews(ledger, [i], episodes, ask)
-        self.assertEqual(len(calls), 1)
-        self.assertNotIn("古い返答", calls[0])  # 見せるのは 1 場面だけ
-
-
-
 class StateTest(unittest.TestCase):
     def test_collect_is_incremental_and_keeps_private_files_private(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,7 +186,7 @@ class StateTest(unittest.TestCase):
             self.assertEqual((state / "episodes.jsonl").stat().st_mode & 0o777, 0o600)
 
     def test_diagnosis_answer_is_parsed_strictly(self):
-        ok = retro.parse_answer('前置き [{"n": 1, "lesson": "new", "title": "t", "situation": "s", "instead": "i", "kind": "skill"}, {"n": 2, "lesson": "none"}] 後書き', 2)
+        ok = retro.parse_answer('前置き [{"n": 1, "lesson": "new", "title": "t", "situation": "s", "instead": "i"}, {"n": 2, "lesson": "none"}] 後書き', 2)
         self.assertEqual([a["lesson"] for a in ok], ["new", "none"])
         self.assertEqual(retro.parse_answer("JSON が無い", 2), [])
         self.assertEqual(retro.parse_answer('[{"n": 9, "lesson": "new", "title": "t"}]', 2), [])  # 番号が範囲外
