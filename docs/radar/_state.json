@@ -1,46 +1,6 @@
 {
-  "last_run": "2026-11-17",
+  "last_run": "2026-11-18",
   "seen": [
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-10-31",
-      "decision": "⌀ [確認済] 10月固有の新規発表確認できず、既出動向から変化なし"
-    },
-    {
-      "tool": "一人社長/一人法人向けAI SaaS(A-ko san等)",
-      "decided_at": "2026-10-31",
-      "decision": "⌀ [確認済] 10月固有の新サービス発表は確認できず、既出(5月発表のA-ko san等)の範囲内"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI/Antigravity CLI/Cursor",
-      "decided_at": "2026-10-31",
-      "decision": "⌀ [不明] WebSearchで直近の公式リリース情報を特定できず、確認可能な情報が古い。継続確認要"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-10-31",
-      "decision": "⌀ [推定] WebSearchでも話題性のある新規実用サーバーは確認できず"
-    },
-    {
-      "tool": "chezmoi v2.74.0 (マイナーリリース: deprecated remove コマンド削除、KeePassXC YubiKey/gopass/1Password Connect/sshコマンド/dockerコマンドの実験的フラグ解除)",
-      "decided_at": "2026-11-01",
-      "decision": "★ [確認済] GitHub release直接確認(WebFetch)。本リポジトリ管理ツールchezmoi本体のv2.73.3→v2.74.0(マイナー)。本リポジトリは1Password CLI経由のonepasswordReadのみ使用し、KeePassXC/gopass/1Password Connect/docker/ssh builtinコマンド・removeコマンドいずれも未使用のため実害・benefit双方なし"
-    },
-    {
-      "tool": "Claude Code v2.1.316 最新版確認",
-      "decided_at": "2026-11-01",
-      "decision": "⌀ [確認済] 公式CHANGELOG.md直接確認(WebFetch)、10/31判定から新規リリースなし"
-    },
-    {
-      "tool": "Hyprland v0.57.0/Ghostty v1.4.0/niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1/lazygit v0.66.2/blink.cmp v1.10.2 最新版確認",
-      "decided_at": "2026-11-01",
-      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし(helixはv0.x系旧タグによるソート誤認を排除し25.07.1で再確認)"
-    },
-    {
-      "tool": "Tailscale v1.104.4 最新版確認",
-      "decided_at": "2026-11-01",
-      "decision": "⌀ [確認済] git ls-remote --tags直接確認、新タグなし"
-    },
     {
       "tool": "freee-mcp v0.37.9 最新版確認",
       "decided_at": "2026-11-01",
@@ -1000,6 +960,46 @@
       "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-11-17",
       "decision": "⌀ [確認済] Borg/Restic/rclone・Prometheus/Grafanaいずれも既出の範囲内、新着なし"
+    },
+    {
+      "tool": "Claude Code v2.1.327 (.mcp.jsonの他キー消失修正・/export無確認上書き修正・セッション再開時メッセージ欠落修正・/statusへ壊れた設定/フック一覧追加・ExitWorktree未保存確認・サブエージェント権限設定従属化等)",
+      "decided_at": "2026-11-18",
+      "decision": "★★★ [確認済] 公式CHANGELOG.md直接確認(WebFetch)。本radar自身のクラウドスケジュールタスク運用+dot_agents/mcp.jsonおよびGmail/Calendar/Drive/Notion/Slack/Spotify等のMCPコネクタ構成に直撃する信頼性・安全性修正シリーズの最新版。自動適用で対応不要"
+    },
+    {
+      "tool": "Hyprland v0.57.2/Ghostty vt-1.0.1/niri v26.04/helix 25.07.1/jj v0.47.1/zellij v0.46.0/lazygit v0.66.3/chezmoi v2.74.1/blink.cmp v1.10.2/Tailscale v1.104.7/sheldon 0.8.5 最新版確認",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも11/17判定から変化なし"
+    },
+    {
+      "tool": "freee-mcp v0.38.2 最新版確認",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [確認済] 変化なし。プラグイン自体は無効化済みのため監視優先度低いまま"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [確認済] 11月版ISOの発表は依然未確認、直近は8月版のまま"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [不明] composable-kernel/rocm-cmake/rocm-ml-libraries等が7.1系中心で断片的な混在継続、11月固有の反映情報なし"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向・一人社長向けバックオフィスSaaS",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向の範囲内(freee「AIアプリコネクター」は10/29発表で観測期間外)"
+    },
+    {
+      "tool": "Codex CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [不明] 11月固有の新着確認できず、既出(Codex v0.166.0、Antigravity CLIのGemini CLI後継化)の範囲内。本環境は未使用のため導入動機なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-18",
+      "decision": "⌀ [推定] mcpmarket日次ランキングのみ、本環境の既存MCP構成に直撃する実用サーバーは確認できず"
     }
   ]
 }
