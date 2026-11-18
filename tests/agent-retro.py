@@ -1,4 +1,4 @@
-"""agent-retro: 失敗した場面を拾い、教訓の台帳にまとめ、2 回起きたものだけを提案する。モデル呼び出しなし。"""
+"""agent-retro: 失敗した場面を拾い、教訓の台帳にまとめ、2 回起きたものだけを lessons.md に載せる。モデル呼び出しなし。"""
 import importlib.machinery
 import importlib.util
 import json
@@ -81,56 +81,92 @@ class FlagTest(unittest.TestCase):
 
 
 class LedgerTest(unittest.TestCase):
+    NEW = {"lesson": "new", "title": "説明が専門的", "situation": "報告のとき", "instead": "平易に書く", "kind": "instruction"}
+
     def ep(self, session, ts):
         return {"session": session, "ts": ts, "signal": "restate"}
 
-    def test_new_lesson_then_recurrence_in_another_session_becomes_a_proposal(self):
+    def apply(self, ledger, now):
+        with tempfile.TemporaryDirectory() as tmp:
+            retro._write_private(str(Path(tmp) / "ledger.json"), json.dumps(ledger, ensure_ascii=False))
+            message = retro.apply(state=tmp, path=str(Path(tmp) / "lessons.md"), now=now)
+            return json.loads((Path(tmp) / "ledger.json").read_text()), (Path(tmp) / "lessons.md").read_text(), message
+
+    def test_lesson_is_written_only_after_it_recurs_in_another_session(self):
         ledger = {}
-        first = retro.record(ledger, self.ep("s1", 1), {"lesson": "new", "title": "説明が専門的", "situation": "報告", "instead": "平易に", "kind": "instruction"})
-        self.assertEqual(retro.proposals(ledger), [])  # 1 回だけでは提案しない
-        retro.record(ledger, self.ep("s1", 2), {"lesson": first})
-        self.assertEqual(retro.proposals(ledger), [])  # 同じセッションの中の 2 回は 1 回と数える
+        first = retro.record(ledger, self.ep("s1", 1), dict(self.NEW))
+        retro.record(ledger, self.ep("s1", 2), {"lesson": first})   # 同じセッションの中の 2 回は 1 回と数える
+        ledger, text, _ = self.apply(ledger, now=10)
+        self.assertNotIn("平易に書く", text)
         retro.record(ledger, self.ep("s2", 3), {"lesson": first})
-        self.assertEqual([p["id"] for p in retro.proposals(ledger)], [first])
+        ledger, text, message = self.apply(ledger, now=20)
+        self.assertIn(f"- {first}: 報告のとき → 平易に書く", text)
+        self.assertEqual((ledger[first]["status"], message.split(" /")[0]), ("adopted", "載せた 1"))
 
-    def test_same_title_answered_as_new_twice_is_one_lesson(self):
-        ledger = {}
-        new = {"lesson": "new", "title": "専門用語を説明なしに使わない", "situation": "s", "instead": "i", "kind": "instruction"}
-        a = retro.record(ledger, self.ep("s1", 1), dict(new))
-        b = retro.record(ledger, self.ep("s2", 2), dict(new))
-        self.assertEqual((a, len(ledger), len(ledger[a]["episodes"])), (b, 1, 2))
-        self.assertEqual([p["id"] for p in retro.proposals(ledger)], [a])
-
-    def test_not_a_failure_is_counted_but_never_proposed(self):
+    def test_not_a_failure_and_unknown_ids_are_dropped(self):
         ledger = {}
         self.assertIsNone(retro.record(ledger, self.ep("s1", 1), {"lesson": "none"}))
-        self.assertEqual(ledger, {})
-
-    def test_unknown_lesson_id_from_the_model_is_dropped(self):
-        ledger = {}
         self.assertIsNone(retro.record(ledger, self.ep("s1", 1), {"lesson": "L999"}))
         self.assertEqual(ledger, {})
 
-    def test_proposed_once_and_recurrence_after_adoption_is_tracked(self):
+    def test_same_title_answered_as_new_twice_is_one_lesson(self):
         ledger = {}
-        i = retro.record(ledger, self.ep("s1", 1), {"lesson": "new", "title": "t", "situation": "s", "instead": "i", "kind": "mechanical"})
-        retro.record(ledger, self.ep("s2", 2), {"lesson": i})
-        retro.mark(ledger, i, "proposed", now=10)
-        self.assertEqual(retro.proposals(ledger), [])
-        retro.mark(ledger, i, "adopted", now=100)
-        retro.record(ledger, self.ep("s3", 50), {"lesson": i})   # 採用より前の場面
-        retro.record(ledger, self.ep("s4", 200), {"lesson": i})  # 採用の後に再発
-        self.assertEqual(retro.recurred_after_adoption(ledger[i]), 1)
+        a = retro.record(ledger, self.ep("s1", 1), dict(self.NEW))
+        b = retro.record(ledger, self.ep("s2", 2), dict(self.NEW))
+        self.assertEqual((a, len(ledger), len(ledger[a]["episodes"])), (b, 1, 2))
+        self.assertEqual(retro.ready(ledger), [a])
 
-    def test_at_most_three_proposals_and_the_most_repeated_first(self):
+    def test_lesson_that_keeps_recurring_after_it_was_written_is_removed_as_ineffective(self):
         ledger = {}
-        for n in range(5):
-            i = retro.record(ledger, self.ep("a", n), {"lesson": "new", "title": f"t{n}", "situation": "s", "instead": "i", "kind": "instruction"})
+        i = retro.record(ledger, self.ep("s1", 1), dict(self.NEW))
+        retro.record(ledger, self.ep("s2", 2), {"lesson": i})
+        ledger, _, _ = self.apply(ledger, now=100)
+        for n in range(2):
+            retro.record(ledger, self.ep(f"t{n}", 200 + n), {"lesson": i})
+        ledger, text, _ = self.apply(ledger, now=300)
+        self.assertIn("平易に書く", text)  # 2 回まではまだ載せておく
+        retro.record(ledger, self.ep("t9", 400), {"lesson": i})
+        ledger, text, message = self.apply(ledger, now=500)
+        self.assertEqual(ledger[i]["status"], "ineffective")
+        self.assertNotIn("平易に書く", text)
+        self.assertIn("効かないので外した 1", message)
+        retro.record(ledger, self.ep("u1", 600), {"lesson": i})
+        ledger, text, _ = self.apply(ledger, now=700)
+        self.assertNotIn("平易に書く", text)  # 一度外したものは載せ直さない
+
+    def test_lesson_with_no_recurrence_for_sixty_days_is_retired(self):
+        day = 86400 * 1000
+        ledger = {}
+        i = retro.record(ledger, self.ep("s1", 1), dict(self.NEW))
+        retro.record(ledger, self.ep("s2", 2), {"lesson": i})
+        ledger, _, _ = self.apply(ledger, now=100)
+        ledger, text, _ = self.apply(ledger, now=100 + 59 * day)
+        self.assertIn("平易に書く", text)
+        ledger, text, message = self.apply(ledger, now=100 + 61 * day)
+        self.assertEqual(ledger[i]["status"], "retired")
+        self.assertNotIn("平易に書く", text)
+
+    def test_file_holds_at_most_twelve_lessons_and_the_most_repeated_first(self):
+        ledger = {}
+        for n in range(15):
+            new = dict(self.NEW, title=f"t{n}", instead=f"直し方{n:02d}")
+            i = retro.record(ledger, self.ep("a", n), new)
             for k in range(n + 1):
                 retro.record(ledger, self.ep(f"b{k}", 100 + k), {"lesson": i})
-        got = retro.proposals(ledger)
-        self.assertEqual(len(got), 3)
-        self.assertEqual(got[0]["title"], "t4")
+        _, text, _ = self.apply(ledger, now=1000)
+        lines = [x for x in text.splitlines() if x.startswith("- L")]
+        self.assertEqual(len(lines), 12)
+        self.assertIn("直し方14", lines[0])
+        self.assertNotIn("直し方00", text)
+
+    def test_dropped_lesson_leaves_the_file(self):
+        ledger = {}
+        i = retro.record(ledger, self.ep("s1", 1), dict(self.NEW))
+        retro.record(ledger, self.ep("s2", 2), {"lesson": i})
+        ledger, _, _ = self.apply(ledger, now=10)
+        retro.mark(ledger, i, "dropped", now=20)
+        _, text, _ = self.apply(ledger, now=30)
+        self.assertNotIn("平易に書く", text)
 
 
 class PreviewTest(unittest.TestCase):
@@ -178,7 +214,7 @@ class PreviewTest(unittest.TestCase):
         self.assertNotIn("これから", text)
         self.assertIn(retro.FENCE + "\n短い文で書く\n" + retro.FENCE, text)
 
-    def test_preview_is_made_once_and_notify_sends_it(self):
+    def test_preview_is_made_once_from_one_scene(self):
         ledger, i, episodes = self.ledger()
         calls = []
 
@@ -189,12 +225,7 @@ class PreviewTest(unittest.TestCase):
         retro.add_previews(ledger, [i], episodes, ask)
         self.assertEqual(len(calls), 1)
         self.assertNotIn("古い返答", calls[0])  # 見せるのは 1 場面だけ
-        with tempfile.TemporaryDirectory() as tmp:
-            retro._write_private(str(Path(tmp) / "ledger.json"), json.dumps(ledger, ensure_ascii=False))
-            sent = []
-            self.assertEqual(retro.notify(state=tmp, send=sent.append, ask=ask), "1 件を送った")
-            self.assertIn("▼ これから\n  あと", sent[0])
-            self.assertIn("「L1 を採用」", sent[0])
+
 
 
 class StateTest(unittest.TestCase):

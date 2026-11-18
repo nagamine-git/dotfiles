@@ -39,4 +39,5 @@
 
 - 長期メモリの正本は Claude の `~/.claude/projects/<repo>/memory/` です。Codex と Pi は開始時に `agent-memory-dir` を実行し、`MEMORY.md` と今回に関係するファイルを読みます。今のコードと本人の指示を優先し、古い情報は確かめます。
 - メモリの形式と索引の上限は、dotfiles の `docs/agents-unified.md` の «メモリの追記» に従います。秘密や個人データは残しません。Codex 自身の `~/.codex/memories` は手で編集しません。
+- 開始時に `~/.agents/lessons.md` があれば読み、当てはまる場面で守ります。agent-retro が会話の失敗から自動で書く教訓です (別々の会話で 2 回以上起きたものだけ、12 行まで)。手では直さず、本人が外したいと言ったら `agent-retro drop <ID>` を実行します。
 - スキルと MCP の正本は `~/.agents/skills` と `~/.agents/mcp.json` です。repo に `AGENTS.md` と `CLAUDE.md` があるときは、`CLAUDE.md` の先頭を `@AGENTS.md` にして本文を 1 つにまとめます。

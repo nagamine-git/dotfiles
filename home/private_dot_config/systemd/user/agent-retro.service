@@ -1,5 +1,5 @@
 [Unit]
-Description=agent-retro: 会話から失敗した場面を拾い、2 回起きた教訓を提案する
+Description=agent-retro: 会話から失敗した場面を拾い、2 回起きた教訓を lessons.md に載せる
 
 [Service]
 Type=oneshot

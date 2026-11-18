@@ -4,7 +4,6 @@
     "preship": {"username": "Preship 広告", "icon_emoji": ":chart_with_upwards_trend:"},
     "tower": {"username": "tower", "icon_emoji": ":building_construction:"},
     "runway": {"username": "資金繰り", "icon_emoji": ":moneybag:"},
-    "blocker": {"username": "要対応", "icon_emoji": ":rotating_light:"},
-    "retro": {"username": "振り返り", "icon_emoji": ":mag:"}
+    "blocker": {"username": "要対応", "icon_emoji": ":rotating_light:"}
   }
 }

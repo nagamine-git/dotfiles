@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""agent-retro: エージェントとの会話から失敗した場面を拾い、同じ失敗が 2 回起きたら直し方を提案する。
+"""agent-retro: エージェントとの会話から失敗した場面を拾い、同じ失敗が 2 回起きたら教訓として自動で載せる。
 
-  agent-retro tick      毎日の timer が呼ぶ。collect → diagnose → notify
+  agent-retro tick      毎日の timer が呼ぶ。collect → diagnose → apply
   agent-retro collect   会話の記録から、失敗の印がある場面を拾う (モデルを呼ばない)
   agent-retro diagnose  拾った場面を軽いモデルに読ませ、教訓の台帳に足す (1 回の呼び出し)
-  agent-retro notify    別々のセッションで 2 回以上起きた教訓を Slack に送る (1 日 3 件まで)
+  agent-retro apply     別々のセッションで 2 回以上起きた教訓を ~/.agents/lessons.md に書く (提案や確認はしない)
   agent-retro report    台帳と、採用した教訓のその後の再発を表示する
   agent-retro show ID   教訓 1 件を「これまで → これから → 反映のしかた」の形で表示する
-  agent-retro adopt ID  教訓を採用済みにする (本人が直し方を反映したあとに呼ぶ)
-  agent-retro drop ID   教訓を外す
+  agent-retro drop ID   教訓を外す (lessons.md からも消える)
 
 考え方:
   - 全体の点数は見ない。1 日の失敗は数件で、ぶれのほうが大きい。見るのは教訓ごとの再発の回数だけ。
   - 1 回だけの失敗は台帳に置くだけで、指示には入れない。指示を太らせないため。
   - 教訓は本人の発言とエージェント自身の操作からだけ作る。道具や Web の出力の中身は読ませない。
-  - AGENTS.md・スキル・フックは書き換えない。提案を送るだけで、反映は本人が決める。
+  - 自動で書くのは ~/.agents/lessons.md だけ (本人の指示 2026-11-18「提案はいらない、全て自動適用」)。
+    AGENTS.md・スキル・ゲート・フックは書き換えない。lessons.md は 12 行までで、効かなかった教訓と
+    使われなくなった教訓は自動で外す。
 
 会話の本文は `~/.local/state/agent-retro/` (0600) の外に出さない。diagnose だけが、拾った場面を
 Pi の軽いモデル (本人のサブスクリプション) に送る。
@@ -44,7 +45,10 @@ MAX_SAID = 500            # これより長い発言は貼り付けと見て拾�
 TOOL_ERRORS = 3           # 道具がこれだけ続けて失敗したら拾う (合間に成功があれば数え直す。長い作業では単発の失敗は普通に起きる)
 MAX_DIAGNOSE = 10         # 1 回の診断に出す場面の数
 MIN_NEW_TURNS = 20        # 前回の診断から本人の発言がこれだけ増えるまで診断しない
-MAX_PROPOSALS = 3         # 1 日に送る提案の数
+LESSONS = os.path.join(HOME, ".agents/lessons.md")
+MAX_LESSONS = 12          # lessons.md に載せる教訓の数。毎回の文脈に入るので増やさない
+INEFFECTIVE_AFTER = 3     # 載せた後もこれだけ再発したら「効いていない」として外す (同じ文を置き続けても直らない)
+RETIRE_DAYS = 60          # 載せてからこの日数、再発が無ければ外す (もう起きていない)
 QUOTA_MAX = 80            # Claude の枠の使用率がこれ以上なら診断を休む
 KINDS = ("mechanical", "skill", "instruction")
 
@@ -204,15 +208,10 @@ def record(ledger: dict, episode: dict, answer: dict) -> str | None:
     return None
 
 
-def proposals(ledger: dict) -> list[dict]:
-    """別々のセッションで 2 回以上起きた、まだ提案していない教訓。多いものから 3 件まで。"""
-    out = []
-    for i, lesson in ledger.items():
-        sessions = {e["session"] for e in lesson["episodes"]}
-        if lesson["status"] == "candidate" and len(sessions) >= 2:
-            out.append({"id": i, "sessions": len(sessions), **lesson})
-    out.sort(key=lambda p: (-p["sessions"], p["id"]))
-    return out[:MAX_PROPOSALS]
+def ready(ledger: dict) -> list[str]:
+    """別々のセッションで 2 回以上起きた、まだ載せていない教訓の ID。"""
+    return [i for i, lesson in ledger.items()
+            if lesson["status"] in ("candidate", "proposed") and len({e["session"] for e in lesson["episodes"]}) >= 2]
 
 
 def mark(ledger: dict, lesson_id: str, status: str, now: float | None = None) -> None:
@@ -426,24 +425,49 @@ def show(lesson_id: str, state: str = STATE, ask=None) -> str:
     return render(lesson_id, ledger[lesson_id])
 
 
-def notify(state: str = STATE, send=None, ask=None) -> str:
+def lessons_text(ledger: dict) -> str:
+    """lessons.md の中身。採用中の教訓を、起きた回数の多い順に MAX_LESSONS 件まで。"""
+    live = sorted(((i, v) for i, v in ledger.items() if v["status"] == "adopted"), key=lambda kv: (-len(kv[1]["episodes"]), kv[0]))
+    lines = [
+        "# 会話の失敗から学んだこと",
+        "",
+        "agent-retro が自動で書いています。手で直さず、外したいものはチャットで「L1 はいらない」と伝えます。",
+        "同じ失敗が別々の会話で 2 回以上起きたものだけが載ります。作業の前に読み、当てはまる場面で守ります。",
+        "",
+    ]
+    lines += [f"- {i}: {one_line(v['situation'], 60)} → {one_line(v['instead'], 140)}" for i, v in live[:MAX_LESSONS]]
+    return "\n".join(lines) + "\n"
+
+
+def apply(state: str = STATE, path: str = LESSONS, now: float | None = None) -> str:
+    """教訓を載せる・外すを決めて lessons.md を書き直す。モデルは呼ばない。"""
+    now = int(now if now is not None else time.time() * 1000)
     ledger = _read_json(os.path.join(state, "ledger.json"), {})
-    todo = proposals(ledger)
-    if not todo:
-        return "提案は無い"
-    add_previews(ledger, [p["id"] for p in todo], _jsonl(os.path.join(state, "episodes.jsonl")), ask or ask_light_model)
-    lines = ["同じ失敗が別々の会話で 2 回以上起きました。Pi や Claude Code のチャットで「L1 を採用」「L1 はいらない」のように伝えてください。"]
-    lines += ["\n" + render(p["id"], ledger[p["id"]]) for p in todo]
-    text = "\n".join(lines)
-    if send is None:
-        def send(body):
-            subprocess.run([os.path.join(HOME, ".local/bin/op-agent"), "run", "--env-file", os.path.join(HOME, ".config/agents/tower.env"), "--",
-                            os.path.join(HOME, ".local/bin/slack-notify"), "--kind", "retro"], input=body, text=True, check=True, timeout=60)
-    send(text)
-    for p in todo:
-        mark(ledger, p["id"], "proposed")
+    added = ready(ledger)
+    for i in added:
+        mark(ledger, i, "adopted", now)
+    ineffective, retired = [], []
+    for i, v in ledger.items():
+        if v["status"] != "adopted":
+            continue
+        if recurred_after_adoption(v) >= INEFFECTIVE_AFTER:
+            mark(ledger, i, "ineffective", now)
+            ineffective.append(i)
+        elif now - max([v["adopted_at"]] + [e["ts"] for e in v["episodes"]]) > RETIRE_DAYS * 86400 * 1000:
+            mark(ledger, i, "retired", now)
+            retired.append(i)
+    text = lessons_text(ledger)
+    try:
+        with open(path) as f:
+            old = f.read()
+    except OSError:
+        old = ""
+    if text != old:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(text)
     _write_private(os.path.join(state, "ledger.json"), json.dumps(ledger, ensure_ascii=False, indent=1))
-    return f"{len(todo)} 件を送った"
+    return f"載せた {len(added)} / 効かないので外した {len(ineffective)} / 起きなくなったので外した {len(retired)}"
 
 
 def report(state: str = STATE) -> str:
@@ -455,31 +479,32 @@ def report(state: str = STATE) -> str:
     lines = [f"拾った場面 {len(episodes)} 件: " + ", ".join(f"{k} {v}" for k, v in sorted(by.items())), f"教訓 {len(ledger)} 件"]
     for i, v in ledger.items():
         sessions = len({e["session"] for e in v["episodes"]})
-        tail = f" / 採用後の再発 {recurred_after_adoption(v)}" if v["status"] == "adopted" else ""
+        tail = f" / 載せた後の再発 {recurred_after_adoption(v)}" if v["status"] in ("adopted", "ineffective") else ""
         lines.append(f"  {i} [{v['status']}] {v['title']} ({len(v['episodes'])} 回・{sessions} セッション、{v['kind']}){tail}\n      → {v['instead']}")
     return "\n".join(lines)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="失敗した場面を拾い、2 回起きたものだけを提案する")
-    ap.add_argument("command", choices=("tick", "collect", "diagnose", "notify", "report", "show", "adopt", "drop"))
+    ap = argparse.ArgumentParser(description="失敗した場面を拾い、2 回起きた教訓を lessons.md に載せる")
+    ap.add_argument("command", choices=("tick", "collect", "diagnose", "apply", "report", "show", "drop"))
     ap.add_argument("lesson", nargs="?")
     ap.add_argument("--force", action="store_true", help="diagnose: 発言の数と枠の条件を見ない")
     a = ap.parse_args()
-    if a.command in ("adopt", "drop"):
+    if a.command == "drop":
         ledger = _read_json(os.path.join(STATE, "ledger.json"), {})
         if a.lesson not in ledger:
             print(f"知らない ID: {a.lesson}", file=sys.stderr)
             return 1
-        mark(ledger, a.lesson, "adopted" if a.command == "adopt" else "dropped")
+        mark(ledger, a.lesson, "dropped")
         _write_private(os.path.join(STATE, "ledger.json"), json.dumps(ledger, ensure_ascii=False, indent=1))
+        print(apply())
         return 0
     if a.command in ("tick", "collect"):
         print(f"拾った場面: {collect()} 件")
     if a.command in ("tick", "diagnose"):
         print(diagnose(force=a.force))
-    if a.command in ("tick", "notify"):
-        print(notify())
+    if a.command in ("tick", "apply"):
+        print(apply())
     if a.command == "report":
         print(report())
     if a.command == "show":

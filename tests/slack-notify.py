@@ -200,7 +200,6 @@ class ShippedKinds(unittest.TestCase):
             "tower": ("tower", ":building_construction:"),
             "runway": ("資金繰り", ":moneybag:"),
             "blocker": ("要対応", ":rotating_light:"),
-            "retro": ("振り返り", ":mag:"),
         })
         self.assertTrue(all("channel" not in v for v in config["kinds"].values()))
 
