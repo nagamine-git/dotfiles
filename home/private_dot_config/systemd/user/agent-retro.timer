@@ -1,0 +1,10 @@
+[Unit]
+Description=agent-retro を毎日実行
+
+[Timer]
+OnCalendar=*-*-* 07:45:00
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

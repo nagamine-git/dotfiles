@@ -191,7 +191,7 @@ class Notify(unittest.TestCase):
 
 
 class ShippedKinds(unittest.TestCase):
-    def test_the_four_initial_kinds_post_to_n_efg_claude(self):
+    def test_the_shipped_kinds_post_to_n_efg_claude(self):
         config = json.loads(SHIPPED_KINDS.read_text(encoding="utf-8"))
         self.assertEqual(config["default_channel"], "C0CDQP2MLN9")
         looks = {k: (v["username"], v["icon_emoji"]) for k, v in config["kinds"].items()}
@@ -200,6 +200,7 @@ class ShippedKinds(unittest.TestCase):
             "tower": ("tower", ":building_construction:"),
             "runway": ("資金繰り", ":moneybag:"),
             "blocker": ("要対応", ":rotating_light:"),
+            "retro": ("振り返り", ":mag:"),
         })
         self.assertTrue(all("channel" not in v for v in config["kinds"].values()))
 

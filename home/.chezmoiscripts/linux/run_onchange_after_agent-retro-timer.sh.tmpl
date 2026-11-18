@@ -1,0 +1,10 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# agent-retro の毎日の振り返り。Pi のあるホストだけで有効にする。
+# timer: {{ include "private_dot_config/systemd/user/agent-retro.timer" | sha256sum }}
+# service: {{ include "private_dot_config/systemd/user/agent-retro.service" | sha256sum }}
+set -eu
+[ -d "$HOME/.pi/agent" ] || exit 0
+systemctl --user daemon-reload
+systemctl --user enable --now agent-retro.timer
+{{ end -}}

@@ -1,0 +1,6 @@
+[Unit]
+Description=agent-retro: 会話から失敗した場面を拾い、2 回起きた教訓を提案する
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/agent-retro tick
