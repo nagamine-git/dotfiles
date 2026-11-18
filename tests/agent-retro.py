@@ -148,10 +148,11 @@ class PreviewTest(unittest.TestCase):
         answer = '[{"n": 1, "after": "メモリの節約機能が二重に動いていて、片方が無駄になっています", "change": "AGENTS.md に「内部の名前は言い換える」を足す"}]'
         retro.add_previews(ledger, [i], episodes, lambda prompt: answer)
         text = retro.render(i, ledger[i])
-        self.assertIn("これまで: 「zswap が zram", text)       # いちばん新しい場面の実際の返答
-        self.assertIn("あなた: 「わかりやすくおしえて」", text)
-        self.assertIn("これから: 「メモリの節約機能が二重", text)
-        self.assertIn("反映のしかた: AGENTS.md に", text)
+        self.assertIn("▼ これまで\n  zswap が zram", text)       # いちばん新しい場面の実際の返答
+        self.assertIn("▼ あなた\n  わかりやすくおしえて", text)
+        self.assertIn("▼ これから\n  メモリの節約機能が二重", text)
+        self.assertIn("反映のしかた (指示に 1 行足す)\n" + retro.FENCE + "\nAGENTS.md に", text)
+        self.assertEqual(text.count(retro.FENCE) % 2, 0)
 
     def test_skill_invocation_is_shown_by_meaning_and_the_model_sees_only_the_excerpt(self):
         ledger, i, episodes = self.ledger()
@@ -161,6 +162,11 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("/bro (もっと簡単に言って)", retro.render(i, ledger[i]))
         self.assertNotIn("SKILL.md", seen[0])
 
+    def test_long_lines_wrap_and_backticks_cannot_break_the_block(self):
+        text = retro.wrap("あ" * 40 + "abc" + retro.FENCE + "def")
+        self.assertEqual(len(text.split("\n")[0].strip()), 34)
+        self.assertNotIn(retro.FENCE, text)
+
     def test_model_failure_still_shows_the_real_exchange(self):
         ledger, i, episodes = self.ledger()
 
@@ -168,9 +174,9 @@ class PreviewTest(unittest.TestCase):
             raise RuntimeError("no model")
         retro.add_previews(ledger, [i], episodes, broken)
         text = retro.render(i, ledger[i])
-        self.assertIn("これまで: 「zswap", text)
+        self.assertIn("▼ これまで\n  zswap", text)
         self.assertNotIn("これから", text)
-        self.assertIn("直し方: 短い文で書く", text)
+        self.assertIn(retro.FENCE + "\n短い文で書く\n" + retro.FENCE, text)
 
     def test_preview_is_made_once_and_notify_sends_it(self):
         ledger, i, episodes = self.ledger()
@@ -187,7 +193,7 @@ class PreviewTest(unittest.TestCase):
             retro._write_private(str(Path(tmp) / "ledger.json"), json.dumps(ledger, ensure_ascii=False))
             sent = []
             self.assertEqual(retro.notify(state=tmp, send=sent.append, ask=ask), "1 件を送った")
-            self.assertIn("これから: 「あと」", sent[0])
+            self.assertIn("▼ これから\n  あと", sent[0])
             self.assertIn("「L1 を採用」", sent[0])
 
 
