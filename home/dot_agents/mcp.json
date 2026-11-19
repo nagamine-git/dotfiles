@@ -9,6 +9,11 @@
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
     },
+    "exa": {
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp",
+      "clients": ["pi"]
+    },
     "freee": {
       "command": "npx",
       "args": ["-y", "freee-mcp@latest"]
