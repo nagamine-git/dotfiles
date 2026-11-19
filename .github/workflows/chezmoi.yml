@@ -40,7 +40,7 @@ jobs:
             home/dot_local/bin/executable_chatgpt-launch home/dot_local/bin/executable_claude-notify home/dot_local/bin/executable_pi-jev
             home/dot_local/bin/executable_hypr_perfmodeswitch.sh
             home/dot_local/bin/executable_imgcopy home/dot_local/bin/executable_tmux-fzf-window
-            home/dot_local/share/vicinae/scripts/executable_meet-join.sh"
+            home/dot_local/share/private_vicinae/scripts/executable_meet-join.sh"
           bash -n $scripts
           shellcheck $scripts
           shellcheck -S warning home/dot_claude/hooks/executable_herdr-agent-summary.sh home/dot_claude/hooks/executable_herdr-tab-title.sh

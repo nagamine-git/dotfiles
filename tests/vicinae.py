@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HYPR = ROOT / "home/private_dot_config/hypr/hyprland.lua.tmpl"
 IGNORE = ROOT / "home/.chezmoiignore"
 VICINAE_DIR = ROOT / "home/private_dot_config/vicinae"
-MEET = ROOT / "home/dot_local/share/vicinae/scripts/executable_meet-join.sh"
+MEET = ROOT / "home/dot_local/share/private_vicinae/scripts/executable_meet-join.sh"
 CHEZMOI = shutil.which("chezmoi")
 JQ = shutil.which("jq")
 

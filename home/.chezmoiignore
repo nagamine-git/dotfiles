@@ -88,6 +88,9 @@ Library/**
 # Slack から Claude Code に依頼する bot
 .local/bin/slack-claude
 .config/systemd/user/slack-claude.service
+# Artificial Analysis のコーディングエージェント順位表を毎月 1 日に Slack へ送る (aa-coding-snapshot)
+.config/systemd/user/aa-coding-snapshot.service
+.config/systemd/user/aa-coding-snapshot.timer
 # Busy Desk (BUSY Bar を設置しているホストだけ)
 .config/systemd/user/busy-desk-bridge.service
 .config/agents/busy-desk.env

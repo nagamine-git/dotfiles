@@ -1,0 +1,8 @@
+[Unit]
+Description=Monthly Artificial Analysis Coding Agent leaderboard snapshot to Slack
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/tower.env -- %h/.local/bin/aa-coding-snapshot
