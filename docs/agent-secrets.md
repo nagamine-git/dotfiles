@@ -37,6 +37,8 @@ Personal などの既存 Vault を一括で移したり、エージェントの�
 agent-secrets-check
 agent-secrets-check --env-file ~/.config/agents/slack.env
 agent-secrets-check --env-file ~/.config/agents/slack.env --resolve
+agent-secrets-check --list                 # Agents の項目の名前・種類・ID だけを出す (値は出さない)
+agent-secrets-check --item "<名前か ID>"    # その項目の欄の名前と、値が入っているかだけを出す
 ```
 
 既定ではアカウントの種類、見える Vault 名と `Agents` の項目数、参照の環境変数名を表示する。
@@ -70,9 +72,8 @@ op-agent run --env-file ~/.config/agents/<用途>.env -- <必要なコマンド>
 
 ## Slack bot を使えるようにする
 
-Slack bot は現在、`SLACK_APP_TOKEN` と `SLACK_BOT_TOKEN` の登録待ち。
-2026-10-21 の確認時点で unit は `disabled` / `inactive` だった。
-`slack.env` はコメントだけの雛形なので、まだ起動できる状態ではない。
+2026-11-19 に `slack.env` へ参照を入れた (`SLACK_APP_TOKEN` は項目 «slack-claude socket»、`SLACK_BOT_TOKEN` は tower と同じ «EFG Slack KEY»)。両方とも引けて、Socket Mode の接続も開ける。
+残りは Slack アプリ側で、bot の権限に `app_mentions:read` と `im:write` が無い。足して入れ直すまで、unit は `disabled` のままにする。
 
 現在の bot 構成の設定は [agents-unified.md](agents-unified.md#slack-から-am5-itx-の-claude-code-に依頼する-bot) にある。
 Slack app で Socket Mode を有効にし、次を揃える。

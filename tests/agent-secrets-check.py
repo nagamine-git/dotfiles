@@ -32,7 +32,12 @@ if action == 'whoami':
 elif args[:2] == ['vault', 'list']:
     print(json.dumps([{'id': 'hidden-vault-id', 'name': name} for name in config.get('vaults', ['Agents'])]))
 elif args[:2] == ['item', 'list']:
-    print(json.dumps([{'id': 'hidden-item-id', 'title': 'hidden-item-title'}]))
+    print(json.dumps([{'id': 'hidden-item-id', 'title': 'hidden-item-title', 'category': 'API_CREDENTIAL'}]))
+elif args[:2] == ['item', 'get']:
+    print(json.dumps({'title': 'Slack app', 'fields': [
+        {'id': 'credential', 'label': 'credential', 'type': 'CONCEALED', 'value': 'top-secret-do-not-log'},
+        {'id': 'notes', 'label': 'notesPlain', 'type': 'STRING', 'value': ''},
+        {'id': 'x', 'label': 'token', 'type': 'CONCEALED', 'value': 'top-secret-do-not-log', 'section': {'label': 'bot'}}]}))
 elif action == 'run':
     if config.get('noise'):
         print('top-secret-do-not-log')
@@ -78,6 +83,23 @@ class SecretsCheck(unittest.TestCase):
                        "example", "credential"):
             self.assertNotIn(hidden, result.stdout + result.stderr)
         self.assertNotIn("run", [call[0] for call in calls])
+
+    def test_list_shows_titles_only_when_asked(self):
+        result, _ = self.run_check()
+        self.assertNotIn("hidden-item-title", result.stdout)
+        result, _ = self.run_check("--list")
+        self.assertIn("hidden-item-title | API_CREDENTIAL | hidden-item-id", result.stdout)
+
+    def test_item_shows_field_labels_and_filled_state_but_never_values(self):
+        result, calls = self.run_check("--item", "Slack app")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("credential | CONCEALED | filled", result.stdout)
+        self.assertIn("notesPlain | STRING | empty", result.stdout)
+        self.assertIn("bot/token | CONCEALED | filled", result.stdout)
+        self.assertIn(["item", "get", "Slack app", "--vault", "Agents", "--format", "json"], calls)
+        result, calls = self.run_check("--item=--reveal")
+        self.assertEqual(result.returncode, 1)
+        self.assertFalse([c for c in calls if c[:2] == ["item", "get"]])
 
     def test_resolve_reports_only_presence_and_returns_failure_for_empty_values(self):
         self.env_file.write_text('TOKEN=op://Agents/example/credential\nEMPTY=op://Agents/other/password\n')
