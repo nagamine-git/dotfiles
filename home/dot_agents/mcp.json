@@ -40,6 +40,11 @@
       "type": "http",
       "url": "https://mcp.posthog.com/mcp?readonly=true"
     },
+    "preship": {
+      "command": "node",
+      "args": ["/home/tsuyoshi/ghq/github.com/efg-technologies/preship-app/src/mcp.js"],
+      "clients": ["pi"]
+    },
     "tavily-mcp": {
       "command": "agent-tavily-mcp",
       "args": []
