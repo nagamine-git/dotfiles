@@ -1,56 +1,6 @@
 {
-  "last_run": "2026-11-19",
+  "last_run": "2026-11-20",
   "seen": [
-    {
-      "tool": "chezmoi v2.74.0 最新版確認",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] 11/01判定から変化なし"
-    },
-    {
-      "tool": "Claude Code v2.1.316 最新版確認",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] 公式CHANGELOG.md直接確認(WebFetch)、新規リリースなし"
-    },
-    {
-      "tool": "Hyprland v0.57.0/Ghostty v1.4.0/niri v26.04/helix 25.07.1/jj v0.46.0/zellij v0.45.1/lazygit v0.66.2/blink.cmp v1.10.2 最新版確認",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし"
-    },
-    {
-      "tool": "CachyOS 11月リリース",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] releasebot/公式blog直接確認、11月版の発表まだ確認できず(直近は8月版)"
-    },
-    {
-      "tool": "ROCm 7.x CachyOSリポジトリ反映状況",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] 公式は7.2.4まで進行(1月〜5月)だがArch rebuild todoは7.1系扱いのまま、CachyOS側反映情報なし"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] 11月固有の新規発表確認できず"
-    },
-    {
-      "tool": "Codex CLI/Gemini CLI(→Antigravity CLI)/Cursor",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [不明] 直近の公式リリース情報を特定できず、確認可能な情報が古い。継続確認要"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [推定] 話題性のある新規実用サーバーは確認できず"
-    },
-    {
-      "tool": "一人社長/一人法人向けバックオフィスAI SaaS",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [確認済] 11月固有の新サービス発表は確認できず(LayerX主催セミナーのみ)"
-    },
-    {
-      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
-      "decided_at": "2026-11-02",
-      "decision": "⌀ [不明] 11月固有の新着記事は見つからず"
-    },
     {
       "tool": "Claude Code v2.1.317 (auto mode一部ゲートウェイ失敗修正・/scheduleの未要求connector警告・サブエージェント異モデル時のeffort level変更・Web/Shellツールのemail送信前確認プロンプト追加等)",
       "decided_at": "2026-11-03",
@@ -1000,6 +950,56 @@
       "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
       "decided_at": "2026-11-19",
       "decision": "⌀ [確認済] Beszel/Uptime Kuma/Prometheus/HomeButler等既出ツールの範囲内、11月固有の新着なし"
+    },
+    {
+      "tool": "Claude Code v2.1.330 (/loopと定期タスクの最大実行期間を7日→30日に延長・rmのルート/ホーム等対象時の承認要求追加・組み込みmod「easel」追加・長い会話のコンパクト直後フリーズ修正・WebFetchフリーズ修正等)",
+      "decided_at": "2026-11-20",
+      "decision": "★★★ [確認済] 公式CHANGELOG.md直接確認(WebFetch)。本radar自身のdefaultMode: auto + クラウドスケジュールタスク運用の実行期間設計と、dot_local/bin配下の自作スクリプトのrm安全性に直撃"
+    },
+    {
+      "tool": "采配(SAIHAI) (株式会社J.NOVA、2026-11-01正式リリース)",
+      "decided_at": "2026-11-20",
+      "decision": "★★ [推定] 請求・経費・勤怠・給与・会計をAIが毎朝確認し「今日決めること」をLINEで届ける小規模事業者向け業務管理クラウド。freee会計等と連携、無料プラン(5人まで)〜月額9,800円。既存のSlack通知基盤(slack-notify/tower)は社内処理監視中心で経営判断の毎朝まとめ機能を持たない空いた穴だが、公式料金ページ未確認で情報は二次情報中心"
+    },
+    {
+      "tool": "Hyprland v0.57.2/niri v26.04/helix 25.07.1/jj v0.47.1/zellij v0.46.0/lazygit v0.66.3/chezmoi v2.74.1/blink.cmp v1.10.2/Ghostty vt-1.0.1/Tailscale v1.105.0-pre 最新版確認",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも11/19判定から変化なし。Tailscaleはプレリリースタグのみ"
+    },
+    {
+      "tool": "freee-mcp v0.38.3 最新版確認",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [確認済] CHANGELOG.md直接確認、Claudeプラグインレビュー対応の文書・案内修正のみで機能追加なし。無効化済みのため優先度低いまま"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [確認済] discuss.cachyos.org/公式blog確認、11月版ISOの発表は依然未確認、直近は8月版のまま"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [不明] 11月固有の反映情報見つからず、前回判定維持"
+    },
+    {
+      "tool": "freee AI勤怠リスク(freeeサーベイ、2026-11-18提供開始)",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [確認済] 離職リスク自動検知機能だが本機は人事労務freeeを利用していないため直撃なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査(MCP公式の6か月リリースサイクル移行11/11・ファイルアップロード/ダウンロード実験的拡張ドラフト11/10等)",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [推定] 本環境の既存MCP構成に直撃する実用サーバーは確認できず"
+    },
+    {
+      "tool": "Codex CLI(rust-v0.169.0、11/13)/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [不明] CursorはOpenAIとの直接モデル提供契約が11/12終了との報道のみ。本環境は未使用のため導入動機なし"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-20",
+      "decision": "⌀ [不明] 11月固有の新着確認できず、既出ツールの範囲内"
     }
   ]
 }
