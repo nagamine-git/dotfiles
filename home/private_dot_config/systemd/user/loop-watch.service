@@ -1,0 +1,10 @@
+[Unit]
+Description=loop-watch: 改善・投稿の定期処理が期限内に結果を出しているかを見張り、止まったら Slack に知らせる
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/loop-watch
+TimeoutStartSec=120

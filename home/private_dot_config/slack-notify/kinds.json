@@ -4,6 +4,8 @@
     "preship": {"username": "Preship 広告", "icon_emoji": ":chart_with_upwards_trend:"},
     "tower": {"username": "tower", "icon_emoji": ":building_construction:"},
     "runway": {"username": "資金繰り", "icon_emoji": ":moneybag:"},
-    "blocker": {"username": "要対応", "icon_emoji": ":rotating_light:"}
+    "blocker": {"username": "要対応", "icon_emoji": ":rotating_light:"},
+    "loop-watch": {"username": "定期処理の見張り", "icon_emoji": ":eyes:"},
+    "goldlab": {"username": "GOLD LAB", "icon_emoji": ":trophy:"}
   }
 }

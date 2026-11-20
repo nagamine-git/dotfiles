@@ -1,0 +1,10 @@
+[Unit]
+Description=loop-watch を 2 時間ごとに実行
+
+[Timer]
+OnCalendar=*-*-* 00/2:50:00
+Persistent=true
+RandomizedDelaySec=2m
+
+[Install]
+WantedBy=timers.target

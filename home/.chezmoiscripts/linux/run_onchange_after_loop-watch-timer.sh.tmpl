@@ -1,0 +1,10 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# loop-watch の見張り。Pi のあるホストだけで有効にする。
+# timer: {{ include "private_dot_config/systemd/user/loop-watch.timer" | sha256sum }}
+# service: {{ include "private_dot_config/systemd/user/loop-watch.service" | sha256sum }}
+set -eu
+[ -d "$HOME/.pi/agent" ] || exit 0
+systemctl --user daemon-reload
+systemctl --user enable --now loop-watch.timer
+{{ end -}}

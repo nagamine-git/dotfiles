@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""loop-watch: 自動で改善・投稿する定期処理が期限内に結果を出しているかを見張り、止まったら Slack で知らせる。
+
+    loop-watch            確かめて、変化があれば Slack に送る
+    loop-watch --dry-run  確かめて表示だけする
+
+対象と期限は ~/.config/loop-watch/loops.json。この端末に入っていない unit は飛ばす。
+終了コードが 0 でも結果を出していない (例: agent-retro が答えを読めずに毎日先送り) 場合を拾うため、
+unit の結果に加えて、結果ファイルの更新時刻と、ログ末尾の止まった印を見る。
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+
+HOME = os.path.expanduser("~")
+CONFIG = os.path.join(HOME, ".config/loop-watch/loops.json")
+STATE = os.path.join(HOME, ".local/state/loop-watch/last.json")
+RENOTIFY_S = 24 * 3600   # 止まったままなら 1 日 1 回だけ言い直す
+
+
+def unit_state(name: str) -> tuple[str | None, str | None, int | None]:
+    out = subprocess.run(["systemctl", "--user", "show", name, "-p", "LoadState", "-p", "Result",
+                          "-p", "ExecMainExitTimestamp", "--timestamp=unix"], capture_output=True, text=True).stdout
+    d = dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
+    ts = d.get("ExecMainExitTimestamp", "").lstrip("@")
+    return d.get("LoadState"), d.get("Result"), int(ts) if ts.isdigit() else None
+
+
+def _age_h(path: str, now: float) -> float | None:
+    try:
+        return (now - os.path.getmtime(path)) / 3600
+    except OSError:
+        return None
+
+
+def _json_value(gate: dict) -> float:
+    try:
+        with open(os.path.expanduser(gate["json"])) as f:
+            return float(json.load(f).get(gate["key"], 0))
+    except (OSError, ValueError, TypeError):
+        return 0.0
+
+
+def check(loop: dict, now: float, unit=unit_state) -> list[str] | None:
+    """1 つの定期処理の問題を返す。この端末に入っていなければ None。"""
+    load, result, ran = unit(loop["unit"])
+    if load != "loaded":
+        return None
+    problems = []
+    if result != "success":
+        problems.append(f"前回の実行が失敗した ({result})")
+    if ran is None or (now - ran) / 3600 > loop["max_age_h"]:
+        problems.append(f"{loop['max_age_h']} 時間以上動いていない")
+    out = loop.get("output")
+    if out and ("only_if" not in out or _json_value(out["only_if"]) >= out["only_if"]["ge"]):
+        age = _age_h(os.path.expanduser(out["path"]), now)
+        if age is None or age > out["max_age_h"]:
+            problems.append(out["say"])
+    bad = loop.get("bad_tail")
+    if bad:
+        try:
+            with open(os.path.expanduser(bad["path"]), encoding="utf-8", errors="replace") as f:
+                text = f.read()[-200_000:]
+        except OSError:
+            text = ""
+        if bad["pattern"] in text.rsplit(bad["since"], 1)[-1]:
+            problems.append(bad["say"])
+    return problems
+
+
+def decide(message: str, last: dict, now: float) -> str | None:
+    """送る本文を返す。前回と同じ問題なら 1 日 1 回、直ったら 1 回だけ知らせる。"""
+    if message:
+        if message != last.get("message") or now - last.get("sent_at", 0) >= RENOTIFY_S:
+            return message
+        return None
+    return "止まっていた定期処理は、すべて戻りました。" if last.get("message") else None
+
+
+def main(argv: list[str]) -> int:
+    with open(CONFIG) as f:
+        loops = json.load(f)["loops"]
+    now = time.time()
+    lines = [f"- {loop['name']}: " + "、".join(p) for loop in loops if (p := check(loop, now))]
+    message = ("止まっている定期処理があります。`loop-watch --dry-run` で今の状態を見られます。\n" + "\n".join(lines)) if lines else ""
+    print(message or "すべて期限内に動いています。")
+    if "--dry-run" in argv:
+        return 0
+    try:
+        with open(STATE) as f:
+            last = json.load(f)
+    except (OSError, ValueError):
+        last = {}
+    text = decide(message, last, now)
+    if text is None:
+        return 0
+    sent = subprocess.run(["op-agent", "run", "--env-file", os.path.join(HOME, ".config/agents/tower.env"), "--",
+                           "slack-notify", "--kind", "loop-watch", "--text", text])
+    if sent.returncode != 0:
+        return 1   # 送れなかったら状態を変えず、systemd に失敗を残す
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    with open(STATE, "w") as f:
+        json.dump({"message": message, "sent_at": now}, f, ensure_ascii=False)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
