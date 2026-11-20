@@ -192,3 +192,13 @@ systemctl --user enable --now slack-claude
 op-agent run --env-file ~/.config/agents/slack.env -- slack-claude dm "通知テスト"     # 本人に DM が 1 通届く
 python3 tests/slack-claude.py                                                          # ネットワークも claude も呼ばない
 ```
+
+## 声で頼む窓口 (voice-agent)
+
+am5-itx で動く。スマホのブラウザで `https://am5-itx.tailcda87f.ts.net:8753/` を開いて「話す」を押すと、声で Claude Code に頼める。Slack の Huddle は使わない (bot が Huddle に入る API が Slack に無い)。
+
+- 仕組み: 声の会話は OpenAI の GPT-Live (`gpt-live-1.1`) がブラウザと直接つながって受け持つ。作業が要る依頼は、通話の文字起こしを am5-itx の `voice-agent` に送り、`claude -p` (slack-claude と同じ呼び方・同じ権限) で実行して、結果を読み上げる。
+- 費用: 従量課金 (通話中 $0.05/分、待機 $0.02/分。本人承認 2026-11-19)。鍵は `~/.config/agents/voice.env` の参照で渡す。Claude の側は月額の枠。
+- 入口: `tailscale serve` で tailnet の中だけ。Tailscale の利用者が本人の端末だけ通す。タグ付きの端末 (fp7-e14 など) は利用者を持たないので使えない。
+- 記憶: 1 回の通話が 1 つの Claude のセッション。通話をまたいだ記憶と、Slack の会話との共有は無い。
+- 確認: `systemctl --user is-active voice-agent`、`journalctl --user -u voice-agent`。

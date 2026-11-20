@@ -1,0 +1,23 @@
+[Unit]
+Description=声で Claude Code に頼む窓口 ({{ .chezmoi.hostname }}、127.0.0.1:8753)
+After=network-online.target
+Wants=network-online.target
+
+# tailnet の中だけに出す (1 回だけ実行。再起動後も残る):
+#   tailscale serve --bg --https=8753 http://127.0.0.1:8753
+# 使えるのは Tailscale の利用者が本人の端末だけ (タグ付きの端末は利用者を持たないので使えない)。
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment="PATH=%h/.local/bin:%h/.local/share/mise/installs/node/lts/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/voice.env -- %h/.local/bin/voice-agent serve
+Restart=on-failure
+RestartSec=120
+TimeoutStopSec=45
+KillMode=control-group
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
