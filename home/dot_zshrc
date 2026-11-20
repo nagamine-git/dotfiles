@@ -82,6 +82,11 @@ alias history='fc -il 1'
 # Pi は jev 許可ゲートつきで起動する。pi-jev は Pi を入れた am5-itx にだけ置く
 # (TypeSafe 鍵は jev-gate が分類のときだけ自分で取り、Pi の環境変数には入れない)
 [[ -x "$HOME/.local/bin/pi-jev" ]] && alias pi='pi-jev'
+# 引数なしの対話起動だけ共有デーモンを使わない。exec や resume には手を加えない。
+codex() {
+    (( $# )) || set -- --no-daemon
+    command codex "$@"
+}
 alias vim='nvim'
 alias svim='vim ~/.note.gpg'
 
