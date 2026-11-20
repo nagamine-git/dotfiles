@@ -200,5 +200,6 @@ am5-itx で動く。スマホのブラウザで `https://am5-itx.tailcda87f.ts.n
 - 仕組み: 声の会話は OpenAI の GPT-Live (`gpt-live-1.1`) がブラウザと直接つながって受け持つ。作業が要る依頼は、通話の文字起こしを am5-itx の `voice-agent` に送り、`claude -p` (slack-claude と同じ呼び方・同じ権限) で実行して、結果を読み上げる。
 - 費用: 従量課金 (通話中 $0.05/分、待機 $0.02/分。本人承認 2026-11-19)。鍵は `~/.config/agents/voice.env` の参照で渡す。Claude の側は月額の枠。
 - 入口: `tailscale serve` で tailnet の中だけ。Tailscale の利用者が本人の端末だけ通す。タグ付きの端末 (fp7-e14 など) は利用者を持たないので使えない。
-- 記憶: 1 回の通話が 1 つの Claude のセッション。通話をまたいだ記憶と、Slack の会話との共有は無い。
+- 記憶: 1 回の通話が 1 つの Claude のセッション。通話が終わると、決めたこと・終えたこと・残っている作業だけを本人の Slack の DM に送る (逐語録は送らない。何も無い通話は送らない)。その投稿のスレッドに返信すると、slack-claude がまとめを文脈にして続きを受ける。直近 3 回のまとめ (`~/.local/state/voice-agent/calls.jsonl`) は、次の通話の窓口にも渡す。
+- 画面: 通話中は画面を消さない (Wake Lock)。別のアプリに切り替えたときや画面を消したときに通話が続くかは、スマホのブラウザ次第 (iOS は止まる)。
 - 確認: `systemctl --user is-active voice-agent`、`journalctl --user -u voice-agent`。
