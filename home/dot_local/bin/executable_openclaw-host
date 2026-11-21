@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# am5-itx の実ファイルを扱う、外部待受のない OpenClaw。旧 gateway の設定・鍵は使わない。
+set -eu
+usage() { echo '使い方: openclaw-host "依頼文" | --pair | devices list | devices approve <requestId>' >&2; exit 2; }
+umask 077
+root="$HOME/.local/share/openclaw-host"
+gateway() {
+  export OPENCLAW_CONFIG_PATH="$HOME/.config/openclaw-host/gateway.json" OPENCLAW_STATE_DIR="$HOME/.local/state/openclaw-host"
+  "$HOME/.local/bin/op-agent" run --env-file "$HOME/.config/agents/openclaw-talk.env" -- env -u OP_SERVICE_ACCOUNT_TOKEN \
+    "$root/node_modules/.bin/openclaw" --profile host "$@"
+}
+if [[ ${1:-} == --profile && ${2:-} == host ]]; then shift 2; fi
+if [[ ${1:-} == devices ]]; then
+  if [[ $# == 2 && $2 == list ]]; then gateway devices list; exit; fi
+  if [[ $# == 3 && $2 == approve && $3 =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$ ]]; then gateway devices approve "$3"; exit; fi
+  usage
+fi
+[[ $# == 1 && -n $1 ]] || usage
+if [[ $1 == --pair ]]; then
+  [[ -t 1 ]] || { echo 'QR は本人の端末で表示してください' >&2; exit 2; }
+  host=$(tailscale status --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')
+  # --limited: チャットと Talk は使え、Gateway の管理権限だけ渡さない。コードは 10 分で切れるので、届いた申請をその場で確認する
+  code=$(gateway qr --limited --url "wss://$host:18799" --setup-code-only | tail -n 1)
+  [[ $code =~ ^[A-Za-z0-9_=-]{40,}$ ]] || { echo 'セットアップコードを作れませんでした' >&2; exit 1; }
+  qrencode -t ANSIUTF8 -m 2 "$code"
+  # QR を読めないとき: 同じコードを tailnet 内の 1 回限りのページで渡す (Tailscale の利用者が本人のときだけ)
+  CODE=$code python3 - <<'PY' &
+import http.server, os, html
+code = os.environ.pop("CODE")
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        ok = self.headers.get("Tailscale-User-Login") == "tsuyoshi.nagamine@efg-technologies.com"
+        body = ('<meta name=viewport content="width=device-width"><p>OpenClaw の Settings → Gateway → Paste setup code に貼り付けてください。</p>'
+                '<textarea id=c rows=6 style="width:100%%" readonly>%s</textarea><button onclick="navigator.clipboard.writeText(c.value);this.textContent=\'コピーしました\'" style="font-size:1.4em;padding:.5em 1em">コピー</button>'
+                % html.escape(code)) if ok else "forbidden"
+        self.send_response(200 if ok else 403); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Cache-Control", "no-store"); self.end_headers()
+        self.wfile.write(body.encode())
+        if ok: self.server.done = True
+import time
+s = http.server.HTTPServer(("127.0.0.1", 18798), H); s.done = False; s.timeout = 5
+end = time.time() + 600
+while not s.done and time.time() < end:
+    s.handle_request()
+PY
+  page=$!
+  trap 'kill "$page" 2>/dev/null || :' EXIT
+  echo "QR を読めないときは、スマホで https://$host:18798/ を開いてコードをコピー (1 回限り)"
+  echo '届いた申請をここで確認します (10 分、Ctrl+C で終了)'
+  seen=" "
+  for _ in $(seq 200); do
+    while IFS=$'\t' read -r id what; do
+      [[ -n $id && $seen != *" $id "* ]] || continue
+      seen+="$id "
+      read -r -p "承認しますか? $what [y/N] " ok </dev/tty
+      if [[ $ok == [yY] ]]; then gateway devices approve "$id" >/dev/null && echo '承認しました'; fi
+    done < <(gateway devices list --json 2>/dev/null | python3 -c 'import json,sys
+for r in json.load(sys.stdin).get("pending", []):
+    print(r["requestId"], "%s (%s, %s, %s)" % (r.get("displayName"), r.get("platform"), r.get("remoteIp"), ",".join(r.get("roles") or [r.get("role") or "?"])), sep="\t")')
+    sleep 3
+  done
+  exit
+fi
+work="$root/workspace"
+mkdir -p "$work" "$HOME/.local/state/openclaw-host"
+exec env -i HOME="$HOME" PATH="$PATH" LANG="${LANG:-C.UTF-8}" \
+  "$root/node_modules/.bin/openclaw" --profile host agent exec \
+  --config "$HOME/.config/openclaw-host/config.json" --state-dir "$HOME/.local/state/openclaw-host" \
+  --cwd "$work" --timeout 120 -- "$1"

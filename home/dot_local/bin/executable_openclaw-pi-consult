@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+// OpenClaw の stdio MCP。Pi への質問のみ。依存はホスト版 OpenClaw と同じ SDK を使う。
+'use strict';
+const { createRequire } = require('node:module');
+const { homedir, tmpdir } = require('node:os');
+const { join } = require('node:path');
+const { mkdtempSync, rmSync } = require('node:fs');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
+const home = homedir();
+const fromHost = createRequire(join(home, '.local/share/openclaw-host/package.json'));
+const { McpServer } = fromHost('@modelcontextprotocol/sdk/server/mcp.js');
+const { StdioServerTransport } = fromHost('@modelcontextprotocol/sdk/server/stdio.js');
+const { z } = fromHost('zod');
+const server = new McpServer({ name: 'pi', version: '1' });
+let used = false;
+server.registerTool('consult', {
+  description: 'Ask Pi (jev/auto) for a second opinion on supplied text. No tools, filesystem access or further delegation. Once per process.',
+  inputSchema: { question: z.string().trim().min(1).max(6000) },
+}, async ({ question }) => {
+  const reply = (text, isError = false) => ({ content: [{ type: 'text', text }], isError });
+  if (used) return reply('この接続では相談済みです。再送しません。', true);
+  used = true;
+  const cwd = mkdtempSync(join(tmpdir(), 'openclaw-pi-'));
+  try {
+    const run = promisify(execFile)(join(home, '.local/bin/pi-jev'), [
+      '-p', '--mode', 'text', '--model', 'jev/auto', '--no-tools', '--no-mcp', '--no-skills', '--no-context-files',
+      '--no-prompt-templates', '--session-dir', join(home, '.local/state/openclaw-host/pi-sessions'),
+      '--', '次の相談にテキストだけで回答してください。作業・再委譲はしません。\n' + question,
+    ], { cwd, env: { HOME: home, PATH: process.env.PATH, LANG: 'C.UTF-8' }, timeout: 90000, maxBuffer: 128 * 1024 });
+    run.child.stdin.end(); // Pi reads non-TTY stdin to EOF even when argv already has a prompt.
+    const { stdout } = await run;
+    return stdout.trim() ? reply(stdout.trim().slice(0, 6000)) : reply('Pi の回答が空でした。', true);
+  } catch (e) { return reply(`Pi の相談は失敗しました (${e.killed ? 'timeout' : e.code ?? 'error'})。再試行しません。`, true); }
+  finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+server.connect(new StdioServerTransport()).catch(() => { process.exitCode = 1; });

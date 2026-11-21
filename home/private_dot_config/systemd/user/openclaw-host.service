@@ -1,0 +1,22 @@
+[Unit]
+Description=OpenClaw host gateway (local user, loopback)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=10min
+StartLimitBurst=5
+
+[Service]
+Type=exec
+UMask=0077
+NoNewPrivileges=yes
+WorkingDirectory=%h/.local/share/openclaw-host/workspace
+Environment="PATH=%h/.local/bin:%h/.local/share/mise/installs/node/lts/bin:/usr/local/bin:/usr/bin:/bin"
+Environment=OPENCLAW_CONFIG_PATH=%h/.config/openclaw-host/gateway.json
+Environment=OPENCLAW_STATE_DIR=%h/.local/state/openclaw-host
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/openclaw-talk.env -- /usr/bin/env -u OP_SERVICE_ACCOUNT_TOKEN -u SLACK_BOT_TOKEN -u OPENAI_API_KEY -u ANTHROPIC_API_KEY %h/.local/share/openclaw-host/node_modules/.bin/openclaw --profile host gateway run
+Restart=on-failure
+RestartSec=90s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=default.target

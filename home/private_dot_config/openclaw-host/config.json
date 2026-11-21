@@ -1,0 +1,105 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-5-5",
+        "fallbacks": []
+      },
+      "models": {
+        "anthropic/claude-sonnet-5-5": {
+          "agentRuntime": {
+            "id": "claude-cli"
+          }
+        },
+        "anthropic/claude-opus-5-5": {
+          "agentRuntime": {
+            "id": "claude-cli"
+          }
+        },
+        "anthropic/claude-fable-5-2": {
+          "agentRuntime": {
+            "id": "claude-cli"
+          }
+        },
+        "anthropic/claude-haiku-5-5": {
+          "agentRuntime": {
+            "id": "claude-cli"
+          }
+        },
+        "openai/gpt-6-astra": {
+          "agentRuntime": {
+            "id": "openclaw"
+          }
+        },
+        "openai/gpt-6.1-sol": {
+          "agentRuntime": {
+            "id": "openclaw"
+          }
+        },
+        "openai/gpt-6.1-terra": {
+          "agentRuntime": {
+            "id": "openclaw"
+          }
+        },
+        "openai/gpt-6-luna": {
+          "agentRuntime": {
+            "id": "openclaw"
+          }
+        }
+      },
+      "skipBootstrap": true
+    }
+  },
+  "mcp": {
+    "servers": {
+      "pi": {
+        "command": "openclaw-pi-consult",
+        "requestTimeoutMs": 100000
+      }
+    }
+  },
+  "tools": {
+    "allow": [
+      "read",
+      "write",
+      "edit",
+      "pi__consult"
+    ],
+    "fs": {
+      "workspaceOnly": true
+    },
+    "exec": {
+      "security": "deny"
+    },
+    "elevated": {
+      "enabled": false
+    }
+  },
+  "plugins": {
+    "allow": [
+      "anthropic",
+      "openai",
+      "jev-route"
+    ],
+    "load": {
+      "paths": [
+        "~/.local/share/openclaw-host/plugins/jev-route.mjs"
+      ]
+    },
+    "entries": {
+      "jev-route": {
+        "enabled": true,
+        "hooks": {
+          "allowConversationAccess": true
+        }
+      }
+    }
+  },
+  "auth": {
+    "order": {
+      "openai": [
+        "openai:tsuyoshi.nagamine@efg-technologies.com"
+      ]
+    }
+  }
+}

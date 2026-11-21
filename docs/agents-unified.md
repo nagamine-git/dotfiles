@@ -129,6 +129,10 @@ dot の Custom rules に同じ文字数制限を重ねない。書き方は cust
 `home/dot_agents/AGENTS.md` は本人の既定。会社・顧客の状態管理、PR 承認、受入条件は各組織の正本に置く。
 EFG の共通運用は [Linear の運用ルール](https://linear.app/efg/document/運用ルール-9b4270577ad2)、製品固有の指示は各 repo の `AGENTS.md`。この repo の `REVIEW.md` は chezmoi のレビュー時だけ読むリポジトリ用資料で、ホームへは配置しない。
 
+## 作業手順の自己改善
+
+`agent-retro.timer` は、Pi の会話に現れた chezmoi の反映ミスや herdr の操作ミスなどを、既存の毎日の診断で扱う。端末入力や画面を別途記録しない。別々の会話で裏付けられた手順だけを `~/.agents/lessons.md` に載せる。採用後に3回再発して外した手順は戻さず、その後の別々の2会話が別の対処を裏付けた場合に、新しい教訓として試す。`agent-retro report` で再発を確認できる。設定・権限・ソースコードはこの処理では変更しない。
+
 ## メモリの追記
 
 Claude の `~/.claude/projects/<repo>/memory/` に1事実1ファイルで残す。Codex では `agent-memory-dir` で場所を確認する。
@@ -192,6 +196,18 @@ systemctl --user enable --now slack-claude
 op-agent run --env-file ~/.config/agents/slack.env -- slack-claude dm "通知テスト"     # 本人に DM が 1 通届く
 python3 tests/slack-claude.py                                                          # ネットワークも claude も呼ばない
 ```
+
+## Pi とホスト版 OpenClaw の往復 (am5-itx)
+
+Pi からホストの作業を任せるときは `openclaw-host "依頼文"` を通常の bash ツールで呼ぶ。OpenClaw は `~/.local/share/openclaw-host/workspace/` のファイルを扱い、必要なときだけ `pi__consult` で Pi に質問できる。例:「この案の抜けを Pi に相談し、結論だけ review.md に書いて」。Pi 側は `jev/auto` の新規セッションで、渡された文章だけを扱う。相談先にシェル・MCP・再委譲はなく、同じ接続の二度目の相談は拒否する。作業結果はファイルか標準出力で呼び出し元に戻す。Pi の会話履歴全体を転送しない。
+
+## 常駐の OpenClaw (am5-itx)
+
+`openclaw-host.service` が Gateway を 127.0.0.1:18799 で常駐させ、`tailscale serve` で tailnet だけに `wss://am5-itx.tailcda87f.ts.net:18799` を出す。iPhone の OpenClaw アプリからチャットと Talk (GPT-Live) が使える。スマホの追加は `openclaw-host --pair` (QR か、tailnet 内の 1 回限りのページでコードを渡し、届いた申請をその場で y/N)。
+
+- モデル: 各ターンの前に `jev-route` プラグイン (`~/.local/share/openclaw-host/plugins/jev-route.mjs`) が Pi を `PI_JEV_ROUTE_ONLY` で呼び、jev/auto と同じ判断でモデルだけを選ぶ (モデル本体は呼ばない。約 1.5 秒)。OpenClaw の目録に無い GPT-6.2 は同系統の一つ前 (Astra→GPT-6 Astra、Sol→GPT-6.1 Sol) に置き換える。effort は渡せない。失敗時は Claude Sonnet 5.5。
+- 課金: Claude は Claude Code のログイン (`claude-cli`)、GPT は ChatGPT の OAuth プロファイルだけ (`auth.order.openai`)。Gateway には OpenAI の API キーを渡さない。Talk は `gpt-live-1-codex` (ChatGPT のサブスク経路)。
+- 権限: ファイル操作は `~/.local/share/openclaw-host/workspace/` の中だけ、シェル実行なし。鍵は `~/.config/agents/openclaw-talk.env` (Gateway のトークンだけ)。
 
 ## 声で頼む窓口 (voice-agent)
 

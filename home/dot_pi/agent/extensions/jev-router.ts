@@ -80,6 +80,7 @@ const TYPESAFE_REF_FILE = path.join(HOME_DIR, ".config/agents/model-typesafe.env
 const TYPESAFE_REF = /^TYPESAFE_API_KEY=(?:"(op:\/\/[^"]+)"|(op:\/\/\S+))\s*$/m;
 const OP_AGENT = path.join(HOME_DIR, ".local/bin/op-agent");
 const CLASSIFIER_TIMEOUT_MS = 6_000;
+const ROUTE_ONLY = process.env.PI_JEV_ROUTE_ONLY;
 const USER_MAX = 6_000;
 const CONTEXT_MAX = 1_500;
 // Where the classifier's score (0 = light … 4 = critical) passes from one level to the next.
@@ -649,7 +650,13 @@ export default function (pi: ExtensionAPI) {
     log({ model: c.key, effort: c.effort, level: level ?? null, from: old?.model ?? null, source, ...extra,
       selector: request.thinkingLevel, reason: request.reason, ...(e.tokens ? { tokens: e.tokens } : {}),
       ...(c.ab ? { ab: c.ab } : {}), ...(e.why.length ? { quota: e.why } : {}),
-      ...((pace) => (pace > 1 ? { pace: Math.round(pace * 100) / 100 } : {}))(quota.pace(m.provider, m.id)) });
+      ...((pace) => (pace > 1 ? { pace: Math.round(pace * 100) / 100 } : {}))(quota.pace(m.provider, m.id)),
+      ...(ROUTE_ONLY ? { via: "route-only" } : {}) });
+    // OpenClaw asks for the choice alone (openclaw-host jev-route plugin): write it and stop before any model call.
+    if (ROUTE_ONLY) {
+      fs.writeFileSync(ROUTE_ONLY, JSON.stringify({ model: c.key, effort: c.effort, level: level ?? null }));
+      throw new Error("jev/auto: route only");
+    }
     if (ctx.hasUI && (old?.model !== state.model || old?.effort !== state.effort || old?.detour !== state.detour)) {
       ctx.ui?.setStatus?.("jev-router", `auto→${short(c.key)} ${c.effort}${state.detour ? " (枠退避)" : ""}`);
       if (state.detour && !old?.detour) {

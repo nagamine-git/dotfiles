@@ -1,0 +1,16 @@
+{
+  "$include": "./config.json",
+  "agents": { "defaults": { "workspace": "{{ .chezmoi.homeDir }}/.local/share/openclaw-host/workspace" } },
+  "gateway": {
+    "mode": "local", "bind": "loopback", "port": 18799,
+    "auth": { "mode": "token", "allowTailscale": false },
+    "trustedProxies": ["127.0.0.1"],
+    "tailscale": { "mode": "off" }
+  },
+  "discovery": { "mdns": { "mode": "off" } },
+  "talk": { "speechLocale": "ja-JP", "realtime": {
+    "provider": "openai", "mode": "realtime", "brain": "agent-consult",
+    "providers": { "openai": { "model": "gpt-live-1-codex", "speakerVoice": "cove" } }
+  } },
+  "plugins": { "allow": ["anthropic", "openai", "device-pair", "jev-route"] }
+}
