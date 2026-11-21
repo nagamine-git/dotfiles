@@ -44,6 +44,11 @@ resize_pane_right = "alt+shift+right"
 # Linux の Ghostty は既定で Alt+1..9 を自分のタブ切り替えに使うので、ghostty/config.tmpl で外している
 switch_tab = "prefix+1..9"
 focus_agent = "alt+1..9"
+# Go To と同じ軸: 上下で agent 行、左右で space。ペインの Alt+矢印は変えない。
+previous_agent = "alt+super+up"
+next_agent = "alt+super+down"
+previous_workspace = "alt+super+left"
+next_workspace = "alt+super+right"
 # Mac の Cmd+数字は Ghostty の既定のタブ切り替えを外して使う (ghostty/config.tmpl)
 {{- if eq .chezmoi.os "darwin" }}
 switch_workspace = "cmd+1..9"

@@ -9,6 +9,10 @@ font-feature = -calt
 theme = Gruvbox Material
 # Option キーを Alt として送信 (herdr の Alt+m 最大化や Alt+hjkl のペイン移動など、Alt のキーに必須)
 macos-option-as-alt = true
+# Cmd+Option+矢印を Ghostty の分割移動ではなく herdr の agent / space 移動に渡す。
+{{- range $d := list "up" "down" "left" "right" }}
+keybind = super+alt+arrow_{{ $d }}=unbind
+{{- end }}
 # Cmd+数字を herdr の space 切り替えに渡す。既定のタブ切り替えは super+N と super+digit_N の両方にある (9 は super+9 だけ)
 keybind = super+1=unbind
 keybind = super+digit_1=unbind
