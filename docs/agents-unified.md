@@ -207,6 +207,7 @@ Pi からホストの作業を任せるときは `openclaw-host "依頼文"` を
 
 - モデル: 各ターンの前に `jev-route` プラグイン (`~/.local/share/openclaw-host/plugins/jev-route.mjs`) が Pi を `PI_JEV_ROUTE_ONLY` で呼び、jev/auto と同じ判断でモデルだけを選ぶ (モデル本体は呼ばない。約 1.5 秒)。OpenClaw の目録に無い GPT-6.2 は同系統の一つ前 (Astra→GPT-6 Astra、Sol→GPT-6.1 Sol) に置き換える。effort は渡せない。失敗時は Claude Sonnet 5.5。
 - 課金: Claude は Claude Code のログイン (`claude-cli`)、GPT は ChatGPT の OAuth プロファイルだけ (`auth.order.openai`)。Gateway には OpenAI の API キーを渡さない。Talk は `gpt-live-1-codex` (ChatGPT のサブスク経路)。
+- Slack: 既存の bot (アプリ A04DK3A9UMT、slack-claude と同じトークン) で Socket Mode につなぐ。本人 (U03L2HM8Q4X) の DM と、許可したチャンネル (#n-efg-claude) の本人の発言だけに答える。同じアプリに 2 つ Socket Mode をつなぐとイベントが分かれるので、`slack-claude.service` は止めた (2026-11-21。戻すときは openclaw-host の `channels.slack` を外してから `systemctl --user enable --now slack-claude`)。
 - 権限: ファイル操作は `~/.local/share/openclaw-host/workspace/` の中だけ、シェル実行なし。鍵は `~/.config/agents/openclaw-talk.env` (Gateway のトークンだけ)。
 
 ## 声で頼む窓口 (voice-agent)
