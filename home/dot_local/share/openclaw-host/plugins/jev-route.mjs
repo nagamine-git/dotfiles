@@ -11,6 +11,10 @@ const HOME = homedir();
 const FALLBACK = "anthropic/claude-sonnet-5-5";
 const ALIAS = { "openai/gpt-6.2-astra": "openai/gpt-6-astra", "openai/gpt-6.2-sol": "openai/gpt-6.1-sol" };
 
+export function stripRouteNotices(text) {
+  return text.replace(/^↪️ Model Fallback(?:: [^\n]*; selected model unavailable\)| cleared: [^\n]*)\n*/gmu, "");
+}
+
 function route(prompt) {
   const dir = mkdtempSync(join(tmpdir(), "jev-route-"));
   const out = join(dir, "choice.json");
@@ -41,6 +45,14 @@ export default definePluginEntry({
       // 2026.11.5 applies the override only when fallbacksOverride is present. Fall back to the configured default.
       const fallbacks = ref === FALLBACK ? [] : [FALLBACK];
       return { providerOverride: ref.slice(0, slash), modelOverride: ref.slice(slash + 1), fallbacksOverride: fallbacks };
+    });
+    // OpenClaw counts a hook-chosen model as a fallback from the configured default and prefixes the reply with
+    // "↪️ Model Fallback: … (selected …; selected model unavailable)" (no failed attempt) or "… cleared". Those are
+    // this router's own choices, not failures: drop them. Fallbacks with a real reason (rate limit etc.) stay.
+    api.on("message_sending", (event) => {
+      const content = typeof event?.content === "string" ? event.content : "";
+      const cleaned = stripRouteNotices(content);
+      return cleaned === content ? undefined : { content: cleaned };
     });
   },
 });

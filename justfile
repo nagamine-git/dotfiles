@@ -14,6 +14,10 @@ test:
       python3 -B "$t" || { echo "::error file=$t::$t failed"; fail=1; }
       echo "::endgroup::"
     done
+    # OpenClaw の自作プラグイン (OpenClaw が無いホストでは試験自身が skip する)
+    for t in tests/*.mjs; do
+      node "$t" || { echo "::error file=$t::$t failed"; fail=1; }
+    done
     exit "$fail"
 
 # コミット前の検査 (秘密・ShellCheck・ruff・zizmor など) を全ファイルにかける

@@ -63,13 +63,18 @@
       "read",
       "write",
       "edit",
+      "exec",
       "pi__consult"
     ],
     "fs": {
-      "workspaceOnly": true
+      "workspaceOnly": false
     },
     "exec": {
-      "security": "deny"
+      "security": "allowlist",
+      "ask": "off",
+      "applyPatch": {
+        "workspaceOnly": false
+      }
     },
     "elevated": {
       "enabled": false
@@ -79,11 +84,13 @@
     "allow": [
       "anthropic",
       "openai",
-      "jev-route"
+      "jev-route",
+      "home-guard"
     ],
     "load": {
       "paths": [
-        "~/.local/share/openclaw-host/plugins/jev-route.mjs"
+        "~/.local/share/openclaw-host/plugins/jev-route.mjs",
+        "~/.local/share/openclaw-host/plugins/home-guard.mjs"
       ]
     },
     "entries": {
@@ -92,6 +99,9 @@
         "hooks": {
           "allowConversationAccess": true
         }
+      },
+      "home-guard": {
+        "enabled": true
       }
     }
   },

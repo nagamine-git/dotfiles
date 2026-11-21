@@ -20,6 +20,6 @@
     "groupPolicy": "allowlist", "channels": { "C0CDQP2MLN9": { "users": ["U03L2HM8Q4X"] } },
     "actions": { "messages": false, "pins": false, "memberInfo": false, "emojiList": false, "channels": false }
   } },
-  "plugins": { "allow": ["anthropic", "openai", "device-pair", "jev-route", "slack"],
-    "load": { "paths": ["{{ .chezmoi.homeDir }}/.local/share/openclaw-host/plugins/jev-route.mjs", "{{ .chezmoi.homeDir }}/.local/share/openclaw-host/node_modules/@openclaw/slack"] } }
+  "plugins": { "allow": ["anthropic", "openai", "device-pair", "jev-route", "home-guard", "slack"],
+    "load": { "paths": ["{{ .chezmoi.homeDir }}/.local/share/openclaw-host/plugins/jev-route.mjs", "{{ .chezmoi.homeDir }}/.local/share/openclaw-host/plugins/home-guard.mjs", "{{ .chezmoi.homeDir }}/.local/share/openclaw-host/node_modules/@openclaw/slack"] } }
 }

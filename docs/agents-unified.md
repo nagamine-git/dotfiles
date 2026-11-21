@@ -208,7 +208,8 @@ Pi からホストの作業を任せるときは `openclaw-host "依頼文"` を
 - モデル: 各ターンの前に `jev-route` プラグイン (`~/.local/share/openclaw-host/plugins/jev-route.mjs`) が Pi を `PI_JEV_ROUTE_ONLY` で呼び、jev/auto と同じ判断でモデルだけを選ぶ (モデル本体は呼ばない。約 1.5 秒)。OpenClaw の目録に無い GPT-6.2 は同系統の一つ前 (Astra→GPT-6 Astra、Sol→GPT-6.1 Sol) に置き換える。effort は渡せない。失敗時は Claude Sonnet 5.5。
 - 課金: Claude は Claude Code のログイン (`claude-cli`)、GPT は ChatGPT の OAuth プロファイルだけ (`auth.order.openai`)。Gateway には OpenAI の API キーを渡さない。Talk は `gpt-live-1-codex` (ChatGPT のサブスク経路)。
 - Slack: 専用アプリ «OpenClaw» (A0CKMV8GMHR、bot U0CKW3KKHUZ、2026-11-21 に公式の雛形で作成) で Socket Mode につなぐ。本人 (U03L2HM8Q4X) の DM と、許可したチャンネル (#n-efg-claude) の本人の発言だけに答える。通知用の bot (Custom Integration) とは別なのでイベントは分かれない。トークンは Agents の «OpenClaw Slack app token» / «OpenClaw Slack bot token»。
-- 権限: ファイル操作は `~/.local/share/openclaw-host/workspace/` の中だけ、シェル実行なし。鍵は `~/.config/agents/openclaw-talk.env` (Gateway のトークンだけ)。
+- 権限 (本人の指示 2026-11-21「~/配下には権限与えたい」): `read`/`write`/`edit` は ~ の下ならどこでも。`exec` は読むだけのコマンド (rg・fd・ls・cat・head・tail・wc・stat・file・tree・du・jq。OpenClaw の承認の許可リストに登録、`openclaw-host` の `approvals allowlist`) だけで、`~` やパイプを含むコマンドは OpenClaw 自身が断る。`home-guard` プラグインが、鍵や認証の置き場 (.ssh・1Password・ブラウザのクッキー・OpenClaw 自身の認証など) を読ませず、安全装置 (Pi のゲート・Claude/Codex のフック・OpenClaw 自身の設定とプラグイン・systemd) を書かせない。エージェント向けの説明は `~/.local/share/openclaw-host/workspace/AGENTS.md`。
+- 「↪️ Model Fallback: …; selected model unavailable」の通知: jev-route が選んだモデルを OpenClaw が既定モデルからの切り替えと見なして出すもので、失敗ではない。jev-route が送信前に消す (本当の失敗による切り替えは残す)。
 
 ## 声で頼む窓口 (voice-agent)
 

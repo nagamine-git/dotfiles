@@ -94,6 +94,7 @@ Library/**
 .local/bin/openclaw-pi-consult
 .config/openclaw-host/**
 .local/share/openclaw-host/plugins/**
+.local/share/openclaw-host/workspace/AGENTS.md
 .config/systemd/user/openclaw-host.service
 .config/agents/openclaw-talk.env
 .config/systemd/user/voice-agent.service
