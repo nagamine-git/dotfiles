@@ -134,6 +134,27 @@ class LedgerTest(unittest.TestCase):
         ledger, text, _ = self.apply(ledger, now=700)
         self.assertNotIn("平易に書く", text)  # 一度外したものは載せ直さない
 
+    def test_failed_approach_needs_fresh_evidence_for_a_different_action(self):
+        for title in ("chezmoi の反映", "herdr のペイン", "Pi の依頼"):
+            ledger = {}
+            old = dict(self.NEW, title=title)
+            i = retro.record(ledger, self.ep("a", 1), old)
+            retro.mark(ledger, i, "ineffective", now=100)
+            new = dict(old, instead="対象を絞って結果を照合する")
+            self.assertIsNone(retro.record(ledger, self.ep("b", 101), old))
+            self.assertIsNone(retro.record(ledger, self.ep("b", 99), new))
+            j = retro.record(ledger, self.ep("b", 101), new)
+            self.assertNotEqual(i, j)
+            retro.record(ledger, self.ep("b", 101), new)
+            self.assertEqual(len(ledger[j]["episodes"]), 1)
+            self.assertEqual(retro.ready(ledger), [])
+            retro.record(ledger, self.ep("c", 102), {"lesson": j})
+            ledger, lessons, _ = self.apply(ledger, now=103)
+            self.assertIn(new["instead"], lessons)
+            self.assertNotIn(old["instead"], lessons)
+            retro.mark(ledger, j, "dropped", now=104)
+            self.assertIsNone(retro.record(ledger, self.ep("d", 105), new))
+
     def test_lesson_with_no_recurrence_for_sixty_days_is_retired(self):
         day = 86400 * 1000
         ledger = {}
