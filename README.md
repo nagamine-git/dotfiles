@@ -138,24 +138,4 @@ scp am5-itx:/usr/local/bin/wolow-companion ~/wolow-companion && chezmoi apply
 2. `chezmoi init --apply nagamine-git`
 3. Linux: 再ログイン (Hyprland / systemd user unit 反映)。tmux は初回起動時に
    TPM がプラグインを自動導入
-4. `~/.config/zeed/claude-budget.json` 等の mutable state は chezmoi 管理外
-   (必要なら旧機から手動コピー)
-
-### claude-pace (Claude Max 残量計)
-
-`~/.local/bin/claude-pace` は ccusage の active 5h block を読み、loop 司令塔が
-配車数を動的調整するための JSON を 1 行出力します (要: jq, ccusage):
-
-```bash
-$ claude-pace
-{"pct":33,"output_tokens":231220,"budget":700000,"recommend":"scale-up","block_end":"2026-06-11T18:00:00.000Z","remaining_min":184}
-```
-
-- `recommend`: scale-up (<60%) / hold (60-80%) / throttle (80-95%、軽作業のみ) / pause (>95%)
-- 予算は `~/.config/zeed/claude-budget.json` の `output_budget_5h` (無ければ 700k output tokens / 5h)。
-  limit hit 時に司令塔が実測 outputTokens を `hits` 配列へ追記して自動較正します
-  (このファイルは司令塔が書き換える mutable state なので chezmoi 管理外)
-- Cockpit 可視化は新 endpoint 不要 — 司令塔が wake ごとに
-  `https://telemetry.zeed.run/v1/agent-status` へ POST します
-  (`agent_id: local:claude-usage`, `kind: background`, `state: running`,
-  detail 例「窓 38% (out 270k/700k) · scale-up」)。詳細はスクリプト先頭のコメント参照。
+4. 履歴・ログなどの運用データは chezmoi の管理外。復旧が必要なものは別のバックアップから戻す。

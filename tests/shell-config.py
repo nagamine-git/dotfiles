@@ -38,9 +38,8 @@ class ShellInit(unittest.TestCase):
         removed = (HOME / ".chezmoiremove").read_text()
         for target in (".local/bin/ccr-start.sh", ".local/bin/mic-snr.sh"):
             self.assertIn(target, removed)
-        # 実機のタイマー・サービスが使っているものは残す
-        for kept in ("aa-coding-snapshot", "blender-guard"):
-            self.assertTrue((HOME / f"dot_local/bin/executable_{kept}").is_file())
+        self.assertTrue((HOME / "dot_local/bin/executable_blender-guard").is_file())
+        self.assertIn(".config/systemd/user/aa-coding-snapshot.timer", removed)
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi が必要")

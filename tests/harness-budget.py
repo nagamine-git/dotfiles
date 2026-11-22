@@ -13,7 +13,7 @@ import unittest
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 BUDGET = 4300
-SCRIPTS = ("model-radar", "agent-retro", "agents-sync", "pi-jev")
+SCRIPTS = ("agent-retro", "agents-sync", "pi-jev")
 
 
 def sources():

@@ -5,7 +5,7 @@
     loop-watch --dry-run  確かめて表示だけする
 
 対象と期限は ~/.config/loop-watch/loops.json。この端末に入っていない unit は飛ばす。
-終了コードが 0 でも結果を出していない (例: agent-retro が答えを読めずに毎日先送り) 場合を拾うため、
+終了コードが 0 でも結果を出していない 場合を拾うため、
 unit の結果に加えて、結果ファイルの更新時刻と、ログ末尾の止まった印を見る。
 """
 import json
@@ -35,14 +35,6 @@ def _age_h(path: str, now: float) -> float | None:
         return None
 
 
-def _json_value(gate: dict) -> float:
-    try:
-        with open(os.path.expanduser(gate["json"])) as f:
-            return float(json.load(f).get(gate["key"], 0))
-    except (OSError, ValueError, TypeError):
-        return 0.0
-
-
 def check(loop: dict, now: float, unit=unit_state) -> list[str] | None:
     """1 つの定期処理の問題を返す。この端末に入っていなければ None。"""
     load, result, ran = unit(loop["unit"])
@@ -54,7 +46,7 @@ def check(loop: dict, now: float, unit=unit_state) -> list[str] | None:
     if ran is None or (now - ran) / 3600 > loop["max_age_h"]:
         problems.append(f"{loop['max_age_h']} 時間以上動いていない")
     out = loop.get("output")
-    if out and ("only_if" not in out or _json_value(out["only_if"]) >= out["only_if"]["ge"]):
+    if out:
         age = _age_h(os.path.expanduser(out["path"]), now)
         if age is None or age > out["max_age_h"]:
             problems.append(out["say"])

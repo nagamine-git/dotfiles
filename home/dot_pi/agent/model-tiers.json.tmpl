@@ -1,5 +1,3 @@
-{{- /* jev-router.ts と model-radar が読む 4 段と、総合点の重み。正本は .chezmoidata/pi.yaml。
-     点数・コスト・時間は model-radar が ~/.pi/agent/model-scores.json に書く (ここには入れない)。 */ -}}
 {{- $m := .pi.models -}}
 {{- $out := dict "default" $m.default "strong" $m.strong "peak" $m.peak "light" $m.light -}}
 {{- with (get .pi "router") -}}

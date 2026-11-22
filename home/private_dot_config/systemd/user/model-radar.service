@@ -1,8 +1,0 @@
-[Unit]
-Description=model-radar: jev/auto が選ぶためのデータ (AA の点数・Pi での実測・本人の係数) と報告を更新
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/model-radar.env -- %h/.local/bin/model-radar tick

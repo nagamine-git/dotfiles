@@ -46,17 +46,8 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(len(watch.check(self.loop(), NOW, unit(ran_h_ago=None))), 1)
 
     def test_success_exit_without_fresh_output_is_reported(self):
-        # agent-retro のように 0 で終わっても結果を出していない場合
         problems = watch.check(self.loop(output={"path": self.out, "max_age_h": 0.5, "say": "結果が古い"}), NOW, unit())
         self.assertEqual(problems, ["結果が古い"])
-
-    def test_output_age_is_ignored_until_the_gate_is_reached(self):
-        cursor = os.path.join(self.dir.name, "cursor.json")
-        Path(cursor).write_text(json.dumps({"turns_since_diagnose": 3}))
-        gated = {"path": self.out, "max_age_h": 0.5, "say": "結果が古い", "only_if": {"json": cursor, "key": "turns_since_diagnose", "ge": 20}}
-        self.assertEqual(watch.check(self.loop(output=gated), NOW, unit()), [])
-        Path(cursor).write_text(json.dumps({"turns_since_diagnose": 68}))
-        self.assertEqual(watch.check(self.loop(output=gated), NOW, unit()), ["結果が古い"])
 
     def test_stop_marker_counts_only_in_the_latest_cycle(self):
         log = os.path.join(self.dir.name, "cycle.log")
