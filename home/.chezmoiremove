@@ -4,8 +4,6 @@
 # 1 つずつ正確に書き、そのファイルを配置していた OS に限る。全機で消えたら外してよい。
 .local/bin/biz_start.sh
 .local/bin/claude-pace
-.local/bin/model-radar
-.local/bin/aa-coding-snapshot
 # 自動生成した指示だけを消す。台帳・会話・ベンチ結果には触れない。
 {{ if eq .chezmoi.hostname "am5-itx" -}}
 .agents/lessons.md
@@ -16,13 +14,6 @@
 {{ if eq .chezmoi.os "linux" -}}
 .config/systemd/user/agent-retro.service
 .config/systemd/user/agent-retro.timer
-.config/systemd/user/model-radar.service
-.config/systemd/user/model-radar.timer
-.config/systemd/user/model-radar-web.service
-{{ if eq .chezmoi.hostname "am5-itx" -}}
-.config/systemd/user/aa-coding-snapshot.timer
-.config/systemd/user/aa-coding-snapshot.service
-{{ end -}}
 {{ end }}
 # claude-code-router は使わなくなった (2026-11)
 .local/bin/ccr-start.sh

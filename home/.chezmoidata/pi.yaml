@@ -1,6 +1,7 @@
 # Pi (am5-itx) のモデルの 4 段。dot_pi/agent/modify_settings.json が ~/.pi/agent/settings.json に写す
 # (default は起動時の defaultProvider / defaultModel / defaultThinkingLevel、4 段とも modelThinkingLevels と
 # Ctrl+P で切り替える enabledModels に default・strong・peak・light の順で入る)。
+# 値はクラウドの定期ルーティン model-radar が Artificial Analysis の測定をもとに見直す。変更は model-radar の PR で行う。
 # provider と id は `pi --list-models` の表記。thinking は off / minimal / low / medium / high / xhigh / max で、
 # モデルのカタログ (thinkingLevelMap) が対応する値にする。
 pi:
@@ -8,6 +9,8 @@ pi:
     # default: 普段の作業。Pi を起動したときのモデル
     # 選び方 (本人が 2026-11-15 に決めた基準): Opus 5.5 / medium の点数 (v5 で 48.2) を普段の知性の基準
     # (jev/auto の standard) とする。2026-11-12 の基準 (Opus 5.5 / high の 52) から下げた。
+    # model-radar がこの基準で見直す。2026-11-12 の実測 (難しい 4 課題、各 1 回) では Opus 5.5 high と
+    # GPT-6.1 Sol max はどちらも全合格で、Sol は費用が約 2/3、時間が約 5 倍だった。
     default:
       provider: anthropic
       id: claude-opus-5-5
@@ -32,7 +35,7 @@ pi:
   # 段階ごとの基準の点数 (light は light 段、standard は default 段の上の設定値の点数 = 普段の知性の基準、hard は +5、
   # deep は default のモデルが届かない点数、critical は peak の最高点) に届く Claude と GPT の全モデル・全 effort から、
   # 総合点 = 知性^intelligence × 安さ^cost × 速さ^speed (下の weights、本人が 2026-11-15 に決めた式) が最も高いものを選ぶ。
-  # 点数は保存済みの ~/.pi/agent/model-scores.json を読む。無いときは上の 4 段を使う。
+  # 点数・コスト・時間は model-radar (systemd の timer) が Artificial Analysis と Pi での実測から ~/.pi/agent/model-scores.json に書く。
   # 総合点が近い 2 つはセッションごとに黙って片方を割り当て、本人の次の発言から成果 (失敗・確認・実際に使った) を判定して係数にする。
   # モデルの切り替えはキャッシュを失うので、書き直し費用を足しても 2 倍以上よいときだけ。サブスクが尽きたプロバイダーは外す
   # (従量課金の API には切り替えない)。上の 4 段は、基準・名指し (fable/opus/sol/haiku)・データが無いときの値に使う。

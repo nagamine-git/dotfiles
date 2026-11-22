@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# model-radar の毎日の取り込み (jev/auto の点数とコスト)。Pi のあるホストだけで有効にする。
+# timer: {{ include "private_dot_config/systemd/user/model-radar.timer" | sha256sum }}
+# web: {{ include "private_dot_config/systemd/user/model-radar-web.service" | sha256sum }}
+# service: {{ include "private_dot_config/systemd/user/model-radar.service" | sha256sum }}
+set -eu
+[ -d "$HOME/.pi/agent" ] || exit 0
+systemctl --user daemon-reload
+systemctl --user enable --now model-radar.timer model-radar-web.service
+# tailnet だけに出す (公開はしない)
+tailscale serve --bg --https=8781 http://127.0.0.1:8781 >/dev/null 2>&1 || true
+{{ end -}}

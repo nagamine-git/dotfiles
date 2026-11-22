@@ -1,4 +1,4 @@
-"""jev-router (virtual model jev/auto) with a stub Pi and a fake classifier, no keys, network or model calls.
+"""jev-router (virtual model jev/auto) and model-radar: a stub Pi and a fake classifier, no keys, network or model calls.
 
 Node strips TypeScript like the other Pi tests. The real-Pi check (jev/auto is the default selection and
 Ctrl+P cycles the tiers) lives in tests/pi-settings.py.
@@ -594,6 +594,216 @@ class PiRouter(unittest.TestCase):
             {"now": 1_800_000_000_000 + 3_599_000},
             {"now": 1_800_000_000_000 + 3_601_000},
         ]), [(FABLE, "low"), (FABLE, "low"), (SOL, "high")])
+
+
+def load_radar(state=None):
+    import importlib.machinery, importlib.util
+    path = str(ROOT / "home/dot_local/bin/executable_model-radar")
+    loader = importlib.machinery.SourceFileLoader("model_radar", path)
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader("model_radar", loader))
+    loader.exec_module(module)
+    module.catalog = lambda: set(AA)  # never start Pi from a test
+    if state:
+        module.STATE, module.BENCH_FILE, module.QUOTA = str(state), str(Path(state) / "bench.jsonl"), str(Path(state) / "quota.json")
+    return module
+
+
+def aa_row(slug, name, score, cost=1.0, seconds=10.0):
+    return {"slug": slug, "name": name, "release_date": "2026-09-22",
+            "evaluations": {"artificial_analysis_intelligence_index": score},
+            "artificial_analysis_intelligence_index_cost": {"cost_per_task": {"total_cost": cost}},
+            "performance": {"median_end_to_end_response_time_seconds": seconds},
+            "pricing": {"price_1m_input_tokens": 4, "price_1m_output_tokens": 20, "price_1m_cache_write_tokens": 5}}
+
+
+def outcome(model, effort, level, failed=0.0, done=0.0, shipped=0.0):
+    return {"kind": "outcome", "model": f"{AA[model][0]}/{model}", "effort": effort, "level": level,
+            "failed": failed, "done": done, "shipped": shipped, "ab": True}
+
+
+MEDIAN_FIX = ("return (s[mid] + s[mid + 1]) / 2", "return (s[mid - 1] + s[mid]) / 2")
+PERCENTILE_FIX = ("return s[int(len(s) * p / 100)]", "import math\n    return s[max(0, math.ceil(len(s) * p / 100) - 1)]")
+AVERAGE_FIX = ("range(len(values) - window)", "range(len(values) - window + 1)")
+DURATION = """import re
+def parse_duration(text):
+    m = re.fullmatch(r"(?:(\\d+)d)? ?(?:(\\d+)h)? ?(?:(\\d+)m)? ?(?:(\\d+)s)?", text.strip())
+    if not m or not any(g is not None for g in m.groups()) or "  " in text.strip():
+        raise ValueError(text)
+    d, h, mi, s = (int(g or 0) for g in m.groups())
+    return d * 86400 + h * 3600 + mi * 60 + s
+"""
+
+
+class ModelRadar(unittest.TestCase):
+    """model-radar makes the file jev-router.ts reads. No network, no model: Pi is replaced by a function."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.state = Path(tmp.name)
+        self.radar = load_radar(self.state)
+
+    def test_aa_slugs_become_pi_ids_and_efforts_and_only_the_newest_version_stays(self):
+        snap = self.radar.build_aa([
+            aa_row("claude-opus-5-5-medium", "Claude Opus 5.5 (Medium, Default Fallback)", 48.2, 2.45),
+            aa_row("claude-opus-5-5", "Claude Opus 5.5 (Max, Default Fallback)", 59.1, 10.04),
+            aa_row("claude-opus-5", "Claude Opus 5 (Max)", 50.0),
+            aa_row("gpt-6-1-sol-xhigh", "GPT-6.1 Sol (Xhigh)", 52.5, 0.76),
+            aa_row("gpt-6-1-terra-non-reasoning", "GPT-6.1 Terra (Non-reasoning)", 30.5),
+            aa_row("gpt-6-sol-daybreak-blue", "GPT-6 Sol (Daybreak Blue, max)", 40.0),
+            aa_row("gemini-4-carbon", "Gemini 4 Carbon (High)", 60.0),
+        ], "2026-11-15T00:00:00+00:00")
+        self.assertEqual(sorted(snap["models"]), ["claude-opus-5-5", "gpt-6.1-sol"])
+        self.assertEqual(snap["models"]["claude-opus-5-5"]["efforts"],
+                         {"medium": {"score": 48.2, "cost": 2.45, "seconds": 10.0}, "max": {"score": 59.1, "cost": 10.04, "seconds": 10.0}})
+        self.assertEqual((snap["models"]["gpt-6.1-sol"]["in_pi"], snap["models"]["gpt-6.1-sol"]["provider"]), (True, "openai"))
+        self.assertEqual(snap["models"]["claude-opus-5-5"]["price"]["cache_write"], 5)
+
+    def test_the_report_s_choice_is_the_router_s(self):
+        radar, snap = self.radar, scores()
+        picks = {lv: radar.choice(snap, TIERS, lv) for lv in radar.LEVELS}
+        self.assertEqual(picks, {"light": (TERRA, "medium", (SOL, "low")), "standard": (SOL, "high", None),
+                                 "hard": (FABLE, "low", (FABLE, "medium")), "deep": (FABLE, "high", None), "critical": (FABLE, "max", None)})
+        self.assertAlmostEqual(radar.AB_RATIO, (1.1 / 0.9) ** 6)
+        spare = dict(TIERS, scarce={FABLE: {"cost_factor": 2, "max_effort": "high"}})
+        self.assertEqual([radar.choice(snap, spare, lv) for lv in ("hard", "deep", "critical")],
+                         [(SOL, "max", (FABLE, "low")), (FABLE, "high", None), (FABLE, "high", None)])
+        page = radar.report(radar.compose(snap, {}, {}), TIERS)
+        for text in ("jev/auto の選び方", "<svg", "A/B テスト中", "あなたの成果スコア"):
+            self.assertIn(text, page)
+        case = PiRouter("test_registers_jev_auto_only_with_tier_data")
+        case.setUp()
+        try:  # the router at the start of a conversation: the same pairs; with the other draw, the rivals
+            first = [case.routes(rating={"score": sc}, random=0, requests=[{}])[0] for sc in (0.2, 1.0, 2.0, 3.0, 3.9)]
+            second = [case.routes(rating={"score": sc}, random=0.9, requests=[{}])[0] for sc in (0.2, 2.0)]
+        finally:
+            case.doCleanups()
+        self.assertEqual(first, [picks[lv][:2] for lv in radar.LEVELS])
+        self.assertEqual(second, [picks["light"][2], picks["hard"][2]])
+
+    def test_outcomes_become_the_owner_s_factor_per_level(self):
+        radar = self.radar
+        self.assertEqual(radar.learn([outcome(SOL, "high", "standard", done=0.9)] * 3), {})  # too little to tell a rate
+        events = ([outcome(SOL, "high", "standard", failed=0.9)] * 8 + [outcome(SOL, "high", "standard", done=0.9)] * 4
+                  + [outcome(FABLE, "low", "standard", done=0.9, shipped=0.9)] * 6 + [outcome(FABLE, "low", "standard", done=0.9)] * 6
+                  + [outcome(FABLE, "low", "hard", done=0.9)] * 10 + [{"model": "x", "effort": "y", "level": "standard"}]
+                  + [outcome(OPUS, "medium", "standard", done=0.2, failed=0.1)] * 3)
+        got = radar.learn(events)
+        sol, fable, opus = got[(SOL, "high")]["standard"], got[(FABLE, "low")]["standard"], got[(OPUS, "medium")]["standard"]
+        self.assertLess(sol["f"], 1)
+        self.assertGreater(fable["f"], 1)
+        self.assertTrue(all(radar.F_MIN <= f["f"] <= radar.F_MAX for f in (sol, fable, opus)))
+        self.assertEqual((sol["n"], fable["n"], opus["n"]), (12, 12, 0))  # judged: the message said something about the answer
+        self.assertAlmostEqual(fable["good"], 6 * 1.8 + 6 * 0.9)  # a result put to use counts double
+        self.assertAlmostEqual(sol["bad"], 8 * 1.8)                # and a failure double against
+        self.assertEqual(got[(FABLE, "low")]["hard"]["f"], 1.0)    # alone at its level: nothing to compare with
+        # Twenty good answers beside a pair that fails one time in five move the factor a little: the prior holds it back.
+        mild = radar.learn([outcome(SOL, "high", "standard", done=1.0)] * 20
+                           + [outcome(OPUS, "medium", "standard", done=1.0)] * 8 + [outcome(OPUS, "medium", "standard", failed=1.0)] * 2)
+        self.assertAlmostEqual(mild[(SOL, "high")]["standard"]["f"], 1.0312, places=3)
+        self.assertAlmostEqual(mild[(OPUS, "medium")]["standard"]["f"], 0.9609, places=3)
+        # A pair that always fails beside one that never does: both at the bound.
+        far = radar.learn([outcome(SOL, "high", "standard", done=1.0)] * 20 + [outcome(OPUS, "medium", "standard", failed=1.0)] * 10)
+        self.assertEqual((far[(SOL, "high")]["standard"]["f"], far[(OPUS, "medium")]["standard"]["f"]), (radar.F_MAX, radar.F_MIN))
+
+    def test_the_benchmark_s_tasks_fail_as_given_and_pass_when_solved(self):
+        tasks = {t["name"]: t for t in self.radar.tasks()}
+        solved = {"bugfix": {"stats.py": self.radar.STATS.replace(*MEDIAN_FIX).replace(*PERCENTILE_FIX).replace(*AVERAGE_FIX)},
+                  "lookup": {"answer.txt": "auth,queue\n"}, "implement": {"duration.py": DURATION}}
+        # Half done: one of three bugs, every dependency without the owner filter, upper case accepted.
+        half = {"bugfix": {"stats.py": self.radar.STATS.replace(*MEDIAN_FIX)}, "lookup": {"answer.txt": "auth,queue,shipping\n"},
+                "implement": {"duration.py": DURATION.replace("text.strip())", "text.strip().lower())", 1)}}
+        for name, task in tasks.items():
+            for label, extra, want in (("as given", {}, False), ("half done", half[name], False), ("solved", solved[name], True)):
+                with self.subTest(task=name, state=label), tempfile.TemporaryDirectory() as d:
+                    for rel, text in {**task["files"], **extra}.items():
+                        (Path(d) / rel).parent.mkdir(parents=True, exist_ok=True)
+                        (Path(d) / rel).write_text(text)
+                    self.assertEqual(task["check"](d), want)
+
+    def test_a_benchmark_run_measures_pi_and_keeps_our_key_out_of_it(self):
+        radar, seen = self.radar, {}
+
+        def pi(cmd, cwd, env, **kwargs):
+            seen.update(cmd=cmd, env=env, kwargs=kwargs)
+            (Path(cwd) / "answer.txt").write_text("auth, queue\n")
+            end = lambda cost, **m: json.dumps({"type": "message_end", "message": {"role": "assistant", "usage": {"cost": {"total": cost}}, **m}})
+            return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(["not json", end(0.02), json.dumps({"type": "tool"}), end(0.03)]), stderr="")
+        os.environ["ARTIFICIAL_ANALYSIS_API_KEY"] = "SYNTHETIC-KEY"
+        self.addCleanup(os.environ.pop, "ARTIFICIAL_ANALYSIS_API_KEY", None)
+        lookup = [t for t in radar.tasks() if t["name"] == "lookup"][0]
+        r = radar.run_task(lookup, "openai", SOL, "high", pi)
+        self.assertEqual((r["passed"], r["cost"], "error" in r), (True, 0.05, False))
+        self.assertIn(f"openai/{SOL}:high", seen["cmd"])
+        self.assertIn("-ne", seen["cmd"])            # no notifications, router or MCP in the measured Pi
+        self.assertNotIn("--no-session", seen["cmd"])  # the run stays on record
+        self.assertNotIn("SYNTHETIC-KEY", json.dumps(seen["env"]))
+        self.assertEqual(seen["env"]["CLAUDE_NOTIFY_PHONE"], "never")
+        failing = lambda cmd, cwd, env, **k: subprocess.CompletedProcess(cmd, 0, stderr="", stdout=json.dumps(
+            {"type": "message_end", "message": {"role": "assistant", "stopReason": "error", "errorMessage": "usage limit reached"}}))
+        self.assertEqual(radar.run_task(lookup, "openai", SOL, "high", failing)["error"], "usage limit reached")
+
+        def hangs(cmd, **k):
+            raise subprocess.TimeoutExpired(cmd, 1)
+        self.assertEqual(radar.run_task(lookup, "openai", SOL, "high", hangs)["error"], "timeout")
+
+    def test_only_close_races_between_models_are_measured_and_each_pair_once(self):
+        radar, snap = self.radar, scores()
+        names = sorted(t["name"] for t in radar.tasks())
+        want = radar.bench_candidates(snap, TIERS, {})
+        pairs = [(m, e) for m, e, _ in want]
+        for pair in [(TERRA, "medium"), (SOL, "low"), (SOL, "high"), (FABLE, "low"), (SOL, "max"), (OPUS, "medium"), (HAIKU, "high")]:
+            self.assertIn(pair, pairs)
+        for pair in [(FABLE, "high"), (FABLE, "max"), (FABLE, "xhigh"), (LUNA, "max"), (OPUS, "max")]:  # one model in the race, or far behind
+            self.assertNotIn(pair, pairs)
+        self.assertTrue(all(missing == names for _, _, missing in want))
+        runs = []
+
+        def pi(cmd, cwd, env, **kwargs):
+            runs.append(cmd[cmd.index("--model") + 1])
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"type": "message_end", "message": {"role": "assistant", "usage": {"cost": {"total": 0.01}}}}), stderr="")
+        self.assertEqual(radar.run_bench(snap, TIERS, max_runs=4, runner=pi, out=lambda *_: None), 4)
+        self.assertEqual(len(runs), 4)
+        stats = radar.bench_stats(radar.lines(radar.BENCH_FILE))
+        first = pairs[0]
+        self.assertEqual((stats[first]["n"], stats[first]["pass"]), (3, 0))  # the stub solved nothing
+        again = radar.bench_candidates(snap, TIERS, stats)
+        self.assertNotIn(first, [(m, e) for m, e, _ in again])              # measured: not run again
+        self.assertEqual(again[0][2], names[1:])                             # the second pair lacks the tasks not run yet
+        # Claude pairs wait while Claude's quota is high; a cap error stops a provider for this run.
+        (self.state / "quota.json").write_text(json.dumps({"windows": {"7d": {"used": 0.85, "at": 1}}}))
+        runs.clear()
+        radar.run_bench(snap, TIERS, max_runs=50, runner=pi, out=lambda *_: None)
+        self.assertTrue(runs and all(r.startswith("openai/") for r in runs))
+
+    def test_measurements_correct_cost_and_speed_only_with_three_pairs_and_a_failing_pair_is_left_out(self):
+        radar, snap = self.radar, scores()
+        names = [t["name"] for t in radar.tasks()]
+        run = lambda n_pass, cost, seconds: {"n": 3, "pass": n_pass, "cost": cost, "seconds": seconds, "tasks": names}
+        two = radar.compose(snap, {(SOL, "high"): run(3, 0.05, 100), (OPUS, "medium"): run(3, 0.2, 50)}, {})
+        self.assertIsNone(two["bench_scale"])
+        self.assertEqual(two["models"][SOL]["efforts"]["high"]["cost"], 0.591)   # AA's
+        bench = {(SOL, "high"): run(3, 0.0591, 258.0), (OPUS, "medium"): run(3, 0.24511, 23.9), (FABLE, "low"): run(1, 0.30972, 11.3),
+                 (TERRA, "medium"): {"n": 1, "pass": 1, "cost": 9, "seconds": 9, "tasks": names[:1]}}
+        three = radar.compose(snap, bench, {(SOL, "high"): {"standard": {"f": 0.95, "n": 7, "good": 3, "bad": 4}}})
+        sol = three["models"][SOL]["efforts"]["high"]
+        # Every pair costs a tenth of AA's here, and Sol alone is five times slower: the scale takes the common part out.
+        self.assertAlmostEqual(sol["cost"], 0.591, places=2)
+        self.assertAlmostEqual(sol["seconds"] / three["models"][OPUS]["efforts"]["medium"]["seconds"], (258.0 / 51.6) * 51.6 / 23.9, places=1)
+        self.assertEqual((sol["aa_cost"], sol["aa_seconds"], sol["bench"]["pass"], sol["owner"]["standard"]["n"]), (0.591, 51.6, 3, 7))
+        self.assertTrue(three["models"][FABLE]["efforts"]["low"]["excluded"])      # 1 of 3
+        self.assertNotIn("excluded", three["models"][TERRA]["efforts"]["medium"])  # not run in full: no verdict, AA's values
+        self.assertEqual(three["models"][TERRA]["efforts"]["medium"]["cost"], 0.1688)
+        self.assertEqual(radar.choice(three, TIERS, "hard")[:2], (FABLE, "medium"))  # the failing pair is out of the race
+        (self.state / "bench.jsonl").write_text("\n".join(json.dumps(r) for r in [
+            {"at": 1, "v": radar.BENCH_VERSION, "model": SOL, "effort": "high", "task": "lookup", "passed": True, "seconds": 9, "cost": 1},   # too old
+            {"at": 2e9, "v": 0, "model": SOL, "effort": "high", "task": "lookup", "passed": True, "seconds": 9, "cost": 1},                    # other tasks
+            {"at": 2e9, "v": radar.BENCH_VERSION, "model": SOL, "effort": "high", "task": "lookup", "passed": False, "seconds": 9, "cost": 1, "error": "quota"},
+            {"at": 2e9, "v": radar.BENCH_VERSION, "model": SOL, "effort": "high", "task": "bugfix", "passed": False, "seconds": 30, "cost": 0.5},
+            {"at": 2e9 + 1, "v": radar.BENCH_VERSION, "model": SOL, "effort": "high", "task": "bugfix", "passed": True, "seconds": 20, "cost": 0.3}])
+            + "\nnot json\n")
+        self.assertEqual(radar.bench_stats(radar.lines(radar.BENCH_FILE), now=2e9 + 5),
+                         {(SOL, "high"): {"n": 1, "pass": 1, "cost": 0.3, "seconds": 20.0, "tasks": ["bugfix"]}})
 
 
 @unittest.skipUnless(shutil.which("chezmoi") or os.environ.get("CI"), "chezmoi が必要")

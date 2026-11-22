@@ -2,6 +2,12 @@
   "_note": "loop-watch が見張る定期処理。max_age_h は前回の実行からの上限、output は結果ファイルの更新の上限。この端末に無い unit は飛ばす。",
   "loops": [
     {
+      "name": "モデル選び (model-radar)",
+      "unit": "model-radar.service",
+      "max_age_h": 3,
+      "output": {"path": "~/.pi/agent/model-scores.json", "max_age_h": 3, "say": "選ぶためのデータが 3 時間以上更新されていない"}
+    },
+    {
       "name": "GOLD LAB の投稿",
       "unit": "goldlab-cycle.service",
       "max_age_h": 2,

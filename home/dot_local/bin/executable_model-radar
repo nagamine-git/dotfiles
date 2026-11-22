@@ -1,0 +1,823 @@
+#!/usr/bin/env python3
+"""model-radar — the data jev/auto chooses by: every Claude and GPT model and effort, measured and judged.
+
+  model-radar tick              what the hourly timer runs: fetch (once a day), bench (what is missing), learn, report
+  model-radar update [--open]   fetch Artificial Analysis now, then learn and report
+  model-radar bench [--pair provider/id:effort ...] [--runs N]   run the Pi benchmark for the pairs that need it
+  model-radar learn             recompute the owner's factors from the outcomes jev-router logged
+  model-radar report [--open]   rewrite the report
+  model-radar show              print the file the router reads
+
+~/.pi/agent/model-scores.json (read by jev-router.ts on the next message) holds, per Pi model id and effort:
+  score     Artificial Analysis's Intelligence Index
+  cost      USD per task and  seconds  per answer: AA's, corrected by the Pi benchmark where it was run
+  owner     per level, the owner's factor f (0.9..1.1) and n, the judged answers behind it
+  excluded  the pair failed most of the Pi benchmark
+The router ranks (score x f)^6 / (cost^2 x seconds) among the pairs that reach a level's score (weights and
+tiers: ~/.pi/agent/model-tiers.json). This file mirrors that rule for the report and to decide what to measure.
+
+Pi benchmark (bench): AA measures models on its own harness. Where the ranking is close and more than one model
+is in the running, the same small tasks are run in Pi (`pi -p`, real tools, a throwaway directory) for each pair:
+seconds, cost and pass or fail. Costs and seconds of benched pairs replace AA's, scaled so that their geometric
+mean ratio to AA's is 1 (pairs without a run stay comparable). A pair is run once per version of the tasks and
+again after BENCH_MAX_AGE_DAYS. Claude pairs wait while Claude's quota is over BENCH_QUOTA_MAX.
+
+The owner's factor (learn): jev-router logs, for each answer, what the owner's next message said about it:
+failed, done, shipped (probabilities, never text). Per level, good = max(done, shipped) + shipped (a result put
+to use counts double), bad = 2 x failed. With q0 the level's share of good over all pairs,
+  q = (good + PRIOR x q0) / (good + bad + PRIOR),   f = 1 + SENSITIVITY x (q - q0), kept within F_MIN..F_MAX.
+PRIOR = 20: about twenty judged answers move a pair half-way to its own rate. The range 0.9..1.1 changes the
+total by up to (1.1/0.9)^6 = 3.3, which is also where the router runs its silent A/B tests.
+
+Needs ARTIFICIAL_ANALYSIS_API_KEY for a fetch (free tier): op-agent run --env-file ~/.config/agents/model-radar.env
+-- model-radar tick. The key is not passed on to the benchmark's Pi. Nothing else is sent anywhere.
+"""
+import argparse
+import datetime
+import html
+import json
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.request
+import webbrowser
+
+HOME = os.path.expanduser("~")
+AGENT = os.environ.get("PI_CODING_AGENT_DIR") or os.path.join(HOME, ".pi/agent")
+SCORES = os.path.join(AGENT, "model-scores.json")
+TIERS = os.path.join(AGENT, "model-tiers.json")
+ROUTER_LOG = os.path.join(AGENT, "jev-router.log.jsonl")
+QUOTA = os.path.join(AGENT, "jev-claude-quota.json")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state"), "model-radar")
+AA_FILE = os.path.join(STATE, "aa.json")
+BENCH_FILE = os.path.join(STATE, "bench.jsonl")
+REPORT = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share"), "model-radar/index.html")
+AA_URL = "https://artificialanalysis.ai/api/v2/language/models/free"
+AA_MAX_AGE_H = 20
+EFFORTS = ["low", "medium", "high", "xhigh", "max"]
+LEVELS = ["light", "standard", "hard", "deep", "critical"]
+LEVEL_JA = {"light": "軽い", "standard": "普通", "hard": "難しめ", "deep": "深い", "critical": "最重要"}
+# The same constants as jev-router.ts.
+STEP = 5
+WEIGHTS = {"intelligence": 6, "cost": 2, "speed": 1}
+F_MIN, F_MAX = 0.9, 1.1
+AB_RATIO = (F_MAX / F_MIN) ** 6
+AB_ENOUGH = 30
+PRIOR = 20
+SENSITIVITY = 0.5
+BENCH_VERSION = 1
+BENCH_RATIO = 10          # pairs within this ratio of a level's best total are measured
+BENCH_PER_LEVEL = 4
+BENCH_RUNS_PER_TICK = 12  # an hourly tick runs at most this many tasks
+BENCH_MAX_AGE_DAYS = 30
+BENCH_TIMEOUT_S = 900
+BENCH_QUOTA_MAX = 0.8
+# AA slug -> (provider, family). Only the newest version of each family is kept.
+FAMILIES = [
+    (re.compile(r"^claude-(opus|fable|sonnet|haiku)-(\d+(?:-\d+)*)$"), "anthropic"),
+    (re.compile(r"^gpt-(\d+(?:-\d+)*)-(sol|terra|luna|astra)$"), "openai"),
+]
+
+
+def fetch(key):
+    rows, page = [], 1
+    while page < 100:
+        req = urllib.request.Request(f"{AA_URL}?page={page}", headers={"x-api-key": key})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.load(r)
+        rows += d.get("data") or []
+        if not (d.get("pagination") or {}).get("has_more"):
+            break
+        page += 1
+    return rows
+
+
+def parse(slug, name):
+    """AA slug and name -> (pi id, provider, family, version, effort) or None."""
+    m = re.match(r"^(.*?)(?:-(low|medium|high|xhigh))?$", slug or "")
+    base, effort = m[1], m[2]
+    paren = re.search(r"\(([^,)]+)", name or "")
+    label = (paren[1].strip().lower() if paren else "")
+    if effort is None:
+        if label != "max":
+            return None  # non-reasoning, special variants, or a model without effort levels
+        effort = "max"
+    elif label and label != effort:
+        return None
+    for pattern, provider in FAMILIES:
+        f = pattern.match(base)
+        if not f:
+            continue
+        if provider == "anthropic":
+            family, version = f[1], f[2]
+            pid = base
+        else:
+            version, family = f[1], f[2]
+            parts = version.split("-")
+            pid = "gpt-" + ".".join(parts) + "-" + family
+        return pid, provider, family, tuple(int(x) for x in version.split("-")), effort
+    return None
+
+
+def catalog():
+    """Pi's model ids, to mark which ones Pi can call. None if Pi is not here."""
+    # systemd's PATH has only the system Node, which is too old for Pi: put mise's shims first.
+    env = dict(os.environ, PATH=os.pathsep.join([os.path.join(HOME, ".local/share/mise/shims"), os.environ.get("PATH", "/usr/bin:/bin")]))
+    for pi in (os.path.join(AGENT, "bin/pi"), "pi"):
+        try:
+            out = subprocess.run([pi, "--list-models"], capture_output=True, text=True, timeout=60, env=env).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        ids = {line.split()[1] for line in out.splitlines()[1:] if len(line.split()) > 1}
+        if ids:
+            return ids
+    return None
+
+
+def build_aa(rows, now):
+    found = {}
+    for r in rows:
+        p = parse(r.get("slug"), r.get("name"))
+        ii = (r.get("evaluations") or {}).get("artificial_analysis_intelligence_index")
+        if not p or not isinstance(ii, (int, float)):
+            continue
+        pid, provider, family, version, effort = p
+        cost = ((r.get("artificial_analysis_intelligence_index_cost") or {}).get("cost_per_task") or {}).get("total_cost")
+        secs = (r.get("performance") or {}).get("median_end_to_end_response_time_seconds")
+        pr = r.get("pricing") or {}
+        m = found.setdefault(pid, {"provider": provider, "family": family, "version": version, "efforts": {},
+                                   "name": re.sub(r"\s*\(.*$", "", r.get("name") or pid), "release": r.get("release_date"),
+                                   "price": {"input": pr.get("price_1m_input_tokens"), "output": pr.get("price_1m_output_tokens"),
+                                             "cache_write": pr.get("price_1m_cache_write_tokens"),
+                                             "cache_read": pr.get("price_1m_cache_hit_tokens")}})
+        m["efforts"][effort] = {"score": round(float(ii), 1),
+                                "cost": round(float(cost), 4) if isinstance(cost, (int, float)) else None,
+                                "seconds": round(float(secs), 1) if isinstance(secs, (int, float)) else None}
+    newest = {}
+    for pid, m in found.items():
+        key = (m["provider"], m["family"])
+        if key not in newest or m["version"] > found[newest[key]]["version"]:
+            newest[key] = pid
+    ids = catalog()
+    models = {}
+    for pid in sorted(newest.values()):
+        m = dict(found[pid])
+        m.pop("version")
+        m["in_pi"] = None if ids is None else pid in ids
+        m["efforts"] = {e: m["efforts"][e] for e in EFFORTS if e in m["efforts"]}
+        models[pid] = m
+    return {"source": "Artificial Analysis API v2 (free): Intelligence Index, cost per task, median seconds",
+            "fetched_at": now, "models": models}
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".model-radar.")
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+
+def load(path, default=None):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def lines(path):
+    try:
+        with open(path) as f:
+            for line in f:
+                try:
+                    yield json.loads(line)
+                except ValueError:
+                    continue
+    except OSError:
+        return
+
+
+# --- the owner's factor -----------------------------------------------------------
+
+def learn(events):
+    """{(model id, effort): {level: {"f", "n", "good", "bad"}}} from the router's outcome events."""
+    sums = {}
+    for e in events:
+        if e.get("kind") != "outcome" or e.get("level") not in LEVELS:
+            continue
+        try:
+            failed, done, shipped = float(e["failed"]), float(e["done"]), float(e["shipped"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        arm = (str(e.get("model", "")).split("/")[-1], e.get("effort"))
+        s = sums.setdefault(e["level"], {}).setdefault(arm, {"good": 0.0, "bad": 0.0, "n": 0})
+        s["good"] += max(done, shipped) + shipped
+        s["bad"] += 2 * failed
+        s["n"] += max(failed, done, shipped) >= 0.5  # an answer the owner's message said something about
+    out = {}
+    for level, arms in sums.items():
+        good = sum(a["good"] for a in arms.values())
+        weight = good + sum(a["bad"] for a in arms.values())
+        if weight < 5:  # too little to tell a rate
+            continue
+        q0 = good / weight
+        for arm, a in arms.items():
+            q = (a["good"] + PRIOR * q0) / (a["good"] + a["bad"] + PRIOR)
+            f = min(F_MAX, max(F_MIN, 1 + SENSITIVITY * (q - q0)))
+            out.setdefault(arm, {})[level] = {"f": round(f, 4), "n": int(a["n"]), "good": round(a["good"], 2), "bad": round(a["bad"], 2)}
+    return out
+
+
+# --- the Pi benchmark -------------------------------------------------------------
+
+def _services():
+    names = ["auth", "billing", "cart", "catalog", "export", "gateway", "inbox", "ledger", "mailer", "metrics", "notify", "orders",
+             "payments", "profile", "queue", "render", "reports", "search", "session", "shipping", "storage", "tax", "upload", "webhook"]
+    owners = ["platform", "growth", "payments", "data"]
+    files = {}
+    for i, n in enumerate(names):
+        deps = [names[(i * 7 + k * 5 + 3) % len(names)] for k in range(3) if names[(i * 7 + k * 5 + 3) % len(names)] != n]
+        port = 8443 if n == "gateway" else 7000 + i * 13
+        files[f"services/{n}.toml"] = f'name = "{n}"\nport = {port}\nowner = "{owners[(i * 3 + 3) % 4]}"\ndepends_on = {json.dumps(deps)}\n'
+    gi = names.index("gateway")
+    deps = [names[(gi * 7 + k * 5 + 3) % len(names)] for k in range(3)]
+    answer = ",".join(sorted(d for d in deps if owners[(names.index(d) * 3 + 3) % 4] != "platform"))
+    return files, answer
+
+
+STATS = """def median(values):
+    s = sorted(values)
+    n = len(s)
+    if n == 0:
+        raise ValueError("empty")
+    mid = n // 2
+    if n % 2:
+        return s[mid]
+    return (s[mid] + s[mid + 1]) / 2
+
+
+def percentile(values, p):
+    \"\"\"Nearest-rank percentile: the smallest value with at least p percent of the values at or below it.\"\"\"
+    s = sorted(values)
+    if not s:
+        raise ValueError("empty")
+    if not 0 <= p <= 100:
+        raise ValueError("p")
+    return s[int(len(s) * p / 100)]
+
+
+def moving_average(values, window):
+    if window <= 0:
+        raise ValueError("window")
+    return [sum(values[i:i + window]) / window for i in range(len(values) - window)]
+"""
+STATS_TEST = """import unittest
+from stats import median, percentile, moving_average
+
+
+class T(unittest.TestCase):
+    def test_median(self):
+        self.assertEqual(median([3, 1, 2]), 2)
+        self.assertEqual(median([4, 1, 3, 2]), 2.5)
+        self.assertEqual(median([7]), 7)
+        with self.assertRaises(ValueError):
+            median([])
+
+    def test_percentile(self):
+        v = [15, 20, 35, 40, 50]
+        self.assertEqual(percentile(v, 30), 20)
+        self.assertEqual(percentile(v, 40), 20)
+        self.assertEqual(percentile(v, 50), 35)
+        self.assertEqual(percentile(v, 100), 50)
+        self.assertEqual(percentile(v, 0), 15)
+        with self.assertRaises(ValueError):
+            percentile(v, 101)
+
+    def test_moving_average(self):
+        self.assertEqual(moving_average([1, 2, 3, 4], 2), [1.5, 2.5, 3.5])
+        self.assertEqual(moving_average([1, 2, 3], 3), [2.0])
+        self.assertEqual(moving_average([1, 2], 3), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
+"""
+DURATION_SPEC = """# parse_duration
+
+Implement `parse_duration(text) -> int` in `duration.py`. It returns the number of seconds.
+
+- Units: `d` (86400 s), `h` (3600 s), `m` (60 s), `s`. Each part is a non-negative integer followed by one unit: `90m`, `0s`.
+- Parts may be separated by spaces or written together: `1h30m`, `1h 30m`, `2d 3h 4s`.
+- Units must appear from largest to smallest, each at most once: `30m1h` and `1h2h` are errors.
+- Leading and trailing spaces are ignored. Anything else is an error: an empty string, a number without a unit (`90`),
+  a sign (`-5m`), a decimal (`1.5h`), an unknown unit (`3w`), upper case (`1H`).
+- Errors raise `ValueError`.
+"""
+DURATION_TEST = """import unittest
+from duration import parse_duration
+
+
+class T(unittest.TestCase):
+    def test_values(self):
+        for text, want in [("90m", 5400), ("0s", 0), ("1h30m", 5400), ("1h 30m", 5400), ("2d 3h 4s", 183604),
+                           ("  45s ", 45), ("1d1h1m1s", 90061), ("10d", 864000)]:
+            self.assertEqual(parse_duration(text), want, text)
+
+    def test_errors(self):
+        for text in ["", "   ", "90", "-5m", "1.5h", "3w", "1H", "30m1h", "1h2h", "1h30", "h", "1 h", "1h,30m", "1m1m"]:
+            with self.assertRaises(ValueError, msg=text):
+                parse_duration(text)
+
+
+if __name__ == "__main__":
+    unittest.main()
+"""
+
+
+def _unittest(directory, test_name, test_text):
+    with open(os.path.join(directory, test_name), "w") as f:  # the task's own copy may have been edited
+        f.write(test_text)
+    try:
+        return subprocess.run([sys.executable, "-B", "-m", "unittest", "-q", test_name[:-3]], cwd=directory,
+                              capture_output=True, timeout=60).returncode == 0
+    except subprocess.SubprocessError:
+        return False
+
+
+def tasks():
+    services, answer = _services()
+
+    def lookup(directory):
+        try:
+            with open(os.path.join(directory, "answer.txt")) as f:
+                return f.read().strip().replace(" ", "") == answer
+        except OSError:
+            return False
+    return [
+        {"name": "bugfix", "files": {"stats.py": STATS, "test_stats.py": STATS_TEST},
+         "prompt": "このディレクトリの test_stats.py が全部通るように stats.py を直してください。テストは変えないでください。通ることを実行して確かめたら終わりです。",
+         "check": lambda d: _unittest(d, "test_stats.py", STATS_TEST)},
+        {"name": "lookup", "files": services,
+         "prompt": "services/ の設定を調べてください。ポート 8443 で待ち受けるサービスが depends_on に挙げているサービスのうち、owner が platform でないものの名前を、"
+                   "アルファベット順にカンマ区切り (空白なし) で answer.txt に 1 行で書いてください。",
+         "check": lookup},
+        {"name": "implement", "files": {"SPEC.md": DURATION_SPEC, "duration.py": "def parse_duration(text):\n    raise NotImplementedError\n"},
+         "prompt": "SPEC.md のとおりに duration.py の parse_duration を実装してください。自分でテストを書いて確かめたら終わりです。",
+         "check": lambda d: _unittest(d, "test_duration_hidden.py", DURATION_TEST)},
+    ]
+
+
+def pi_env():
+    """The environment for a Pi this program starts: no key of ours, and mise's Node first (systemd's is too old)."""
+    keep = ("HOME", "LANG", "USER", "LOGNAME", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "PI_CODING_AGENT_DIR", "TERM")
+    env = {k: os.environ[k] for k in keep if k in os.environ}
+    env["PATH"] = os.pathsep.join([os.path.join(HOME, ".local/share/mise/shims"), os.path.join(HOME, ".local/bin"),
+                                   os.environ.get("PATH", "/usr/bin:/bin")])
+    env["CLAUDE_NOTIFY_PHONE"] = "never"
+    return env
+
+
+def run_task(task, provider, model, effort, runner=None):
+    """One task for one pair in a throwaway directory. -> {"passed", "seconds", "cost", "error"?}"""
+    work = tempfile.mkdtemp(prefix="model-radar-bench-")
+    try:
+        for rel, text in task["files"].items():
+            path = os.path.join(work, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                f.write(text)
+        gate = os.path.join(AGENT, "extensions/jev-gate.ts")
+        # Only the gate is loaded: no notifications, router or MCP. The session is kept so the run can be looked at.
+        cmd = [os.path.join(AGENT, "bin/pi"), "-p", "--mode", "json", "-ne", *(["-e", gate] if os.path.exists(gate) else []),
+               "--no-skills", "--no-context-files", "--no-prompt-templates", "--no-mcp",
+               "--model", f"{provider}/{model}:{effort}", "--session-dir", os.path.join(STATE, "bench-sessions"), task["prompt"]]
+        started = time.monotonic()
+        try:
+            out = (runner or subprocess.run)(cmd, cwd=work, env=pi_env(), capture_output=True, text=True, timeout=BENCH_TIMEOUT_S).stdout
+            error = None
+        except subprocess.TimeoutExpired:
+            out, error = "", "timeout"
+        seconds = time.monotonic() - started
+        cost, answered = 0.0, False
+        for line in out.splitlines():
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            m = d.get("message") or {}
+            if d.get("type") == "message_end" and m.get("role") == "assistant":
+                cost += ((m.get("usage") or {}).get("cost") or {}).get("total") or 0
+                answered = True
+                if m.get("stopReason") == "error":
+                    error = str(m.get("errorMessage") or "error")[:200]
+        if not answered and not error:
+            error = "no answer"
+        return {"passed": bool(not error and task["check"](work)), "seconds": round(seconds, 1), "cost": round(cost, 4),
+                **({"error": error} if error else {})}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def bench_stats(runs, now=None):
+    """{(model, effort): {"n", "pass", "cost", "seconds", "tasks"}} from the latest run of each task, this version only.
+    A run that ended in an error of the service (quota, network) is not a measurement."""
+    now = now or time.time()
+    latest = {}
+    for r in runs:
+        if r.get("v") != BENCH_VERSION or r.get("error") or now - r.get("at", 0) > BENCH_MAX_AGE_DAYS * 86400:
+            continue
+        latest[(r["model"], r["effort"], r["task"])] = r
+    out = {}
+    for (model, effort, task), r in latest.items():
+        s = out.setdefault((model, effort), {"n": 0, "pass": 0, "cost": 0.0, "seconds": 0.0, "tasks": []})
+        s["n"] += 1
+        s["pass"] += bool(r["passed"])
+        s["cost"] += r["cost"]
+        s["seconds"] += r["seconds"]
+        s["tasks"].append(task)
+    for s in out.values():
+        s["cost"], s["seconds"] = round(s["cost"] / s["n"], 4), round(s["seconds"] / s["n"], 1)
+    return out
+
+
+# --- the file the router reads ----------------------------------------------------
+
+def compose(aa, bench, owner):
+    """AA's snapshot with the benchmark's corrections and the owner's factors."""
+    scores = json.loads(json.dumps(aa))
+    names = [t["name"] for t in tasks()]
+    complete = {k: b for k, b in bench.items() if set(b["tasks"]) >= set(names)}
+    ratios = {"cost": [], "seconds": []}
+    for (model, effort), b in complete.items():
+        e = scores["models"].get(model, {}).get("efforts", {}).get(effort)
+        if e and e.get("cost") and e.get("seconds") and b["cost"] > 0 and b["seconds"] > 0:
+            ratios["cost"].append(math.log(b["cost"] / e["cost"]))
+            ratios["seconds"].append(math.log(b["seconds"] / e["seconds"]))
+    # Benchmark dollars and seconds are of other tasks than AA's: scale them so both sets compare (3 pairs at least).
+    scale = {k: math.exp(sum(v) / len(v)) for k, v in ratios.items()} if len(ratios["cost"]) >= 3 else None
+    for model, m in scores["models"].items():
+        for effort, e in m["efforts"].items():
+            e["aa_cost"], e["aa_seconds"] = e.get("cost"), e.get("seconds")
+            b = bench.get((model, effort))
+            if b:
+                e["bench"] = {k: b[k] for k in ("n", "pass", "cost", "seconds")}
+                if (model, effort) in complete:
+                    if b["pass"] * 2 < b["n"]:
+                        e["excluded"] = True
+                    if scale and b["cost"] > 0:
+                        e["cost"], e["seconds"] = round(b["cost"] / scale["cost"], 4), round(b["seconds"] / scale["seconds"], 1)
+            o = owner.get((model, effort))
+            if o:
+                e["owner"] = o
+    scores["bench_scale"] = scale
+    return scores
+
+
+# --- the same rules as jev-router.ts, at the start of a conversation ---------------
+
+def spared(tiers, model, effort, e):
+    """The pair as the router sees it: a scarce model's cost counts more and its high efforts are not chosen. None: not chosen."""
+    s = (tiers.get("scarce") or {}).get(model)
+    if not s:
+        return e
+    if s.get("max_effort") in EFFORTS and EFFORTS.index(effort) > EFFORTS.index(s["max_effort"]):
+        return None
+    return {**e, "cost": e["cost"] * (s.get("cost_factor") or 1)} if isinstance(e.get("cost"), (int, float)) else e
+
+
+def arms(scores, tiers):
+    for model, m in scores["models"].items():
+        if m.get("in_pi") is False:
+            continue
+        for effort in EFFORTS:
+            e = m["efforts"].get(effort)
+            e = e and spared(tiers, model, effort, e)
+            if e and not e.get("excluded") and all(isinstance(e.get(k), (int, float)) for k in ("score", "cost", "seconds")) \
+                    and e["cost"] > 0 and e["seconds"] > 0:
+                yield model, effort, e
+
+
+def need(scores, tiers, level):
+    def at(t):
+        return ((scores["models"].get(tiers[t]["id"]) or {}).get("efforts") or {}).get(tiers[t]["thinking"], {}).get("score")
+
+    def best(t):
+        return max([e["score"] for model, _, e in arms(scores, tiers) if model == tiers[t]["id"]] or [None])
+    std = at("default")
+    return {"light": (at("light"), False), "standard": (std, False), "hard": (None if std is None else std + STEP, False),
+            "deep": (best("default"), True), "critical": (best("peak"), False)}[level]
+
+
+def total(tiers, e, level):
+    w = {**WEIGHTS, **(tiers.get("weights") or {})}
+    f = ((e.get("owner") or {}).get(level) or {}).get("f") or 1
+    return (e["score"] * f) ** w["intelligence"] / (e["cost"] ** w["cost"] * e["seconds"] ** w["speed"])
+
+
+def ranked(scores, tiers, level):
+    """[(total, model, effort, entry)] of the pairs that reach the level, best first."""
+    n, above = need(scores, tiers, level)
+    if n is None:
+        return []
+    ok = [(total(tiers, e, level), model, effort, e) for model, effort, e in arms(scores, tiers) if (e["score"] > n if above else e["score"] >= n)]
+    return sorted(ok, key=lambda r: -r[0])
+
+
+def choice(scores, tiers, level):
+    """-> (model, effort, rival or None): the best pair, and the one it is A/B tested against."""
+    r = ranked(scores, tiers, level)
+    if not r:
+        return None
+    judged = lambda e: ((e.get("owner") or {}).get(level) or {}).get("n", 0)
+    rival = r[1] if len(r) > 1 and r[1][0] * AB_RATIO >= r[0][0] and min(judged(r[0][3]), judged(r[1][3])) < AB_ENOUGH else None
+    return r[0][1], r[0][2], (rival[1], rival[2]) if rival else None
+
+
+def bench_candidates(scores, tiers, bench):
+    """The pairs worth measuring in Pi, without a complete run: close to a level's best where several models compete,
+    and the default and light tiers as the reference."""
+    names = {t["name"] for t in tasks()}
+    want = []
+    for level in LEVELS:
+        r = [x for x in ranked(scores, tiers, level) if x[0] * BENCH_RATIO >= ranked(scores, tiers, level)[0][0]][:BENCH_PER_LEVEL]
+        if len({x[1] for x in r}) > 1:
+            want += [(x[1], x[2]) for x in r]
+    want += [(tiers[t]["id"], tiers[t]["thinking"]) for t in ("default", "light")]
+    seen, out = set(), []
+    for pair in want:
+        if pair in seen or pair[0] not in scores["models"]:
+            continue
+        seen.add(pair)
+        missing = [n for n in sorted(names) if n not in (bench.get(pair) or {}).get("tasks", [])]
+        if missing:
+            out.append((pair[0], pair[1], missing))
+    return out
+
+
+def claude_quota_high():
+    q = load(QUOTA) or {}
+    now = time.time()
+    return any(isinstance(w, dict) and w.get("used", 0) >= BENCH_QUOTA_MAX and (w.get("reset") is None or now < w["reset"])
+               for w in (q.get("windows") or {}).values())
+
+
+def run_bench(scores, tiers, pairs=None, max_runs=BENCH_RUNS_PER_TICK, runner=None, out=print):
+    bench = bench_stats(lines(BENCH_FILE))
+    todo = pairs if pairs is not None else bench_candidates(scores, tiers, bench)
+    by_name = {t["name"]: t for t in tasks()}
+    done = 0
+    stopped = set()
+    for model, effort, missing in todo:
+        provider = scores["models"][model]["provider"]
+        if provider == "anthropic" and claude_quota_high():
+            stopped.add(provider)
+        for name in missing:
+            if done >= max_runs or provider in stopped:
+                break
+            r = run_task(by_name[name], provider, model, effort, runner)
+            done += 1
+            os.makedirs(STATE, exist_ok=True)
+            with open(BENCH_FILE, "a") as f:
+                f.write(json.dumps({"at": time.time(), "v": BENCH_VERSION, "model": model, "effort": effort, "task": name, **r}) + "\n")
+            out(f"model-radar: bench {model}:{effort} {name}: {'pass' if r['passed'] else 'fail'} {r['seconds']}s ${r['cost']}"
+                + (f" ({r['error']})" if r.get("error") else ""))
+            if r.get("error") and re.search(r"limit|quota|credential|auth|login", r["error"], re.I):
+                stopped.add(provider)  # a used-up or signed-out subscription: not a measurement, and no point going on
+    return done
+
+
+def chart(snap, picks, needs):
+    W, H, L, R, T, B = 920, 520, 60, 150, 20, 50
+    xs = [v["cost"] for m in snap["models"].values() for v in m["efforts"].values() if v["cost"]]
+    lo, hi = math.log10(max(min(xs), 0.003)) - 0.1, math.log10(max(xs)) + 0.15
+    ymax = max(70, max(v["score"] for m in snap["models"].values() for v in m["efforts"].values()) + 5)
+    X = lambda c: L + (math.log10(c) - lo) / (hi - lo) * (W - L - R)
+    Y = lambda s: T + (1 - s / ymax) * (H - T - B)
+    g = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="点数とコストの散布図">']
+    for s in range(0, int(ymax) + 1, 10):
+        g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(s):.1f}" y2="{Y(s):.1f}" class="grid"/><text x="{L - 8}" y="{Y(s) + 4:.1f}" class="ax" text-anchor="end">{s}</text>')
+    for c in (0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30):
+        if lo <= math.log10(c) <= hi:
+            g.append(f'<line x1="{X(c):.1f}" x2="{X(c):.1f}" y1="{T}" y2="{H - B}" class="grid"/><text x="{X(c):.1f}" y="{H - B + 18}" class="ax" text-anchor="middle">${c:g}</text>')
+    g.append(f'<text x="{(L + W - R) / 2}" y="{H - 8}" class="ax" text-anchor="middle">1 タスクのコスト (API 単価, 対数)</text>')
+    g.append(f'<text x="14" y="{T + 10}" class="ax">点数</text>')
+    for label, (n, _) in needs.items():
+        if n is not None and label in ("standard", "hard", "deep"):
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(n):.1f}" y2="{Y(n):.1f}" class="need"/><text x="{W - R + 6}" y="{Y(n) + 4:.1f}" class="ax">{LEVEL_JA[label]} {n:g}</text>')
+    for mid, m in snap["models"].items():
+        pts = [(X(v["cost"]), Y(v["score"]), e) for e, v in m["efforts"].items() if v["cost"]]
+        if not pts:
+            continue
+        dash = ' stroke-dasharray="4 3"' if m["provider"] == "openai" else ""
+        g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y, _ in pts)}" class="line"{dash}/>')
+        for x, y, e in pts:
+            on = (mid, e) in picks
+            g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{5 if on else 3}" class="{"pick" if on else "pt"}"><title>{html.escape(m["name"])} {e}</title></circle>')
+            if on:
+                g.append(f'<text x="{x + 8:.1f}" y="{y - 6:.1f}" class="picklabel">{"・".join(LEVEL_JA[l] for l in picks[(mid, e)])}</text>')
+        x, y, _ = pts[-1]
+        g.append(f'<text x="{x + 6:.1f}" y="{y + 14:.1f}" class="name">{html.escape(m["name"])}</text>')
+    g.append("</svg>")
+    return "\n".join(g)
+
+
+def panels(snap, picks, needs):
+    """One small chart per model, on the same axes: its efforts labelled, every other model faint behind."""
+    W, H, L, R, T, B = 470, 300, 44, 16, 30, 36
+    xs = [v["cost"] for m in snap["models"].values() for v in m["efforts"].values() if v["cost"]]
+    lo, hi = math.log10(max(min(xs), 0.003)) - 0.1, math.log10(max(xs)) + 0.35
+    ymax = max(70, max(v["score"] for m in snap["models"].values() for v in m["efforts"].values()) + 5)
+    X = lambda c: L + (math.log10(c) - lo) / (hi - lo) * (W - L - R)
+    Y = lambda s: T + (1 - s / ymax) * (H - T - B)
+    order = sorted(snap["models"].items(), key=lambda kv: (kv[1]["provider"], -max(v["score"] for v in kv[1]["efforts"].values())))
+    out = []
+    for mid, m in order:
+        g = [f'<figure class=panel><svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(m["name"])} の点数とコスト">',
+             f'<text x="{L}" y="18" class=ptitle>{html.escape(m["name"])}</text>']
+        for s in range(0, int(ymax) + 1, 10):
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(s):.1f}" y2="{Y(s):.1f}" class="grid"/><text x="{L - 6}" y="{Y(s) + 4:.1f}" class="ax" text-anchor="end">{s}</text>')
+        for c in (0.01, 0.1, 1, 10):
+            if lo <= math.log10(c) <= hi:
+                g.append(f'<line x1="{X(c):.1f}" x2="{X(c):.1f}" y1="{T}" y2="{H - B}" class="grid"/><text x="{X(c):.1f}" y="{H - B + 16}" class="ax" text-anchor="middle">${c:g}</text>')
+        n = needs.get("standard", (None,))[0]
+        if n is not None:
+            g.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(n):.1f}" y2="{Y(n):.1f}" class="need"/><text x="{W - R}" y="{Y(n) - 4:.1f}" class="ax" text-anchor="end">基準 {n:g}</text>')
+        for mid2, m2 in snap["models"].items():
+            if mid2 == mid:
+                continue
+            pts = [(X(v["cost"]), Y(v["score"])) for v in m2["efforts"].values() if v["cost"]]
+            g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts)}" class="ghost"/>')
+        pts = [(X(v["cost"]), Y(v["score"]), e, v) for e, v in m["efforts"].items() if v["cost"]]
+        dash = ' stroke-dasharray="4 3"' if m["provider"] == "openai" else ""
+        g.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y, _, _ in pts)}" class="own"{dash}/>')
+        rows = []
+        for i, (x, y, e, v) in enumerate(pts):
+            on = (mid, e) in picks
+            # effort names only on the chart, alternating above and below; the numbers go in the table
+            dy = -9 if i % 2 == 0 else 16
+            g.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{5 if on else 3.5}" class="{"pick" if on else "ownpt"}"/>')
+            g.append(f'<text x="{x:.1f}" y="{y + dy:.1f}" class="{"picklabel" if on else "elabel"}" text-anchor="middle">{e}</text>')
+            use = "・".join(LEVEL_JA[l] for l in picks.get((mid, e), []))
+            secs = "—" if v["seconds"] is None else f"{v['seconds']:.0f} 秒"
+            rows.append(f'<tr class="{"pickrow" if on else ""}"><td>{e}</td><td>{v["score"]:g}</td><td>${v["cost"]:.2f}</td><td>{secs}</td><td>{use}</td></tr>')
+        g.append("</svg>")
+        g.append('<table class=mini><tr><th>effort</th><th>点数</th><th>$/タスク</th><th>時間</th><th>jev/auto</th></tr>' + "".join(rows) + "</table></figure>")
+        out.append("".join(g))
+    return '<div class=grid2>' + "".join(out) + "</div>"
+
+
+def report(scores, tiers):
+    needs = {lv: need(scores, tiers, lv) for lv in LEVELS}
+    picks, rows = {}, []
+    name = lambda mid: html.escape(scores["models"].get(mid, {}).get("name", mid))
+    money = lambda c: "—" if c is None else f"${c:.2f}"
+    secs = lambda s: "—" if s is None else f"{s:.0f} 秒"
+    sci = lambda v: f"{v:.2e}".replace("e+0", "e").replace("e+", "e")
+    for lv in LEVELS:
+        r = ranked(scores, tiers, lv)
+        c = choice(scores, tiers, lv)
+        n, above = needs[lv]
+        bar = "—" if n is None else (f"{n:g} 超" if above else f"{n:g} 以上")
+        if not c:
+            rows.append(f"<tr><td>{LEVEL_JA[lv]}</td><td>{bar}</td><td colspan=6 class=dim>データなし (段の設定値を使う)</td></tr>")
+            continue
+        picks.setdefault((c[0], c[1]), []).append(lv)
+        e = r[0][3]
+        if c[2]:
+            picks.setdefault(c[2], []).append(lv + " (A/B)")
+        rival = f"{name(c[2][0])} {c[2][1]} と A/B テスト中" if c[2] else (f"{name(r[1][1])} {r[1][2]} (総合点 1/{r[0][0] / r[1][0]:.1f})" if len(r) > 1 else "—")
+        rows.append(f"<tr><td>{LEVEL_JA[lv]}</td><td>{bar}</td><td class=pickc>{name(c[0])} {c[1]}</td><td>{e['score']:g}</td>"
+                    f"<td>{money(e['cost'])}</td><td>{secs(e['seconds'])}</td><td>{sci(r[0][0])}</td><td class=dim>{rival}</td></tr>")
+    label = lambda use: "・".join(LEVEL_JA[u.split(" ")[0]] + (" A/B" if "A/B" in u else "") for u in use)
+    chart_picks = {k: [u.split(" ")[0] for u in v] for k, v in picks.items()}
+    listing, judged = [], []
+    order = sorted(scores["models"].items(), key=lambda kv: (kv[1]["provider"], -max(v["score"] for v in kv[1]["efforts"].values())))
+    for mid, m in order:
+        for effort, e in m["efforts"].items():
+            use = picks.get((mid, effort), [])
+            b = e.get("bench")
+            pi_run = "—" if not b else f"{b['pass']}/{b['n']} 合格・{b['seconds']:.0f} 秒・${b['cost']:.2f}"
+            state = label(use) or ("Pi で不合格" if e.get("excluded") else "")
+            listing.append(f'<tr class="{"pickrow" if use else ("dim" if e.get("excluded") else "")}"><td>{html.escape(m["name"])}</td><td>{effort}</td>'
+                           f'<td>{e["score"]:g}</td><td>{money(e.get("aa_cost", e.get("cost")))}</td><td>{secs(e.get("aa_seconds", e.get("seconds")))}</td>'
+                           f'<td>{pi_run}</td><td>{ {True: "○", False: "×", None: "?"}[m.get("in_pi")] }</td><td>{state}</td></tr>')
+            for lv, o in (e.get("owner") or {}).items():
+                judged.append((LEVELS.index(lv), f"<tr><td>{LEVEL_JA[lv]}</td><td>{html.escape(m['name'])} {effort}</td><td>{o['n']}</td>"
+                               f"<td>{o['good']:g}</td><td>{o['bad']:g}</td><td>{o['f']:.3f}</td></tr>"))
+    w = {**WEIGHTS, **(tiers.get("weights") or {})}
+    tier_line = " / ".join(f"{k}: {html.escape(tiers[k]['id'])} {tiers[k]['thinking']}" for k in ("default", "peak", "light", "strong"))
+    scale = scores.get("bench_scale")
+    spare = (tiers.get("scarce") or {}).get(tiers["peak"]["id"]) or {}
+    judged_html = ("<table><tr><th>段階</th><th>モデル</th><th>判定した回答</th><th>成果</th><th>失敗</th><th>係数</th></tr>"
+                   + "".join(r for _, r in sorted(judged)) + "</table>") if judged else "<p class=dim>まだ判定がありません。jev/auto で使ううちに溜まります。</p>"
+    return f"""<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>model-radar — jev/auto の選び方</title>
+<style>
+body{{background:#111;color:#ddd;font:15px/1.6 "IBM Plex Sans JP",system-ui,sans-serif;margin:32px auto;max-width:1000px;padding:0 20px}}
+h1{{font-size:22px;margin:0 0 4px}} h2{{font-size:17px;margin:36px 0 10px;border-bottom:1px solid #333;padding-bottom:6px}}
+.dim{{color:#777}} table{{border-collapse:collapse;width:100%;font-size:14px}} td,th{{padding:5px 8px;border-bottom:1px solid #222;text-align:left}}
+th{{color:#999;font-weight:500}} .pickc,.pickrow td{{color:#4da3ff}} tr.dim td{{color:#666}}
+svg{{width:100%;height:auto}} .grid{{stroke:#262626}} .ax{{fill:#888;font-size:11px}} .need{{stroke:#555;stroke-dasharray:3 4}}
+.line{{fill:none;stroke:#555;stroke-width:1.2}} .pt{{fill:#888}} .pick{{fill:#4da3ff}} .picklabel{{fill:#4da3ff;font-size:12px}} .name{{fill:#aaa;font-size:11px}}
+.scroll{{overflow-x:auto}} @media (max-width:700px){{.grid2{{grid-template-columns:1fr}}}} ul{{padding-left:20px}} li{{margin:4px 0}}
+.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:8px}} .panel{{margin:0;border:1px solid #222}}
+.ptitle{{fill:#ddd;font-size:14px;font-weight:600}} .ghost{{fill:none;stroke:#2a2a2a;stroke-width:1}}
+.mini{{font-size:12px;margin:0 0 6px}} .mini td,.mini th{{padding:2px 8px}} .own{{fill:none;stroke:#aaa;stroke-width:1.5}} .ownpt{{fill:#ccc}} .elabel{{fill:#bbb;font-size:11px}}
+</style>
+<h1>jev/auto の選び方</h1>
+<div class=dim>{html.escape(scores["source"])} ・ 取得 {html.escape(scores["fetched_at"])} ・ 段: {tier_line}</div>
+
+<h2>段階ごとに jev/auto が使うもの</h2>
+<p>各段階で、基準の点数に届く Claude と GPT の全モデル・全 effort のうち、総合点 = (点数 × あなたの係数)<sup>{w["intelligence"]:g}</sup> ÷ (コスト<sup>{w["cost"]:g}</sup> × 時間<sup>{w["speed"]:g}</sup>) がいちばん高いものを使います。会話の途中では、モデルを変えるとキャッシュを書き直すので、行きと帰りの書き直し費用を足しても 2 倍以上よいときだけ変えます。総合点が {AB_RATIO:.1f} 倍以内で並ぶ 2 つは、セッションごとにどちらかを黙って割り当てて成果で比べます。表は会話の最初の選択です。</p>
+<div class=scroll><table><tr><th>段階</th><th>必要な点数</th><th>jev/auto</th><th>点数</th><th>$/タスク</th><th>時間</th><th>総合点</th><th>次点</th></tr>
+{"".join(rows)}</table></div>
+
+<h2>点数とコスト (全モデル・全 effort)</h2>
+<p class=dim>実線は Claude、破線は GPT。点は low から max へ左から右に並びます。青は jev/auto が使う組み合わせ、横の点線は段階の基準です。</p>
+{chart(scores, chart_picks, needs)}
+
+<h2>モデルごとの点数とコスト (effort 別)</h2>
+<p class=dim>各図は同じ目盛りです (縦: 点数、横: 1 タスクのコストの対数)。後ろの薄い線はほかのモデル、青は jev/auto が使う組み合わせ。</p>
+{panels(scores, chart_picks, needs)}
+
+<h2>あなたの成果スコア</h2>
+<p>jev/auto の回答の次にあなたが書いたことを、分類器が「失敗した」「結果を認めた」「実際に使った (マージ・反映・公開・採用)」で判定します (本文は残しません)。実際に使った結果は 2 倍、失敗は 2 倍の重さで数え、段階ごとの平均との差から係数 ({F_MIN}〜{F_MAX}) を作って点数に掛けます。</p>
+{judged_html}
+
+<h2>一覧</h2>
+<p class=dim>$ と時間は Artificial Analysis の値です。「Pi 実測」は同じ小さな課題 {len(tasks())} 件を Pi で解かせた結果で、順位が競っている組み合わせだけ測ります{"。実測のある組み合わせは、その値を AA の尺度に直して総合点に使います" if scale else " (3 組そろうまでは総合点には AA の値を使います)"}。</p>
+<div class=scroll><table><tr><th>モデル</th><th>effort</th><th>点数</th><th>$/タスク</th><th>時間</th><th>Pi 実測</th><th>Pi</th><th>用途</th></tr>
+{"".join(listing)}</table></div>
+
+<h2>読み方の注意</h2>
+<ul>
+<li>$ は API 単価での 1 タスクの費用です。サブスクの利用枠の減り方はこれに比例すると仮定していますが、確かめていません。</li>
+<li>Fable は Max プランでも週の利用枠の 50% までです。そのため総合点ではコストを {spare.get("cost_factor", 1):g} 倍に数え、自動では {spare.get("max_effort", "max")} までしか使いません (max は名指ししたときだけ)。どちらかのサブスクが尽きると、そのプロバイダーを外して選びます (従量課金の API には切り替えません)。</li>
+<li>段に入れるモデルと基準 (default 段の設定値) は .chezmoidata/pi.yaml で決めます。それ以外はこのデータから自動で変わります。</li>
+</ul>
+</html>
+"""
+
+
+def write_scores_and_report(aa, tiers, open_it=False):
+    owner = learn(lines(ROUTER_LOG))
+    scores = compose(aa, bench_stats(lines(BENCH_FILE)), owner)
+    write_json(SCORES, scores)
+    if tiers:
+        os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+        with open(REPORT, "w") as f:
+            f.write(report(scores, tiers))
+        print(f"model-radar: {len(scores['models'])} models -> {SCORES}; report -> {REPORT}")
+        if open_it:
+            webbrowser.open("file://" + REPORT)
+    return scores
+
+
+def fetch_aa():
+    key = os.environ.get("ARTIFICIAL_ANALYSIS_API_KEY")
+    if not key:
+        sys.exit("model-radar: ARTIFICIAL_ANALYSIS_API_KEY is not set (op-agent run --env-file ~/.config/agents/model-radar.env -- model-radar update)")
+    aa = build_aa(fetch(key), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
+    if not aa["models"]:
+        sys.exit("model-radar: no Claude or GPT model with scores in AA's answer; nothing is changed")
+    write_json(AA_FILE, aa)
+    return aa
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("command", choices=["tick", "update", "bench", "learn", "report", "show"])
+    ap.add_argument("--open", action="store_true", help="open the report in the browser")
+    ap.add_argument("--pair", action="append", default=[], help="bench: provider/id:effort (repeatable)")
+    ap.add_argument("--runs", type=int, default=BENCH_RUNS_PER_TICK, help="bench: at most this many tasks")
+    a = ap.parse_args()
+    if a.command == "show":
+        print(json.dumps(load(SCORES) or {}, ensure_ascii=False, indent=1))
+        return
+    tiers = load(TIERS)
+    aa = load(AA_FILE)
+    stale = not aa or time.time() - os.path.getmtime(AA_FILE) > AA_MAX_AGE_H * 3600
+    if a.command == "update" or (a.command == "tick" and stale):
+        aa = fetch_aa()
+    if not aa:
+        sys.exit(f"model-radar: no snapshot at {AA_FILE}; run model-radar update")
+    scores = write_scores_and_report(aa, tiers, a.open and a.command not in ("bench", "tick"))
+    if a.command in ("tick", "bench") and tiers:
+        pairs = None
+        if a.pair:
+            names = sorted(t["name"] for t in tasks())
+            pairs = [(p.split("/")[-1].rsplit(":", 1)[0], p.rsplit(":", 1)[1], names) for p in a.pair]
+        if run_bench(scores, tiers, pairs, a.runs):
+            write_scores_and_report(aa, tiers, a.open)
+
+
+if __name__ == "__main__":
+    main()

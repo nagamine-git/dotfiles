@@ -1,0 +1,10 @@
+[Unit]
+Description=model-radar を毎時実行
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target
