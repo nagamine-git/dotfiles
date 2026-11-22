@@ -10,13 +10,9 @@
 {{ if eq .chezmoi.hostname "am5-itx" -}}
 .agents/lessons.md
 {{ end -}}
-{{ range $name := list "retro" "daily-focus" "session-title-refresh" -}}
-.agents/skills/{{ $name }}/SKILL.md
-{{ $link := joinPath $.chezmoi.homeDir ".claude/skills" $name -}}
-{{ with lstat $link }}{{ if eq .type "symlink" }}{{ if eq (output "readlink" $link | trim) (printf "../../.agents/skills/%s" $name) -}}
-.claude/skills/{{ $name }}
-{{ end }}{{ end }}{{ end -}}
-{{ end -}}
+.agents/skills/retro/SKILL.md
+.agents/skills/daily-focus/SKILL.md
+.agents/skills/session-title-refresh/SKILL.md
 {{ if eq .chezmoi.os "linux" -}}
 .config/systemd/user/agent-retro.service
 .config/systemd/user/agent-retro.timer
