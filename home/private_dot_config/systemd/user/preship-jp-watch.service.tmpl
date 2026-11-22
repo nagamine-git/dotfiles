@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+# Preship (日本) の見張り。外と中の /healthz、ディスク、最後のバックアップを見て、駄目なら Slack (要対応) に知らせる。
+# 本体は preship-core の deploy/watch.sh (deploy/release.sh が ~/.local/share/preship/deploy に置く)。
+[Unit]
+Description=Preship (日本) の見張り
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/preship/deploy/watch.sh
+TimeoutStartSec=120
+Nice=10
+{{ end -}}

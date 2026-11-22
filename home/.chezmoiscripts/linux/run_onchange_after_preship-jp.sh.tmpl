@@ -1,0 +1,12 @@
+{{ if and (eq .chezmoi.os "linux") (eq .chezmoi.hostname "am5-itx") -}}
+#!/usr/bin/env bash
+# Preship (日本) の本体と見張り・書き出しを有効にする。am5-itx だけ。
+# service: {{ include "private_dot_config/systemd/user/preship-jp.service.tmpl" | sha256sum }}
+# watch: {{ include "private_dot_config/systemd/user/preship-jp-watch.service.tmpl" | sha256sum }} {{ include "private_dot_config/systemd/user/preship-jp-watch.timer.tmpl" | sha256sum }}
+# backup: {{ include "private_dot_config/systemd/user/preship-jp-backup.service.tmpl" | sha256sum }} {{ include "private_dot_config/systemd/user/preship-jp-backup.timer.tmpl" | sha256sum }}
+set -eu
+systemctl --user daemon-reload
+# 本体は、版を入れてから (deploy/release.sh) 動かす。ここでは起動時に上がるようにだけする。
+systemctl --user enable preship-jp.service
+systemctl --user enable --now preship-jp-watch.timer preship-jp-backup.timer
+{{ end -}}

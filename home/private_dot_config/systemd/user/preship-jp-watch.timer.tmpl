@@ -1,0 +1,11 @@
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+[Unit]
+Description=Preship (日本) を 5 分ごとに見る
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+{{ end -}}

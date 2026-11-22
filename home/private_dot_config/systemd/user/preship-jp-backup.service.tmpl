@@ -1,0 +1,14 @@
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+# Preship (日本) の毎日のバックアップ。手元に 7 日分、別の場所 (restic の倉庫) の設定があれば暗号化して 30 日分。
+# 本体は preship-core の deploy/backup-daily.sh。失敗したら Slack (要対応) に知らせる。
+[Unit]
+Description=Preship (日本) の毎日のバックアップ
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/preship/deploy/backup-daily.sh
+TimeoutStartSec=1h
+Nice=15
+IOSchedulingClass=idle
+{{ end -}}

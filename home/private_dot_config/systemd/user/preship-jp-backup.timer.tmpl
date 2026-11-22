@@ -1,0 +1,12 @@
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+[Unit]
+Description=Preship (日本) を毎日 3 時 40 分に書き出す (GOLD LAB の毎時 23 分を避ける)
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
+{{ end -}}

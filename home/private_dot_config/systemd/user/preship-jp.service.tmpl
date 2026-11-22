@@ -1,0 +1,32 @@
+{{ if eq .chezmoi.hostname "am5-itx" -}}
+# Preship (日本) の本体。https://jp.getpreship.com を Cloudflare Tunnel (compose の cloudflared) から受ける。
+# 2026-11-22 の本人の承認 (公開してよい。まず日本だけ、am5-itx と Cloudflare Tunnel で)。
+# 版の入れ替えは preship-core の deploy/release.sh (~/.local/share/preship/bin/current を向け替えて再起動する)。
+# DB (PostgreSQL・ClickHouse) と cloudflared は docker compose の preship-jp が動かし、Docker が再起動後に上げ直す。
+# 設定と DB のパスワードは ~/.config/preship/jp.env (0600、chezmoi 管理外)。
+# 決済とメールの鍵は ~/.config/agents/preship.env に op:// の参照があるときだけ、op-agent run で渡す (値はディスクに置かない)。
+# 止めるときは `systemctl --user stop preship-jp.service`。DB を先に止めると、本体は終了して 5 秒ごとに上げ直す。
+[Unit]
+Description=Preship (日本) 本体 https://jp.getpreship.com
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/preship
+EnvironmentFile=%h/.config/preship/jp.env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/sh -c 'bin="$HOME/.local/share/preship/bin/current"; refs="$HOME/.config/agents/preship.env"; if grep -qs "op://" "$refs"; then exec op-agent run --env-file "$refs" -- env -u OP_SERVICE_ACCOUNT_TOKEN "$bin"; else exec "$bin"; fi'
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+# GOLD LAB などの同じ機械の仕事を邪魔しない。
+MemoryMax=1G
+CPUWeight=50
+Nice=5
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target
+{{ end -}}
