@@ -1,4 +1,4 @@
-"""am5-itx のログイン時の ChatGPT と Codex daemon の起動。tmux を通さず、ChatGPT は chatgpt-launch から起動する。描画だけで、アプリは起動しない。"""
+"""am5-itx のログイン時の Orca IDE と Codex daemon の起動。tmux を通さず、ChatGPT は自動起動しない。手で開く ChatGPT は chatgpt-launch を通す。描画だけで、アプリは起動しない。"""
 import json
 from pathlib import Path
 import shutil
@@ -11,7 +11,7 @@ DESKTOP = ROOT / "home/dot_local/share/applications/chatgpt.desktop.tmpl"
 IGNORE = ROOT / "home/.chezmoiignore"
 CHEZMOI = shutil.which("chezmoi")
 
-CHATGPT = 'hl.exec_cmd("~/.local/bin/chatgpt-launch")'
+ORCA = 'hl.exec_cmd("gtk-launch orca-ide")'
 DAEMON = 'hl.exec_cmd("~/.local/bin/codex app-server daemon start")'
 
 
@@ -28,13 +28,14 @@ def render(path, hostname, os="linux"):
 class DesktopAutostart(unittest.TestCase):
     def test_am5_itx_starts_apps_directly(self):
         hypr = render(HYPR, "am5-itx")
-        self.assertIn(CHATGPT, hypr)
+        self.assertIn(ORCA, hypr)
         self.assertIn(DAEMON, hypr)
+        self.assertNotIn("chatgpt-launch", hypr)
         self.assertNotIn("tmux", hypr)
 
     def test_other_hosts_do_not_start_apps(self):
         hypr = render(HYPR, "fp7-e14")
-        self.assertNotIn(CHATGPT, hypr)
+        self.assertNotIn(ORCA, hypr)
         self.assertNotIn(DAEMON, hypr)
         self.assertNotIn("chatgpt-launch", hypr)
         self.assertNotIn("tmux", hypr)

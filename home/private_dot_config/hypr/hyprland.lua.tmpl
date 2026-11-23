@@ -50,10 +50,9 @@ local browser = "{{ $browser }}"
 hl.on("hyprland.start", function()
     hl.exec_cmd("fcitx5 -d --replace")
     {{ if eq .chezmoi.hostname "am5-itx" -}}
-    -- ログイン時に ChatGPT と Codex の app-server daemon を起動する。起動済みならどちらも既存のものを使う
-    -- (ChatGPT は single-instance。daemon start は動いていないときだけ起動する)
-    -- ChatGPT は chatgpt-launch から起動し、メモリ上限を付ける (docs/chatgpt-launch.md)
-    hl.exec_cmd("~/.local/bin/chatgpt-launch")
+    -- ログイン時に Orca IDE と Codex の app-server daemon を起動する (daemon start は動いていないときだけ起動する)
+    -- Orca は AppImage の場所を持つ orca-ide.desktop から起動する。ChatGPT は 2026-11-23 に自動起動をやめた
+    hl.exec_cmd("gtk-launch orca-ide")
     hl.exec_cmd("~/.local/bin/codex app-server daemon start")
     {{ end -}}
     hl.exec_cmd("1password --silent &")

@@ -7,9 +7,8 @@ ChatGPT が膨らんだときに、システム全体の OOM で別のアプリ�
 
 ## 上限を付ける入口は am5-itx の 3 か所
 
-次の 3 か所が chatgpt-launch を通す。ほかの経路 (端末で `command chatgpt` を直接実行するなど) で起動した ChatGPT には上限が付かない。
+ログイン時の自動起動は 2026-11-23 にやめ、代わりに Orca IDE を開く (`home/private_dot_config/hypr/hyprland.lua.tmpl`)。手で開くときは次の 2 か所が chatgpt-launch を通す。ほかの経路 (端末で `command chatgpt` を直接実行するなど) で起動した ChatGPT には上限が付かない。
 
-- **ログイン時の起動**:`home/private_dot_config/hypr/hyprland.lua.tmpl` の am5-itx の条件の中。
 - **desktop entry**:`home/dot_local/share/applications/chatgpt.desktop.tmpl`。Vicinae のアプリ検索と `codex://` の URI ハンドラーもこれを使う。
 - **zsh の `chatgpt`**:`home/dot_zshrc`。`~/.local/bin/chatgpt-launch` があるときだけ使う。
 
