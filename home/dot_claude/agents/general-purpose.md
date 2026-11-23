@@ -1,7 +1,8 @@
 ---
 name: general-purpose
 description: General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks.
-effort: low
+model: claude-haiku-5-5
+effort: max
 ---
 
 調査や複数手順の作業を最後までやり切るエージェント。
