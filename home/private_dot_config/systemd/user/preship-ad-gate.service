@@ -1,0 +1,12 @@
+[Unit]
+Description=Preship の広告の判定 (実測から ¥50,000 で «有料にする» が 1 人以上の確率を出し、51% を超えたら Slack に知らせる。広告は出さない)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/ghq/github.com/efg-technologies/preship-lp
+Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/op-agent run --env-file %h/.config/agents/preship-ad-gate.env -- %h/.local/share/mise/installs/python/latest/bin/python3 tools/ad_gate.py --collect --record --notify
+Nice=10
+TimeoutStartSec=300
