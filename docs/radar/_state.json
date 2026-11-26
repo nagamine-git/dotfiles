@@ -1,66 +1,6 @@
 {
-  "last_run": "2026-11-25",
+  "last_run": "2026-11-26",
   "seen": [
-    {
-      "tool": "freee-mcp v0.37.11 最新版確認",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] git ls-remote --tags直接確認、変化なし。無効化済みのため優先度低い"
-    },
-    {
-      "tool": "CachyOS 11月リリース",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] discuss.cachyos.org等でも11月版の発表は未確認、直近は依然8月版"
-    },
-    {
-      "tool": "ROCm CachyOSリポジトリ反映状況",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] Arch公式extraはrocm-cmake 7.2.4まで進行済みだがCachyOSダッシュボードは依然7.1.1系のまま"
-    },
-    {
-      "tool": "freee/マネーフォワード/弥生 AI機能動向",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出動向から変化なし"
-    },
-    {
-      "tool": "一人社長/一人法人向けバックオフィスAI SaaS",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] 11月固有の新サービス発表は確認できず(プエンテ「A子さん」等既出の範囲内)"
-    },
-    {
-      "tool": "Codex CLI/Antigravity CLI/Cursor",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [推定] Codex CLI v0.166.0進行との言及あり、通常アップデートの範囲"
-    },
-    {
-      "tool": "新規MCPサーバー調査",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [推定] MCPエコシステム950超コネクタ拡大との報道のみ、話題性のある新規実用サーバーは確認できず"
-    },
-    {
-      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [確認済] Beszel・Uptime Kuma・restic/BorgBackup等既出ツールの範囲内、新着なし"
-    },
-    {
-      "tool": "Hyprland Lua移行への反発・niri移行の声",
-      "decided_at": "2026-11-08",
-      "decision": "⌀ [推定] 個人ブログ・SNSでの散発的な移行体験談のみ、公式方向転換なし"
-    },
-    {
-      "tool": "Claude Code v2.1.321 (MCP OAuthリダイレクト時のシークレット別ホスト送信を修正・auto mode既定表示/サブエージェント報告のコンパクション消失修正・読み取り専用Bashコマンドのサンドボックス外無確認実行とcp/mv先deny/保護ファイル未チェックを修正)",
-      "decided_at": "2026-11-09",
-      "decision": "★★★ [確認済] 公式CHANGELOG.md(raw)直接確認。OAuthシークレット漏洩修正は本セッションのGmail/Calendar/Drive/Notion/Slack/Spotify等OAuth系MCPコネクタ利用に直撃。auto mode修正はdefaultMode: auto運用・本radar自身のクラウドスケジュールタスクに関係。自動適用で対応不要"
-    },
-    {
-      "tool": "Hyprland v0.57.2 (v0.57.1からのバックポート、RTスケジューリング高負荷時クラッシュ等のregression修正)",
-      "decided_at": "2026-11-09",
-      "decision": "★★ [確認済] GitHub Releases直接確認。本機のdGPU(デスクトップ/ROCm共用)パフォーマンスモード切替運用(executable_hypr_perfmodeswitch.sh)に実利の可能性あり。pacman更新のみで移行コスト低、フルスクリーン時レイヤー表示等の挙動変化点は適用後確認推奨"
-    },
-    {
-      "tool": "lazygit/chezmoi/niri/helix/jj/zellij/blink.cmp/Ghostty 最新版確認",
-      "decided_at": "2026-11-09",
-      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも11/08判定から変化なし"
-    },
     {
       "tool": "Tailscale v1.104.5 最新版確認",
       "decided_at": "2026-11-09",
@@ -999,6 +939,66 @@
     {
       "tool": "Hyprland/niri/sway/river WM動向",
       "decided_at": "2026-11-25",
+      "decision": "⌀ [確認済] 11月固有の発表・方向転換なし"
+    },
+    {
+      "tool": "Claude Code v2.1.332 最新版確認",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] 公式CHANGELOG.md(raw、文字位置0〜100000)直接確認、11/25判定から新規リリースなし"
+    },
+    {
+      "tool": "Hyprland/niri/lazygit/jj/zellij/chezmoi/blink.cmp/Ghostty/sheldon 最新版確認",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、いずれも変化なし"
+    },
+    {
+      "tool": "Tailscale v1.106.1/v1.107.0-pre 最新版確認",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、進行なし"
+    },
+    {
+      "tool": "mise vfox-v2026.11.14 最新版確認",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] git ls-remote --tags直接確認、変化なし"
+    },
+    {
+      "tool": "freee-mcp 最新版確認",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] npx freee-mcp@latest運用で自動反映済み、無効化継続中のため優先度低いまま"
+    },
+    {
+      "tool": "CachyOS 11月リリース",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] WebSearchでも11月版ISOの発表は依然未確認、直近は8月版のまま。cachyos.orgは本セッションのネットワーク許可外"
+    },
+    {
+      "tool": "ROCm CachyOSリポジトリ反映状況",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [不明] dashboard.cachyos.org/packages.cachyos.orgともネットワーク許可外、WebSearchでも11月固有の反映情報見つからず、前回判定維持"
+    },
+    {
+      "tool": "freee/マネーフォワード/弥生 AI機能動向・一人社長向けバックオフィスSaaS",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] 11月固有の新規発表確認できず、既出(kaname AI・プエンテ「A子さん」・采配(SAIHAI)・rakumoエージェント等)の範囲内"
+    },
+    {
+      "tool": "Codex CLI/Antigravity CLI/Cursor",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [不明] 出典間でバージョン表記不一致、本環境は未使用のため導入動機なし"
+    },
+    {
+      "tool": "新規MCPサーバー調査",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [推定] mcp.so/mcpmarket等の一般ディレクトリのみ、本環境の既存MCP構成に直撃する実用サーバーは確認できず"
+    },
+    {
+      "tool": "自宅サーバー/監視/バックアップ/電源/ストレージ/ネットワーク",
+      "decided_at": "2026-11-26",
+      "decision": "⌀ [確認済] Beszel/Uptime Kuma/Duplistatus/Restic/BorgBackup等既出ツールの範囲内、新着なし"
+    },
+    {
+      "tool": "Hyprland/niri/sway/river WM動向",
+      "decided_at": "2026-11-26",
       "decision": "⌀ [確認済] 11月固有の発表・方向転換なし"
     }
   ]
